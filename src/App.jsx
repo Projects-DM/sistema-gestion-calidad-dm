@@ -1,0 +1,43 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+import DashboardLayout from './layouts/DashboardLayout';
+import Dashboard from './pages/Dashboard';
+import Traceability from './pages/Traceability';
+import Dispatches from './pages/Dispatches';
+import Users from './pages/Users';
+import ProtectedRoute from './components/ProtectedRoute';
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="trazabilidad" element={<Traceability />} />
+          <Route path="trazabilidad/despachos" element={<Dispatches />} />
+          
+          <Route 
+            path="usuarios" 
+            element={
+              <ProtectedRoute allowedRoles={['administrador']}>
+                <Users />
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+      </Routes>
+    </Router>
+  );
+}
+
+export default App;
