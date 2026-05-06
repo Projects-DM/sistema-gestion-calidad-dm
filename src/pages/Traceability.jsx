@@ -1,6 +1,7 @@
-import { Truck, History, FileBarChart, Search, ChevronRight, Route as RouteIcon } from 'lucide-react';
+import { Truck, History, FileBarChart, Search, ChevronRight, Route as RouteIcon, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import DocumentModule from '../components/DocumentModule';
 
 const submodules = [
   { 
@@ -43,6 +44,16 @@ const submodules = [
     action: 'Buscar',
     roles: ['administrador', 'calidad', 'operativo', 'consulta']
   },
+  { 
+    id: 5, 
+    path: '/trazabilidad/certificados', 
+    name: 'Certificados de Calidad', 
+    icon: ShieldCheck, 
+    color: 'bg-white text-gray-700 border border-gray-200', 
+    desc: 'Gestión de certificaciones y registros de calidad externos.',
+    action: 'Ver Certificados',
+    roles: ['administrador', 'calidad', 'operativo', 'consulta']
+  },
 ];
 
 export default function Traceability() {
@@ -59,15 +70,23 @@ export default function Traceability() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
         
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-medium mb-4">
-            <RouteIcon className="w-4 h-4 text-accent" />
-            Módulo 10
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-medium mb-4">
+              <RouteIcon className="w-4 h-4 text-accent" />
+              Módulo 10
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">Programa de Trazabilidad</h1>
+            <p className="text-slate-300 text-lg leading-relaxed">
+              Gestione el rastreo de productos a lo largo de toda la cadena de distribución. Registre, controle y audite cada etapa del proceso de despacho.
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">Programa de Trazabilidad</h1>
-          <p className="text-slate-300 text-lg leading-relaxed">
-            Gestione el rastreo de productos a lo largo de toda la cadena de distribución. Registre, controle y audite cada etapa del proceso de despacho.
-          </p>
+
+          <DocumentModule 
+            module="trazabilidad" 
+            title="Programa de Trazabilidad"
+            description="Documento técnico normativo del proceso de trazabilidad y recall."
+          />
         </div>
       </div>
 
