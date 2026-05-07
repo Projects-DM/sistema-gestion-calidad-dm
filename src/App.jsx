@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Traceability from './pages/Traceability';
 import Dispatches from './pages/Dispatches';
 import Certificates from './pages/Certificates';
+import TechnicalSheets from './pages/TechnicalSheets';
 import Users from './pages/Users';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -27,6 +28,7 @@ function App() {
           <Route path="trazabilidad" element={<Traceability />} />
           <Route path="trazabilidad/despachos" element={<Dispatches />} />
           <Route path="trazabilidad/certificados" element={<Certificates />} />
+          <Route path="trazabilidad/fichas-tecnicas" element={<TechnicalSheets />} />
           
           <Route 
             path="usuarios" 
