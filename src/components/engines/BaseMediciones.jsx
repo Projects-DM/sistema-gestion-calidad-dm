@@ -51,7 +51,7 @@ export default function BaseMediciones({ fields, values, onChange }) {
                   required={field.required}
                   value={val !== undefined ? val : ''}
                   onChange={(e) => {
-                    const newVal = field.field_type === 'number' ? parseFloat(e.target.value) : e.target.value;
+                    const newVal = e.target.value;
                     onChange(field.id, newVal);
                   }}
                   className={`w-full px-4 py-2 border rounded-lg font-mono transition-colors ${borderColor} ${bgColor}`}

@@ -150,5 +150,29 @@ export const dynamicService = {
       incumplimientos: 0, // Mock for now until we parse response values for fails
       alertasActivas: 0
     };
+  },
+
+  async getModuleResponses(moduleId) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_form_responses')
+      .select(`
+        id,
+        status,
+        created_at,
+        created_by,
+        sgc_forms!inner ( id, name, module_id ),
+        profiles:created_by ( nombre ),
+        sgc_response_values ( field_id, value_text, value_number, value_boolean, sgc_form_fields ( label, field_type, options ) ),
+        sgc_evidences ( id, file_url, file_type )
+      `)
+      .eq('sgc_forms.module_id', moduleId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching module responses:', error);
+      return [];
+    }
+    return data;
   }
 };

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, FileText, Loader2, Route as RouteIcon } from 'lucide-react';
+import { ChevronRight, FileText, Loader2, Route as RouteIcon, ListChecks, History } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import DocumentModule from '../components/DocumentModule';
+import DynamicRecordsView from '../components/DynamicRecordsView';
 import * as Icons from 'lucide-react';
 
 export default function DynamicModule() {
@@ -14,6 +15,7 @@ export default function DynamicModule() {
   const [modInfo, setModInfo] = useState(null);
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('forms'); // 'forms' or 'records'
 
   useEffect(() => {
     async function loadData() {
@@ -39,6 +41,8 @@ export default function DynamicModule() {
       }
     }
     loadData();
+    // Reset tab when module changes
+    setActiveTab('forms');
   }, [moduleSlug, navigate]);
 
   if (loading) {
@@ -89,47 +93,67 @@ export default function DynamicModule() {
         </div>
       </div>
 
-      {/* Forms Grid */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <div className="w-1.5 h-6 bg-accent rounded-full"></div>
-          Formularios y Registros
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filteredForms.map((form) => {
-            const IconComponent = Icons[form.icon || 'FileText'] || Icons.FileText;
-            
-            return (
-              <Link 
-                to={`/modulo/${moduleSlug}/${form.slug}`} 
-                key={form.id}
-                className="group flex flex-col bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-              >
-                <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors"></div>
-                
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
-                  <IconComponent className="w-7 h-7" />
-                </div>
-                
-                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">{form.name}</h3>
-                <p className="text-sm text-gray-500 mb-6 flex-1">{form.description}</p>
-                
-                <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto">
-                  Ingresar
-                  <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-            );
-          })}
-          
-          {filteredForms.length === 0 && (
-            <div className="col-span-full py-10 text-center text-gray-500">
-              No hay formularios configurados para este módulo.
-            </div>
-          )}
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 gap-8">
+        <button 
+          onClick={() => setActiveTab('forms')}
+          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'forms' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <div className="flex items-center gap-2"><ListChecks className="w-4 h-4" /> Diligenciar Registros</div>
+        </button>
+        <button 
+          onClick={() => setActiveTab('records')}
+          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'records' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <div className="flex items-center gap-2"><History className="w-4 h-4" /> Historial y Consultas</div>
+        </button>
       </div>
+
+      {/* Content */}
+      {activeTab === 'forms' ? (
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-accent rounded-full"></div>
+            Formatos Disponibles
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filteredForms.map((form) => {
+              const IconComponent = Icons[form.icon || 'FileText'] || Icons.FileText;
+              
+              return (
+                <Link 
+                  to={`/modulo/${moduleSlug}/${form.slug}`} 
+                  key={form.id}
+                  className="group flex flex-col bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+                >
+                  <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors"></div>
+                  
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
+                    <IconComponent className="w-7 h-7" />
+                  </div>
+                  
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">{form.name}</h3>
+                  <p className="text-sm text-gray-500 mb-6 flex-1">{form.description}</p>
+                  
+                  <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto">
+                    Ingresar
+                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Link>
+              );
+            })}
+            
+            {filteredForms.length === 0 && (
+              <div className="col-span-full py-10 text-center text-gray-500">
+                No hay formularios configurados para este módulo.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <DynamicRecordsView moduleId={modInfo.id} />
+      )}
     </div>
   );
 }

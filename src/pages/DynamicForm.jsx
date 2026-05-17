@@ -62,7 +62,19 @@ export default function DynamicForm() {
     e.preventDefault();
     try {
       setSaving(true);
-      await dynamicService.submitFormResponse(formDef.id, user.id, values, evidences);
+      
+      // Parse numbers properly
+      const processedValues = {};
+      Object.keys(values).forEach(key => {
+        const fieldDef = fields.find(f => f.id === key);
+        let val = values[key];
+        if (fieldDef?.field_type === 'number' && val !== '' && val !== null) {
+          val = parseFloat(val);
+        }
+        processedValues[key] = val;
+      });
+
+      await dynamicService.submitFormResponse(formDef.id, user.id, processedValues, evidences);
       setSuccess(true);
       setTimeout(() => {
         navigate(`/${moduleSlug}`);
