@@ -4,17 +4,9 @@ import { useAuth } from '../hooks/useAuth';
 import { 
   LayoutDashboard, 
   Droplets, 
-  Bug, 
-  Trash2, 
   Wrench, 
-  Scale, 
-  GraduationCap, 
-  TestTube2, 
-  Map, 
   Route as RouteIcon, 
-  Truck, 
   AlertTriangle, 
-  MessageSquareWarning,
   LogOut,
   Bell,
   Search,
@@ -24,25 +16,19 @@ import {
   ChevronRight,
   User,
   Sparkles,
-  Users
+  Settings,
+  FileText
 } from 'lucide-react';
 
 const menuItems = [
   { path: '/dashboard', name: 'Panel Principal', icon: LayoutDashboard, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { path: '/limpieza', name: 'Limpieza y Desinfección', icon: Sparkles, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/agua', name: 'Calidad del Agua', icon: Droplets, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/plagas', name: 'Control de Plagas', icon: Bug, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/residuos', name: 'Residuos Sólidos', icon: Trash2, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/mantenimiento', name: 'Mantenimiento', icon: Wrench, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/calibracion', name: 'Calibración', icon: Scale, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/capacitacion', name: 'Capacitación', icon: GraduationCap, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/muestreo', name: 'Plan de Muestreo', icon: TestTube2, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/planos', name: 'Planos con Flujos', icon: Map, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: '/operaciones', name: 'Operaciones', icon: Sparkles, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
   { path: '/trazabilidad', name: 'Trazabilidad', icon: RouteIcon, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { path: '/proveedores', name: 'Proveedores', icon: Truck, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/recall', name: 'Recall', icon: AlertTriangle, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/pqrsd', name: 'PQRSD', icon: MessageSquareWarning, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/usuarios', name: 'Gestión Usuarios', icon: Users, roles: ['administrador'] },
+  { path: '/medicion-control', name: 'Medición y Control', icon: Droplets, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: '/mantenimiento', name: 'Mantenimiento', icon: Wrench, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: '/calidad', name: 'Calidad', icon: AlertTriangle, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: '/gestion-documental', name: 'Gestión Documental', icon: FileText, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: '/configuracion', name: 'Configuración', icon: Settings, roles: ['administrador'] },
 ];
 
 export default function DashboardLayout() {

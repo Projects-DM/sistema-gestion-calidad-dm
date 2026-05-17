@@ -3,17 +3,11 @@ import { useAuth } from '../hooks/useAuth';
 import { 
   Sparkles, 
   Droplets, 
-  Bug, 
-  Trash2, 
   Wrench, 
-  Scale, 
-  GraduationCap, 
-  TestTube2, 
-  Map, 
   Route as RouteIcon, 
-  Truck, 
   AlertTriangle, 
-  MessageSquareWarning,
+  FileText,
+  Settings,
   TrendingUp,
   Clock,
   CheckCircle,
@@ -21,19 +15,13 @@ import {
 } from 'lucide-react';
 
 const modules = [
-  { id: 1, path: '/limpieza', name: 'Limpieza y Desinfección', icon: Sparkles, color: 'bg-blue-500', desc: 'Registros diarios y semanales', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 2, path: '/agua', name: 'Calidad del Agua', icon: Droplets, color: 'bg-cyan-500', desc: 'Cloro libre y pH', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 3, path: '/plagas', name: 'Control de Plagas', icon: Bug, color: 'bg-emerald-500', desc: 'Monitoreo de cebaderos', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 4, path: '/residuos', name: 'Residuos Sólidos', icon: Trash2, color: 'bg-stone-500', desc: 'Pesaje y disposición', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 5, path: '/mantenimiento', name: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', desc: 'Preventivo y correctivo', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 6, path: '/calibracion', name: 'Calibración', icon: Scale, color: 'bg-violet-500', desc: 'Equipos de medición', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 7, path: '/capacitacion', name: 'Capacitación', icon: GraduationCap, color: 'bg-fuchsia-500', desc: 'Cronograma y asistencia', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 8, path: '/muestreo', name: 'Plan de Muestreo', icon: TestTube2, color: 'bg-pink-500', desc: 'Análisis microbiológicos', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 9, path: '/planos', name: 'Planos con Flujos', icon: Map, color: 'bg-indigo-500', desc: 'Rutas y distribución', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 10, path: '/trazabilidad', name: 'Programa de Trazabilidad', icon: RouteIcon, color: 'bg-accent', desc: 'Despachos, lotes y recall', featured: true, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { id: 11, path: '/proveedores', name: 'Proveedores', icon: Truck, color: 'bg-teal-500', desc: 'Evaluación y recepción', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 12, path: '/recall', name: 'Recall / Retiro', icon: AlertTriangle, color: 'bg-secondary', desc: 'Simulacros y eventos', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 13, path: '/pqrsd', name: 'PQRSD', icon: MessageSquareWarning, color: 'bg-amber-600', desc: 'Quejas y reclamos', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { id: 1, path: '/operaciones', name: 'Operaciones', icon: Sparkles, color: 'bg-blue-500', desc: 'BPM, Limpieza, Plagas', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { id: 2, path: '/trazabilidad', name: 'Trazabilidad', icon: RouteIcon, color: 'bg-accent', desc: 'Despachos, lotes y entregas', featured: true, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
+  { id: 3, path: '/medicion-control', name: 'Medición y Control', icon: Droplets, color: 'bg-cyan-500', desc: 'Temperatura, pH, Peso', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { id: 4, path: '/mantenimiento', name: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', desc: 'Equipos y calibraciones', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { id: 5, path: '/calidad', name: 'Calidad', icon: AlertTriangle, color: 'bg-amber-600', desc: 'PQRS, Recall, Auditorías', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { id: 6, path: '/gestion-documental', name: 'Gestión Documental', icon: FileText, color: 'bg-indigo-500', desc: 'Programas y registros', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { id: 7, path: '/configuracion', name: 'Configuración', icon: Settings, color: 'bg-slate-700', desc: 'Usuarios y parámetros', roles: ['administrador'] },
 ];
 
 const stats = [
