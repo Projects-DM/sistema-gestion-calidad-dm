@@ -1,0 +1,302 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { dynamicService } from '../services/dynamicService';
+import { Settings, Plus, LayoutList, Layers, Save, Loader2, ArrowLeft, Trash2, Edit } from 'lucide-react';
+import FormBuilder from '../components/FormBuilder';
+
+export default function Configuration() {
+  const { rol } = useAuth();
+  const [activeTab, setActiveTab] = useState('formularios');
+  
+  // State for modules and forms
+  const [modules, setModules] = useState([]);
+  const [forms, setForms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // State for Form Builder
+  const [selectedForm, setSelectedForm] = useState(null);
+  const [isCreatingForm, setIsCreatingForm] = useState(false);
+  const [newFormDef, setNewFormDef] = useState({
+    module_id: '',
+    name: '',
+    slug: '',
+    description: '',
+    engine_type: 'BaseGeneric',
+    roles_allowed: ['administrador', 'calidad', 'operativo']
+  });
+
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      const mods = await dynamicService.getModules();
+      setModules(mods);
+      
+      const allForms = [];
+      for (const m of mods) {
+        const modForms = await dynamicService.getFormsByModule(m.id);
+        allForms.push(...modForms.map(f => ({...f, module_name: m.name})));
+      }
+      setForms(allForms);
+    } catch (error) {
+      console.error('Error loading config data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveFormDef = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      // Generate a slug if empty
+      const slug = newFormDef.slug || newFormDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      
+      // We will create the form via a generic upsert or directly through supabase.
+      // Since dynamicService doesn't have createForm yet, we'll need to add it or do it here.
+      const supabase = (await import('../lib/supabase')).getSupabaseClient();
+      
+      const { data, error } = await supabase.from('sgc_forms').insert({
+        module_id: newFormDef.module_id,
+        name: newFormDef.name,
+        slug: slug,
+        description: newFormDef.description,
+        engine_type: newFormDef.engine_type,
+        roles_allowed: newFormDef.roles_allowed
+      }).select().single();
+
+      if (error) throw error;
+      
+      alert('Formulario creado. Ahora configura los campos.');
+      setIsCreatingForm(false);
+      setSelectedForm(data);
+      await loadInitialData();
+    } catch (error) {
+      alert('Error creando formulario: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteForm = async (formId) => {
+    if (!window.confirm('¿Eliminar este formulario y todas sus respuestas?')) return;
+    try {
+      const supabase = (await import('../lib/supabase')).getSupabaseClient();
+      await supabase.from('sgc_forms').delete().eq('id', formId);
+      await loadInitialData();
+    } catch (error) {
+      alert('Error eliminando: ' + error.message);
+    }
+  };
+
+  if (rol !== 'administrador') {
+    return <div className="p-8 text-center text-red-500">Acceso denegado. Se requiere rol de administrador.</div>;
+  }
+
+  // Render the Field Builder view if a form is selected
+  if (selectedForm) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <button onClick={() => setSelectedForm(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-500" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Constructor Visual: {selectedForm.name}</h1>
+            <p className="text-sm text-gray-500">Configura los campos dinámicos para este formulario.</p>
+          </div>
+        </div>
+        
+        <FormBuilder formDef={selectedForm} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="bg-primary rounded-3xl p-8 text-white relative overflow-hidden shadow-lg">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-sm font-medium mb-4 uppercase">
+            Panel Administrativo
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Configuración del Sistema</h1>
+          <p className="text-slate-300">Gestión de módulos, formularios dinámicos y parámetros.</p>
+        </div>
+      </div>
+
+      <div className="flex border-b border-gray-200 gap-8">
+        <button 
+          onClick={() => setActiveTab('formularios')}
+          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'formularios' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <div className="flex items-center gap-2"><LayoutList className="w-4 h-4" /> Formularios Dinámicos</div>
+        </button>
+        <button 
+          onClick={() => setActiveTab('modulos')}
+          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'modulos' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <div className="flex items-center gap-2"><Layers className="w-4 h-4" /> Módulos</div>
+        </button>
+      </div>
+
+      {loading && !isCreatingForm && (
+        <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+      )}
+
+      {activeTab === 'formularios' && !loading && (
+        <div className="space-y-6">
+          {!isCreatingForm ? (
+            <>
+              <div className="flex justify-end">
+                <button 
+                  onClick={() => setIsCreatingForm(true)}
+                  className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-bold hover:bg-primary-light transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> Nuevo Formulario
+                </button>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200 text-gray-500">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold">Formulario</th>
+                      <th className="px-6 py-4 font-semibold">Módulo Asignado</th>
+                      <th className="px-6 py-4 font-semibold">Motor Dinámico</th>
+                      <th className="px-6 py-4 font-semibold text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {forms.map(form => (
+                      <tr key={form.id} className="hover:bg-gray-50/50">
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-gray-900">{form.name}</p>
+                          <p className="text-xs text-gray-500">{form.slug}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {form.module_name}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                            {form.engine_type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => setSelectedForm(form)}
+                              className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                              title="Configurar Campos"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteForm(form.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {forms.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                          No hay formularios configurados aún.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto">
+              <h2 className="text-xl font-bold mb-6">Crear Nuevo Formulario</h2>
+              <form onSubmit={handleSaveFormDef} className="space-y-5">
+                
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Módulo Destino *</label>
+                  <select 
+                    required
+                    value={newFormDef.module_id}
+                    onChange={e => setNewFormDef({...newFormDef, module_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Selecciona un módulo...</option>
+                    {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del Formulario *</label>
+                  <input 
+                    type="text" required
+                    value={newFormDef.name}
+                    onChange={e => setNewFormDef({...newFormDef, name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                    placeholder="Ej. Checklist Diario de Vehículos"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Motor Dinámico *</label>
+                  <select 
+                    required
+                    value={newFormDef.engine_type}
+                    onChange={e => setNewFormDef({...newFormDef, engine_type: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="BaseGeneric">CRUD Genérico (Textos, Opciones)</option>
+                    <option value="BaseChecklist">Checklist (Cumple / No Cumple)</option>
+                    <option value="BaseMediciones">Mediciones (Números, Tolerancias)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">El motor define cómo se visualizará y validará el formulario para el operario.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Descripción breve</label>
+                  <input 
+                    type="text" 
+                    value={newFormDef.description}
+                    onChange={e => setNewFormDef({...newFormDef, description: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button 
+                    type="button" onClick={() => setIsCreatingForm(false)}
+                    className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-6 py-2.5 bg-primary text-white font-bold hover:bg-primary-light rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" /> Crear y Configurar Campos
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'modulos' && (
+        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm text-center text-gray-500">
+          Los módulos oficiales (Operaciones, Trazabilidad, etc.) están bloqueados por arquitectura. Si deseas agregar nuevos módulos raíz, hazlo vía SQL.
+        </div>
+      )}
+    </div>
+  );
+}

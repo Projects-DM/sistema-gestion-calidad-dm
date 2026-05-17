@@ -8,6 +8,7 @@ import Certificates from './pages/Certificates';
 import TechnicalSheets from './pages/TechnicalSheets';
 import DynamicModule from './pages/DynamicModule';
 import DynamicForm from './pages/DynamicForm';
+import Configuration from './pages/Configuration';
 import Users from './pages/Users';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -32,8 +33,14 @@ function App() {
           <Route path="trazabilidad/certificados" element={<Certificates />} />
           <Route path="trazabilidad/fichas-tecnicas" element={<TechnicalSheets />} />
           
-          <Route path=":moduleSlug" element={<DynamicModule />} />
-          <Route path="modulo/:moduleSlug/:formSlug" element={<DynamicForm />} />
+          <Route 
+            path="configuracion" 
+            element={
+              <ProtectedRoute allowedRoles={['administrador']}>
+                <Configuration />
+              </ProtectedRoute>
+            } 
+          />
           
           <Route 
             path="usuarios" 
@@ -43,6 +50,10 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          
+          <Route path=":moduleSlug" element={<DynamicModule />} />
+          <Route path="modulo/:moduleSlug/:formSlug" element={<DynamicForm />} />
+          
         </Route>
       </Routes>
     </Router>
