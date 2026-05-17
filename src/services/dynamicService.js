@@ -63,7 +63,7 @@ export const dynamicService = {
     // 1. Insert response
     const { data: response, error: resError } = await supabase
       .from('sgc_form_responses')
-      .insert({ form_id: formId, created_by: userId })
+      .insert({ form_id: formId, created_by: userId, status: 'pendiente_revision' })
       .select()
       .single();
     
@@ -107,7 +107,86 @@ export const dynamicService = {
       if (evError) throw evError;
     }
 
+    // 4. Register Audit Log (Create)
+    await supabase.from('sgc_audit_logs').insert({
+      response_id: response.id,
+      action_type: 'create',
+      modified_by: userId,
+      new_data: values,
+      reason: 'Creación inicial del registro'
+    });
+
     return response;
+  },
+
+  async verifyFormResponse(responseId, userId, status, comment) {
+    const supabase = getSupabaseClient();
+    
+    // Update status and verification details
+    const { error: updateError } = await supabase
+      .from('sgc_form_responses')
+      .update({
+        status: status,
+        verified_by: userId,
+        verified_at: new Date().toISOString(),
+        verification_comment: comment
+      })
+      .eq('id', responseId);
+
+    if (updateError) throw updateError;
+
+    // Register Audit Log
+    await supabase.from('sgc_audit_logs').insert({
+      response_id: responseId,
+      action_type: 'verify',
+      modified_by: userId,
+      new_data: { status, verification_comment: comment },
+      reason: `Verificación operativa: ${status}`
+    });
+  },
+
+  async verifyMultipleFormResponses(responseIds, userId, status, comment) {
+    const supabase = getSupabaseClient();
+    
+    const { error: updateError } = await supabase
+      .from('sgc_form_responses')
+      .update({
+        status: status,
+        verified_by: userId,
+        verified_at: new Date().toISOString(),
+        verification_comment: comment
+      })
+      .in('id', responseIds);
+
+    if (updateError) throw updateError;
+
+    const auditLogs = responseIds.map(id => ({
+      response_id: id,
+      action_type: 'verify',
+      modified_by: userId,
+      new_data: { status, verification_comment: comment },
+      reason: `Verificación masiva: ${status}`
+    }));
+
+    await supabase.from('sgc_audit_logs').insert(auditLogs);
+  },
+
+  async getAuditLogs(responseId) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_audit_logs')
+      .select(`
+        *,
+        profiles:modified_by ( nombre, rol )
+      `)
+      .eq('response_id', responseId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching audit logs:', error);
+      return [];
+    }
+    return data;
   },
 
   async getRecentResponses(limit = 5) {
@@ -161,8 +240,11 @@ export const dynamicService = {
         status,
         created_at,
         created_by,
+        verified_at,
+        verification_comment,
         sgc_forms!inner ( id, name, module_id ),
         profiles:created_by ( nombre ),
+        verifier:verified_by ( nombre ),
         sgc_response_values ( field_id, value_text, value_number, value_boolean, sgc_form_fields ( label, field_type, options ) ),
         sgc_evidences ( id, file_url, file_type )
       `)
