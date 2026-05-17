@@ -7,6 +7,7 @@ import { dynamicService } from '../services/dynamicService';
 import BaseChecklist from '../components/engines/BaseChecklist';
 import BaseMediciones from '../components/engines/BaseMediciones';
 import BaseGeneric from '../components/engines/BaseGeneric';
+import EvidenceUploader from '../components/EvidenceUploader';
 
 export default function DynamicForm() {
   const { moduleSlug, formSlug } = useParams();
@@ -18,6 +19,7 @@ export default function DynamicForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({});
+  const [evidences, setEvidences] = useState([]);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function DynamicForm() {
     e.preventDefault();
     try {
       setSaving(true);
-      await dynamicService.submitFormResponse(formDef.id, user.id, values);
+      await dynamicService.submitFormResponse(formDef.id, user.id, values, evidences);
       setSuccess(true);
       setTimeout(() => {
         navigate(`/${moduleSlug}`);
@@ -123,6 +125,8 @@ export default function DynamicForm() {
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm space-y-6">
         
         {renderEngine()}
+
+        <EvidenceUploader onEvidencesChange={setEvidences} />
 
         <div className="border-t border-gray-200 pt-6 flex justify-end">
           <button

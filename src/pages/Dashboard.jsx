@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { dynamicService } from '../services/dynamicService';
 import { 
   Sparkles, 
   Droplets, 
@@ -11,7 +13,9 @@ import {
   TrendingUp,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Activity,
+  FileCheck
 } from 'lucide-react';
 
 const modules = [
@@ -24,19 +28,32 @@ const modules = [
   { id: 7, path: '/configuracion', name: 'Configuración', icon: Settings, color: 'bg-slate-700', desc: 'Usuarios y parámetros', roles: ['administrador'] },
 ];
 
-const stats = [
-  { label: 'Registros Hoy', value: '124', icon: TrendingUp, trend: '+12%', color: 'text-green-600', bg: 'bg-green-100' },
-  { label: 'Despachos Pendientes', value: '8', icon: Clock, trend: '-2%', color: 'text-amber-600', bg: 'bg-amber-100' },
-  { label: 'Auditorías Aprobadas', value: '100%', icon: CheckCircle, trend: '0%', color: 'text-blue-600', bg: 'bg-blue-100' },
-  { label: 'Alertas Activas', value: '0', icon: AlertCircle, trend: 'Normal', color: 'text-secondary', bg: 'bg-red-100' },
-];
-
 export default function Dashboard() {
   const { profile, rol } = useAuth();
+  const [dashboardData, setDashboardData] = useState({
+    stats: { todayResponses: 0, totalResponses: 0, incumplimientos: 0, alertasActivas: 0 },
+    recent: []
+  });
+
+  useEffect(() => {
+    async function loadDashboard() {
+      const stats = await dynamicService.getDashboardStats();
+      const recent = await dynamicService.getRecentResponses(5);
+      setDashboardData({ stats, recent });
+    }
+    loadDashboard();
+  }, []);
   
   const filteredModules = modules.filter(mod => 
     !mod.roles || mod.roles.includes(rol)
   );
+
+  const stats = [
+    { label: 'Registros Hoy', value: dashboardData.stats.todayResponses, icon: TrendingUp, trend: 'Actividad Diaria', color: 'text-green-600', bg: 'bg-green-100' },
+    { label: 'Total Registros', value: dashboardData.stats.totalResponses, icon: FileCheck, trend: 'Histórico', color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: 'Incumplimientos', value: dashboardData.stats.incumplimientos, icon: AlertTriangle, trend: 'Requiere revisión', color: 'text-amber-600', bg: 'bg-amber-100' },
+    { label: 'Alertas Activas', value: dashboardData.stats.alertasActivas, icon: AlertCircle, trend: 'Crítico', color: 'text-red-600', bg: 'bg-red-100' },
+  ];
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
@@ -60,8 +77,8 @@ export default function Dashboard() {
             <div>
               <p className="text-sm font-medium text-gray-500 mb-1">{stat.label}</p>
               <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-              <p className={`text-xs font-medium mt-1 ${stat.trend.startsWith('+') ? 'text-green-600' : stat.trend.startsWith('-') ? 'text-red-600' : 'text-gray-500'}`}>
-                {stat.trend} respecto a ayer
+              <p className={`text-xs font-medium mt-1 ${stat.trend === 'Crítico' ? 'text-red-600' : 'text-gray-500'}`}>
+                {stat.trend}
               </p>
             </div>
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.bg} group-hover:scale-110 transition-transform duration-300`}>
@@ -109,6 +126,41 @@ export default function Dashboard() {
               </div>
             </Link>
           ))}
+        </div>
+      </div>
+
+      {/* Recent Activity Section */}
+      <div className="pt-4">
+        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <div className="w-1.5 h-6 bg-accent rounded-full"></div>
+          Actividad Reciente
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {dashboardData.recent.map((record) => (
+            <div key={record.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-primary/30 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <Activity className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-bold text-gray-900 line-clamp-2 mb-2 h-10">
+                {record.sgc_forms?.name || 'Formulario Desconocido'}
+              </p>
+              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
+                  {record.sgc_forms?.engine_type?.replace('Base', '')}
+                </span>
+                <span className="text-xs font-medium text-gray-500">
+                  {new Date(record.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {dashboardData.recent.length === 0 && (
+            <div className="col-span-full bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-sm shadow-sm">
+              No hay actividad reciente registrada en el sistema.
+            </div>
+          )}
         </div>
       </div>
     </div>
