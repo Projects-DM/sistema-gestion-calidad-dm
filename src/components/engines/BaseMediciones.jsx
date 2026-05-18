@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, Info } from 'lucide-react';
+import SignaturePad from '../SignaturePad';
 
 export default function BaseMediciones({ fields, values, onChange }) {
   
@@ -27,6 +28,37 @@ export default function BaseMediciones({ fields, values, onChange }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {fields.map(field => {
           const val = values[field.id];
+          
+          // Special case for signature
+          if (field.field_type === 'signature') {
+            return (
+              <div key={field.id} className="space-y-2 md:col-span-2 mt-4">
+                <SignaturePad
+                  required={field.required}
+                  onChange={(url) => onChange(field.id, url)}
+                  label={field.label}
+                />
+              </div>
+            );
+          }
+
+          // Special case for text/textarea
+          if (field.field_type === 'text' || field.field_type === 'textarea') {
+            return (
+              <div key={field.id} className="space-y-2 md:col-span-2">
+                <label className="block text-sm font-bold text-gray-700">
+                  {field.label} {field.required && <span className="text-red-500">*</span>}
+                </label>
+                <textarea 
+                  required={field.required}
+                  value={val !== undefined ? val : ''}
+                  onChange={(e) => onChange(field.id, e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 min-h-[80px]"
+                />
+              </div>
+            );
+          }
+
           const state = getValidationState(field, val);
           
           let borderColor = 'border-gray-300 focus:ring-cyan-500 focus:border-cyan-500';
@@ -46,7 +78,7 @@ export default function BaseMediciones({ fields, values, onChange }) {
               </label>
               <div className="relative">
                 <input 
-                  type={field.field_type === 'number' ? 'number' : 'text'}
+                  type="number"
                   step="0.01"
                   required={field.required}
                   value={val !== undefined ? val : ''}
