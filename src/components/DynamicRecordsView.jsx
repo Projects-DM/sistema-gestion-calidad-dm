@@ -335,39 +335,50 @@ export default function DynamicRecordsView({ moduleId }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredRecords.map((rec) => (
-                <tr key={rec.id} className={`hover:bg-gray-50/80 transition-colors ${selectedIds.includes(rec.id) ? 'bg-blue-50/30' : ''}`}>
-                  {isVerificador && (
-                    <td className="px-4 py-4 text-center">
-                      <input 
-                        type="checkbox" 
-                        className="rounded border-gray-300 text-primary focus:ring-primary"
-                        checked={selectedIds.includes(rec.id)}
-                        onChange={() => toggleSelection(rec.id)}
-                      />
+              {filteredRecords.map((rec) => {
+                const isOwnRecord = rec.created_by === user.id;
+                const canVerifyRecord = isVerificador && !isOwnRecord;
+                
+                return (
+                  <tr key={rec.id} className={`hover:bg-gray-50/80 transition-colors ${selectedIds.includes(rec.id) ? 'bg-blue-50/30' : ''}`}>
+                    {isVerificador && (
+                      <td className="px-4 py-4 text-center">
+                        <input 
+                          type="checkbox" 
+                          className={`rounded border-gray-300 text-primary focus:ring-primary ${!canVerifyRecord && rec.status === 'pendiente_revision' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                          checked={selectedIds.includes(rec.id)}
+                          disabled={!canVerifyRecord && rec.status === 'pendiente_revision'}
+                          title={!canVerifyRecord && rec.status === 'pendiente_revision' ? "No puedes verificar tus propios registros" : ""}
+                          onChange={() => toggleSelection(rec.id)}
+                        />
+                      </td>
+                    )}
+                    <td className="px-6 py-4" onClick={() => !isVerificador && handleOpenModal(rec)}>
+                      <div className="flex items-center gap-2 text-gray-900 font-medium">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        {new Date(rec.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="text-xs text-gray-500 ml-6">
+                        {new Date(rec.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </div>
                     </td>
-                  )}
-                  <td className="px-6 py-4" onClick={() => !isVerificador && handleOpenModal(rec)}>
-                    <div className="flex items-center gap-2 text-gray-900 font-medium">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      {new Date(rec.created_at).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs text-gray-500 ml-6">
-                      {new Date(rec.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 font-bold text-gray-900">
-                      <FileText className="w-4 h-4 text-primary" />
-                      {rec.sgc_forms?.name}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <User className="w-4 h-4 text-gray-400" />
-                      {rec.profiles?.nombre || 'Usuario Desconocido'}
-                    </div>
-                  </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 font-bold text-gray-900">
+                        <FileText className="w-4 h-4 text-primary" />
+                        {rec.sgc_forms?.name}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <User className="w-4 h-4 text-gray-400" />
+                          {rec.profiles?.nombre || 'Usuario Desconocido'}
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-6">
+                          {rec.profiles?.rol || 'Rol Desconocido'}
+                        </span>
+                      </div>
+                    </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={rec.computedStatus} />
                   </td>
@@ -393,7 +404,8 @@ export default function DynamicRecordsView({ moduleId }) {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {records.length === 0 && (
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
@@ -502,11 +514,21 @@ export default function DynamicRecordsView({ moduleId }) {
                         }
 
                         return (
-                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 gap-2">
+                          <div key={idx} className={`flex flex-col py-3 border-b border-gray-50 gap-2 ${field.field_type !== 'signature' ? 'sm:flex-row sm:items-center justify-between' : ''}`}>
                             <span className="text-sm font-medium text-gray-700">{field.label}</span>
-                            <span className={`text-sm font-bold ${field.field_type === 'boolean' && !val.value_boolean ? 'text-red-600' : 'text-gray-900'}`}>
-                              {displayValue}
-                            </span>
+                            {field.field_type === 'signature' ? (
+                              val.value_text ? (
+                                <div className="bg-gray-50 rounded-xl border border-gray-200 p-2 w-48 mt-2">
+                                  <img src={val.value_text} alt={`Firma de ${field.label}`} className="w-full h-auto filter contrast-125 mix-blend-multiply" />
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-400 italic">Sin firma</span>
+                              )
+                            ) : (
+                              <span className={`text-sm font-bold ${field.field_type === 'boolean' && !val.value_boolean ? 'text-red-600' : 'text-gray-900'}`}>
+                                {displayValue}
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -547,34 +569,46 @@ export default function DynamicRecordsView({ moduleId }) {
                       <h4 className="text-base font-bold text-blue-900 flex items-center gap-2 mb-4">
                         <ShieldCheck className="w-5 h-5" /> Verificación Documental
                       </h4>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-blue-800 mb-1">Comentario de Verificación / Hallazgos</label>
-                          <textarea 
-                            value={verifyComment}
-                            onChange={e => setVerifyComment(e.target.value)}
-                            className="w-full p-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            rows="3"
-                            placeholder="Ingrese las observaciones sobre este registro..."
-                          ></textarea>
+                      {selectedRecord.created_by === user.id ? (
+                        <div className="bg-white p-4 rounded-xl border border-amber-200 flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-bold text-amber-800">No puedes verificar tus propios registros.</p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              Por principio de segregación de funciones, los registros creados por ti deben ser verificados por otro usuario autorizado.
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex gap-4">
-                          <button
-                            onClick={() => { setVerifyStatus('aprobado'); handleVerify(); }}
-                            disabled={verifying}
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50"
-                          >
-                            {verifying && verifyStatus === 'aprobado' ? <Loader2 className="w-4 h-4 inline animate-spin" /> : 'Aprobar Registro'}
-                          </button>
-                          <button
-                            onClick={() => { setVerifyStatus('rechazado'); handleVerify(); }}
-                            disabled={verifying}
-                            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50"
-                          >
-                            {verifying && verifyStatus === 'rechazado' ? <Loader2 className="w-4 h-4 inline animate-spin" /> : 'Rechazar / Observación'}
-                          </button>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-blue-800 mb-1">Comentario de Verificación / Hallazgos</label>
+                            <textarea 
+                              value={verifyComment}
+                              onChange={e => setVerifyComment(e.target.value)}
+                              className="w-full p-3 rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                              rows="3"
+                              placeholder="Ingrese las observaciones sobre este registro..."
+                            ></textarea>
+                          </div>
+                          <div className="flex gap-4">
+                            <button
+                              onClick={() => { setVerifyStatus('aprobado'); handleVerify(); }}
+                              disabled={verifying}
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                            >
+                              {verifying && verifyStatus === 'aprobado' ? <Loader2 className="w-4 h-4 inline animate-spin" /> : 'Aprobar Registro'}
+                            </button>
+                            <button
+                              onClick={() => { setVerifyStatus('rechazado'); handleVerify(); }}
+                              disabled={verifying}
+                              className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50"
+                            >
+                              {verifying && verifyStatus === 'rechazado' ? <Loader2 className="w-4 h-4 inline animate-spin" /> : 'Rechazar / Observación'}
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -585,7 +619,7 @@ export default function DynamicRecordsView({ moduleId }) {
                         <ShieldCheck className="w-4 h-4 text-gray-500" /> Registro Verificado
                       </h4>
                       <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
-                        <div><span className="text-gray-500">Verificado por:</span> <span className="font-bold">{selectedRecord.verifier?.nombre}</span></div>
+                        <div><span className="text-gray-500">Verificado por:</span> <span className="font-bold">{selectedRecord.verifier?.nombre} ({selectedRecord.verifier?.rol})</span></div>
                         <div><span className="text-gray-500">Fecha:</span> <span className="font-bold">{new Date(selectedRecord.verified_at).toLocaleDateString()}</span></div>
                       </div>
                       <div className="text-sm bg-white p-3 rounded-lg border border-gray-100">

@@ -1,4 +1,5 @@
 import React from 'react';
+import SignaturePad from '../SignaturePad';
 
 export default function BaseGeneric({ fields, values, onChange }) {
   const renderField = (field) => {
@@ -76,6 +77,14 @@ export default function BaseGeneric({ fields, values, onChange }) {
             value={values[field.id] || ''}
             onChange={(e) => onChange(field.id, e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+          />
+        );
+      case 'signature':
+        return (
+          <SignaturePad
+            required={field.required}
+            onChange={(url) => onChange(field.id, url)}
+            label="Firme en el cuadro inferior"
           />
         );
       default:

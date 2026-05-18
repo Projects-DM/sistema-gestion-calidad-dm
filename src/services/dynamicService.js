@@ -243,8 +243,8 @@ export const dynamicService = {
         verified_at,
         verification_comment,
         sgc_forms!inner ( id, name, module_id ),
-        profiles:created_by ( nombre ),
-        verifier:verified_by ( nombre ),
+        profiles:created_by ( nombre, rol ),
+        verifier:verified_by ( nombre, rol ),
         sgc_response_values ( field_id, value_text, value_number, value_boolean, sgc_form_fields ( label, field_type, options ) ),
         sgc_evidences ( id, file_url, file_type )
       `)

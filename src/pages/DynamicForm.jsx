@@ -22,6 +22,8 @@ export default function DynamicForm() {
   const [evidences, setEvidences] = useState([]);
   const [success, setSuccess] = useState(false);
 
+  const [evidenceRequired, setEvidenceRequired] = useState(false);
+
   useEffect(() => {
     async function loadForm() {
       try {
@@ -54,12 +56,58 @@ export default function DynamicForm() {
     loadForm();
   }, [formSlug, rol, navigate, moduleSlug]);
 
+  // Recalculate conditional requirements (Evidence and Observations)
+  useEffect(() => {
+    if (!fields.length) return;
+    let hasCriticals = false;
+    fields.forEach(f => {
+      // Rule 1: boolean field is false (No Cumple)
+      if (f.field_type === 'boolean' && values[f.id] === false) {
+        hasCriticals = true;
+      }
+      // Rule 2: numeric field out of bounds
+      if (f.field_type === 'number' && values[f.id] !== '' && values[f.id] !== null) {
+        const val = parseFloat(values[f.id]);
+        if ((f.options?.min !== undefined && val < f.options.min) ||
+            (f.options?.max !== undefined && val > f.options.max)) {
+          hasCriticals = true;
+        }
+      }
+    });
+    setEvidenceRequired(hasCriticals);
+  }, [values, fields]);
+
   const handleChange = (fieldId, val) => {
     setValues(prev => ({ ...prev, [fieldId]: val }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validar manualmente campos requeridos (especialmente componentes custom como firmas)
+    for (const field of fields) {
+      if (field.required) {
+        const val = values[field.id];
+        if (val === undefined || val === null || val === '') {
+          alert(`El campo "${field.label}" es obligatorio. Por favor complételo antes de guardar.`);
+          return;
+        }
+      }
+    }
+
+    if (evidenceRequired) {
+      if (evidences.length === 0) {
+        alert("⚠️ HALLAZGOS CRÍTICOS DETECTADOS:\n\nSe requiere adjuntar evidencia fotográfica obligatoria para respaldar los hallazgos críticos reportados (valores fuera de rango o 'No Cumple').");
+        return;
+      }
+      
+      const obsField = fields.find(f => f.name.toLowerCase().includes('observacion') || f.name.toLowerCase().includes('observación'));
+      if (obsField && !values[obsField.id]) {
+        alert("⚠️ HALLAZGOS CRÍTICOS DETECTADOS:\n\nDebe registrar una observación o plan de acción obligatorio debido a los hallazgos críticos.");
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       
