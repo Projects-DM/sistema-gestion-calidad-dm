@@ -317,3 +317,38 @@ Dirección de Arquitectura de Software Enterprise — SGC-DM
 
 Última actualización:
 2026-05-23
+
+
+# CHANGELOG — SGC-DM
+
+Todas las modificaciones arquitectónicas, estructurales y evolutivas
+del sistema son registradas en este documento.
+
+---
+
+# [v0.2.0] — Runtime Visual Core
+Fecha: 2026-05-24
+
+## Agregado
+- Runtime visual reusable en `src/runtime/**`
+- Runtime contracts desacoplados
+- Component Registry base
+- Dynamic renderer base
+- Runtime playground sandbox
+- RuntimeProvider architecture base
+
+## Arquitectura
+- Separación inicial entre runtime visual y persistence layer
+- Introducción de boundaries runtime-first
+- Inicio de implementación controlada de Fase 3
+
+## Testing
+- `npm run build` exitoso
+- Validación visual en `/runtime-playground`
+- Verificación de fallback rendering
+- Validación de orderIndex rendering
+
+## Estado
+READY FOR SPRINT 2 — Runtime State Integration
+
+---

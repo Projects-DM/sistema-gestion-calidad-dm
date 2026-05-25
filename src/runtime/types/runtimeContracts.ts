@@ -51,6 +51,15 @@ export interface FieldContract {
   required: boolean;
   orderIndex: number;
   fieldType: RuntimeFieldType;
+
+  /**
+   * Optional visibility rules for Sprint 2.
+   * - hidden: if true, the renderer will not mount the field UI.
+   * - readonly: if true, the field is rendered but disabled.
+   */
+  hidden?: boolean;
+  readonly?: boolean;
+
   options: FieldOptions;
 }
 

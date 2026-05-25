@@ -9,7 +9,16 @@ import type {
 } from "../types/runtimeContracts";
 
 export type RuntimeActions = {
+  /**
+   * Sprint 2: canonical field mutation
+   */
+  updateFieldValue: (fieldId: string, value: RuntimeValue) => void;
+
+  /**
+   * Backward-compatible alias for earlier Sprint 1 wiring.
+   */
   setValue: (fieldId: string, value: RuntimeValue) => void;
+
   setValidationError: (fieldId: string, message?: string) => void;
   setDisabled: (disabled: boolean) => void;
 };
@@ -50,8 +59,16 @@ export function RuntimeProvider({
     ...(initialUIState ?? {}),
   }));
 
+  const updateFieldValue = (fieldId: string, value: RuntimeValue) => {
+    setValues((prev) => {
+      // Avoid unnecessary state updates to prevent extra renders
+      if (prev[fieldId] === value) return prev;
+      return { ...prev, [fieldId]: value };
+    });
+  };
+
   const setValue = (fieldId: string, value: RuntimeValue) => {
-    setValues((prev) => ({ ...prev, [fieldId]: value }));
+    updateFieldValue(fieldId, value);
   };
 
   const setValidationError = (fieldId: string, message?: string) => {
@@ -81,11 +98,12 @@ export function RuntimeProvider({
 
   const actions = useMemo<RuntimeActions>(
     () => ({
+      updateFieldValue,
       setValue,
       setValidationError,
       setDisabled,
     }),
-    []
+    [updateFieldValue]
   );
 
   return <RuntimeContext.Provider value={{ snapshot, actions }}>{children}</RuntimeContext.Provider>;

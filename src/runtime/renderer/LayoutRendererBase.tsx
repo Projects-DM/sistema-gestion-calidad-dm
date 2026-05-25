@@ -1,36 +1,27 @@
 import React from "react";
-import type { FieldContract, RuntimeValue } from "../types/runtimeContracts";
+import type { FieldContract } from "../types/runtimeContracts";
 import { FieldRendererWithResolver } from "../registry/registryResolver";
+import { useRuntimeField } from "../hooks/useRuntimeField";
 
 export type LayoutRendererProps = {
   formFields: FieldContract[];
-  values: Record<string, RuntimeValue>;
-  disabled: boolean;
-  validationErrors?: Record<string, string>;
-  onChange: (fieldId: string, newValue: RuntimeValue) => void;
   /**
-   * Optional grouping strategy (Sprint 1 keeps it minimal).
+   * Optional grouping strategy (Sprint 2 keeps it minimal).
    * If provided, fields are grouped by key and rendered as sections.
    */
   groupBy?: (field: FieldContract) => string;
 };
 
 /**
- * Layout rendering base (Sprint 1):
+ * Layout rendering base (Sprint 2):
  * - Sorts fields by orderIndex
  * - Optionally groups fields
  * - Delegates actual field UI to the registry resolver
+ * - Uses useRuntimeField() for centralized state binding
  *
  * IMPORTANT: No workflow/persistence/validation business logic here.
  */
-export function LayoutRendererBase({
-  formFields,
-  values,
-  disabled,
-  validationErrors,
-  onChange,
-  groupBy,
-}: LayoutRendererProps) {
+export function LayoutRendererBase({ formFields, groupBy }: LayoutRendererProps) {
   const sorted = [...formFields].sort((a, b) => a.orderIndex - b.orderIndex);
 
   const grouped = groupBy
@@ -51,18 +42,27 @@ export function LayoutRendererBase({
           {groupBy ? <h3 className="runtime-section-title">{key}</h3> : null}
           <div className="runtime-grid">
             {fields.map((fieldDef) => (
-              <FieldRendererWithResolver
-                key={fieldDef.id}
-                fieldDef={fieldDef}
-                value={values[fieldDef.id]}
-                disabled={disabled}
-                error={validationErrors?.[fieldDef.id]}
-                onChange={onChange}
-              />
+              <RuntimeBoundField key={fieldDef.id} fieldDef={fieldDef} />
             ))}
           </div>
         </section>
       ))}
     </div>
+  );
+}
+
+function RuntimeBoundField({ fieldDef }: { fieldDef: FieldContract }) {
+  const { value, disabled, error, onChange } = useRuntimeField(fieldDef);
+
+  if (fieldDef.hidden) return null;
+
+  return (
+    <FieldRendererWithResolver
+      fieldDef={fieldDef}
+      value={value}
+      disabled={disabled}
+      error={error}
+      onChange={onChange}
+    />
   );
 }
