@@ -6,7 +6,10 @@ import type {
   RuntimeValue,
   RuntimeUIState,
   ValidationErrorMap,
+  FieldContract,
 } from "../types/runtimeContracts";
+
+import { FieldValidationOrchestrator } from "../validation/orchestrators/FieldValidationOrchestrator";
 
 export type RuntimeActions = {
   /**
@@ -19,6 +22,10 @@ export type RuntimeActions = {
    */
   setValue: (fieldId: string, value: RuntimeValue) => void;
 
+  /**
+   * Legacy escape hatch for non-engine validations (playground smoke tests).
+   * Sprint 4 uses orchestrator to set validation errors automatically.
+   */
   setValidationError: (fieldId: string, message?: string) => void;
   setDisabled: (disabled: boolean) => void;
 };
@@ -59,11 +66,41 @@ export function RuntimeProvider({
     ...(initialUIState ?? {}),
   }));
 
+  const orchestrator = useMemo(() => FieldValidationOrchestrator.create(), []);
+
   const updateFieldValue = (fieldId: string, value: RuntimeValue) => {
     setValues((prev) => {
       // Avoid unnecessary state updates to prevent extra renders
       if (prev[fieldId] === value) return prev;
-      return { ...prev, [fieldId]: value };
+
+      const nextValues = { ...prev, [fieldId]: value };
+
+      // Reactive validation: field change -> validation -> validationErrors update
+      const fieldDef: FieldContract | undefined = form.fields.find((f) => f.id === fieldId);
+      if (fieldDef) {
+        const result = orchestrator.validateField({
+          field: fieldDef,
+          value,
+          allValues: nextValues,
+          disabled,
+        });
+
+        setValidationErrors((prevErrs) => {
+          const nextErrs = { ...prevErrs };
+
+          if (!result.isValid && result.errors.length > 0) {
+            // Store only the first error message for UI simplicity (Sprint 2 contract).
+            // Future: store multi-error structure via a richer UI model.
+            nextErrs[fieldId] = result.errors[0].message;
+          } else {
+            delete nextErrs[fieldId];
+          }
+
+          return nextErrs;
+        });
+      }
+
+      return nextValues;
     });
   };
 
