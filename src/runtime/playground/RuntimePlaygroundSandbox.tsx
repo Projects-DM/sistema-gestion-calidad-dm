@@ -4,6 +4,10 @@ import { RuntimeRendererBase } from "../renderer/RuntimeRendererBase";
 import type { RuntimeValue } from "../types/runtimeContracts";
 import type { RuntimeFormSchemaInput } from "../schema/contracts/runtimeSchemaContracts";
 import { RuntimeSchemaParser } from "../schema/parser/RuntimeSchemaParser";
+import type { FieldContract } from "../types/runtimeContracts";
+import { RuntimeSubmitFacade } from "../transaction/submit/RuntimeSubmitFacade";
+import { InMemorySaveLifecycleEventDispatcher } from "../eventing/SaveLifecycleEventDispatcher";
+import { SupabaseRuntimeAdapter } from "../persistence/adapters/SupabaseRuntimeAdapter";
 
 function useSandboxSchemaInput(): RuntimeFormSchemaInput {
   return useMemo<RuntimeFormSchemaInput>(
@@ -84,6 +88,12 @@ function PlaygroundInner(props: { disabled: boolean }) {
   const { actions, snapshot } = useRuntime();
   const { disabled } = props;
 
+  const [submitState, setSubmitState] = useState<{
+    loading: boolean;
+    lastResult?: { success: boolean; responseId?: string };
+    lastError?: string;
+  }>({ loading: false });
+
   React.useEffect(() => {
     actions.setDisabled(disabled);
   }, [actions, disabled]);
@@ -99,7 +109,78 @@ function PlaygroundInner(props: { disabled: boolean }) {
     }
   }, [actions, snapshot.values]);
 
-  return <RuntimeRendererBase form={snapshot.form} groupBy={undefined} />;
+  const handleSubmitSmoke = async () => {
+    setSubmitState({ loading: true });
+
+    try {
+      const dispatcher = new InMemorySaveLifecycleEventDispatcher();
+      let capturedEvents = 0;
+      dispatcher.subscribe((events) => {
+        capturedEvents += events.length;
+      });
+
+      // Smoke submit: uses runtime facade + persistence adapter (Supabase adapter is ONLY adapter boundary)
+      const adapter = new SupabaseRuntimeAdapter();
+
+      const fields: FieldContract[] = snapshot.form.fields;
+      const userId = "playground_user";
+      const formId = snapshot.form.id;
+
+      const facadeResult = await RuntimeSubmitFacade.submit({
+        kind: "submit",
+        formId,
+        userId,
+        fields,
+        values: snapshot.values,
+        evidences: [],
+        clientRequestId: `playground_${Date.now()}`,
+        persistence: adapter,
+        eventDispatcher: async (events) => {
+          // dispatch into runtime dispatcher (best-effort)
+          await dispatcher.dispatch(events);
+        },
+      });
+
+      setSubmitState({
+        loading: false,
+        lastResult: { success: facadeResult.result.success, responseId: facadeResult.result.responseId },
+        lastError: undefined,
+      });
+    } catch (err) {
+      setSubmitState({
+        loading: false,
+        lastError: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <RuntimeRendererBase form={snapshot.form} groupBy={undefined} />
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleSubmitSmoke}
+          disabled={submitState.loading}
+          className="px-4 py-2 rounded-xl bg-primary text-white font-bold disabled:opacity-50"
+        >
+          {submitState.loading ? "Enviando..." : "Smoke Submit (Runtime Facade)"}
+        </button>
+
+        {submitState.lastResult && (
+          <div className="text-sm text-gray-700">
+            Resultado:{" "}
+            <span className={submitState.lastResult.success ? "text-green-700 font-semibold" : "text-red-700 font-semibold"}>
+              {submitState.lastResult.success ? "OK" : "FAIL"}
+            </span>
+          </div>
+        )}
+
+        {submitState.lastError && <div className="text-sm text-red-700">{submitState.lastError}</div>}
+      </div>
+    </div>
+  );
 }
 
 export function RuntimePlaygroundSandbox() {
