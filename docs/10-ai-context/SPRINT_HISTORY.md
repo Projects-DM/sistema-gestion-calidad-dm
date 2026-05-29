@@ -247,7 +247,12 @@ Runtime Stabilization & Determinism Hardening
 
 ---
 
+## AUDITORÍA ARQUITECTÓNICA (documentación únicamente, sin código) — SPRINT 8.6-A A.  
+ Resumen ejecutivo: La documentación revisada es mayormente coherente con el diseño enterprise (runtime-first, contracts, audit-ready, EDA eventual, escalabilidad incremental y IA-ready extensible). Sin embargo, para habilitar Sprint 9 con handoff seguro, hay lagunas/ausencias documentales y puntos donde los invariantes “target state” no quedan cerrados como contratos inequívocos (especialmente idempotencia/offline-first, correlación evento↔audit, y database-agnostic verificable). Documento requerido (changelog) no existe, impidiendo validar consistencia arquitectura/roadmap/changelog/análisis. B. Hallazgos críticos: Falta docs/00-governance/changelog.md (no disponible en el repo) → no se puede verificar consistencia con cambios. Brecha entre “all-or-nothing conceptual”/audit-ready en contrato vs. el flujo operacional descrito como riesgo (acoplamiento y multi-roundtrips) → falta cierre documental para Sprint 9. “database-agnostic” depende de intención: invariantes del port/adapters y su verificabilidad no están suficientemente “contractualizadas” en los documentos del alcance. C. Hallazgos medios: Idempotencia/deduplicación para offline-first y retries no está contractualmente detallada. EDA/event-driven: falta una matriz inequívoca de correlación (evento → audit → side-effects) para analytics/IA. Multi-tenant readiness: no queda atada de forma verificable al contrato IRuntimePersistenceLayer (context propagation para audit/storage). D. Hallazgos menores: Terminología heterogénea (consistencia eventual / audit-ready) y ausencia de un “single source of truth” para handoff. Referencias cruzadas a documentos no leídos en esta corrida reducen el nivel de verificación 100%. E. Veredicto: DOCUMENTATION REQUIRES ADJUSTMENTS Bueno, lo que pasa es que básicamente he movido este archivo, el changelot que me está pidiendo básicamente la respuesta. Lo había movido por el hecho de que lo íbamos a estructurar en la carpeta que habíamos desarrollado de IAI context, la que creamos. Bueno, ya básicamente lo volví a guardar allí. Dame básicamente información de lo que me arrojó este análisis y dame otro prompt nuevo para básicamente decirle a Blackbox que ya pasé o ya creamos el archivo, pues ya lo pasé a la carpeta de origen que me lo está pidiendo para que pueda haga la verificación también de este archivo para verificar que todo concuerde.
+
 # Sprint 8.5 — Runtime Stabilization & Recovery Hardening
+
+
 
 ## Phase
 
@@ -312,13 +317,142 @@ before introducing advanced offline infrastructure.
 
 # Planned Future Evolution
 
-## Sprint 8.6
+# Sprint 8.7— Persistence Contract Verification
 
-Runtime Validation & Behavioral Verification
+## Objetivo
 
-## Sprint 9
+Verificar que los contratos documentales creados durante Sprint 8.7 resolvieran completamente los hallazgos detectados en la auditoría Sprint 8.6.
 
-Durable Persistence Layer
+## Resultado
+
+Se verificó el cierre documental de:
+
+* Idempotency Strategy
+* Event Audit Correlation
+* Durability Contract
+* Replay Safety
+* Offline Recovery Consistency
+* Retryable / Non-Retryable Semantics
+
+## Veredicto
+
+DOCUMENTATION READY FOR SPRINT 9
+
+## Riesgos Bloqueantes
+
+Ninguno identificado.
+
+## Riesgos Residuales
+
+Alinear terminología futura entre:
+
+* client_request_id
+* correlationId
+* transactionId
+* recoveryId
+
+Sin impacto sobre Sprint 9.
+
+## Estado Final
+
+La documentación arquitectónica queda formalmente preparada para iniciar Durable Persistence Layer.
+
+
+
+
+# Sprint 9.0 — Enterprise Persistence Readiness
+
+## Primary Objective
+
+Complete architectural stabilization before durable persistence implementation.
+
+## Main Architectural Prompt
+
+Perform a full enterprise-level verification of:
+
+* runtime recovery
+* determinism
+* durability readiness
+* idempotency readiness
+* audit correlation
+* documentation governance
+
+## Architectural Decisions
+
+* persistence contracts formalized
+* idempotency strategy formalized
+* durability guarantees formalized
+* audit correlation model formalized
+* AI context system introduced
+
+## Key Outcomes
+
+* architecture stabilized
+* persistence foundations validated
+* replay-safe architecture consolidated
+* recovery model consolidated
+* Sprint 9 implementation path approved
+
+---
+
+# Sprint 9.1 — Durable Persistence Contract Verification
+
+## Primary Objective
+
+Verify runtime compliance against persistence contracts.
+
+## Main Architectural Prompt
+
+Validate that runtime contracts satisfy:
+
+* durability requirements
+* idempotency requirements
+* recovery requirements
+* correlation requirements
+
+without introducing new functionality.
+
+## Architectural Decisions
+
+* runtime contract verification executed
+* identity model validated
+* replay safety validated
+* durability readiness validated
+
+## Key Outcomes
+
+* contract alignment confirmed
+* build validation successful
+* no runtime contract gaps detected
+* Sprint 9.2 authorized
+
+---
+
+# Long-Term Prompt Evolution
+
+The project continues evolving through:
+
+* runtime-first architecture
+* contract-based systems
+* metadata-driven runtime
+* infrastructure abstraction
+* database-agnostic persistence
+* audit-ready operations
+* IA-ready extensibility
+* progressive scalability
+
+---
+
+# Governance Note
+
+This document should evolve incrementally.
+
+Only major architectural sprints should be preserved.
+
+Avoid converting this file into a detailed implementation log.
+
+
+
 
 ## Sprint 10
 
@@ -352,3 +486,46 @@ All future sprints must preserve:
 * controlled architectural evolution
 
 Large architectural rewrites should be avoided whenever possible.
+
+# Sprint 9.4 — Durable Persistence Provider Architecture
+
+## Primary Objective
+
+Validate provider abstraction and persistence architecture readiness before introducing durable storage providers.
+
+## Main Architectural Prompt
+
+Perform a complete architectural verification of persistence boundaries, provider abstraction, provider readiness, fallback readiness, and multi-database compatibility.
+
+## Architectural Decisions
+
+- persistence boundaries preserved
+- provider abstraction validated
+- future provider architecture validated
+- multi-database readiness confirmed
+- runtime isolation maintained
+
+## Key Outcomes
+
+- runtime verified provider-agnostic
+- adapters validated
+- provider readiness confirmed
+- fallback readiness confirmed
+- multi-database compatibility verified
+
+## Residual Risk
+
+PersistenceProviderFactory is not yet implemented.
+
+This is considered non-blocking because current contracts fully support future factory introduction.
+
+## Sprint Result
+
+SPRINT 9.4 COMPLETED
+
+Build Status:
+PASSED
+
+## Next Sprint
+
+Sprint 9.5 — Durable Storage Provider Foundations

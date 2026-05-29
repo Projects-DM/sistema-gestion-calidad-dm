@@ -193,6 +193,22 @@ Design a deterministic runtime recovery architecture capable of evolving into du
 * recovery lifecycle architecture established
 
 ---
+# SGC-DM — PROMPTS HISTORY
+
+## Purpose
+
+This document preserves the major architectural prompts that guided the evolution of the project.
+
+Its purpose is not to store conversations.
+
+Instead, it captures:
+
+* architectural objectives
+* design reasoning
+* implementation intentions
+* strategic evolution decisions
+
+---
 
 # Sprint 8.5 — Runtime Stabilization & Recovery Hardening
 
@@ -220,7 +236,59 @@ Perform a full architectural stabilization process focused on determinism, invar
 
 ---
 
-# Long-Term Prompt Evolution
+# Sprint 8.6 — Runtime Validation & Behavioral Verification
+
+## Primary Objective
+
+Validate runtime behavior before introducing durable persistence infrastructure.
+
+## Main Architectural Prompt
+
+Execute architectural validation of recovery flows, determinism guarantees, replay consistency, and hydration readiness using documentation-first verification.
+
+## Architectural Decisions
+
+* recovery verification process established
+* documentation audit executed
+* runtime invariants reviewed
+* persistence readiness evaluated
+
+## Key Outcomes
+
+* critical documentation gaps identified
+* persistence readiness blockers documented
+* durability requirements clarified
+* validation strategy formalized
+
+---
+
+# Sprint 8.7 — Persistence Contract Formalization
+
+## Primary Objective
+
+Close all documentation blockers preventing the implementation of the Durable Persistence Layer.
+
+## Main Architectural Prompt
+
+Formalize enterprise-level contracts governing durability, idempotency, replay safety, audit correlation, analytics consistency, and offline recovery behavior.
+
+## Architectural Decisions
+
+* durability defined as contractual behavior
+* identity model standardized
+* replay-safe semantics formalized
+* event-to-audit traceability formalized
+
+## Key Outcomes
+
+* idempotency strategy created
+* event-audit correlation model created
+* durability contract created
+* Sprint 9 documentation readiness achieved
+
+---
+
+# Architectural Evolution Pattern
 
 The architectural evolution of the project consistently follows:
 
@@ -229,17 +297,172 @@ The architectural evolution of the project consistently follows:
 * contract-based orchestration
 * infrastructure isolation
 * deterministic runtime behavior
+* audit-ready infrastructure
 * progressive scalability
 * maintainability-first implementation
 
-The project intentionally prioritizes architecture stabilization before large-scale feature acceleration.
+---
+
+# Prompt Engineering Principles
+
+All future architectural prompts should:
+
+* define a clear objective
+* identify affected layers
+* preserve architectural boundaries
+* avoid premature implementation
+* prioritize maintainability
+* support future scalability
+* support future AI integration
 
 ---
 
 # Governance Note
 
-This document should evolve incrementally.
+Only major architectural prompts should be recorded here.
 
-Only major architectural prompts and reasoning flows should be preserved here.
+Do not archive operational conversations.
 
-Avoid converting this file into a raw conversation archive.
+Do not store implementation logs.
+
+Do not duplicate changelog entries.
+
+This document exists solely to preserve architectural reasoning across project evolution.
+
+# Sprint 9.0 — Enterprise Persistence Readiness
+
+## Main Prompt
+
+Perform a complete enterprise architectural readiness assessment focused on:
+
+* durability readiness
+* idempotency readiness
+* replay readiness
+* recovery consistency
+* audit correlation
+* documentation governance
+
+The objective is to determine whether the platform is prepared to begin Durable Persistence implementation.
+
+---
+
+# Sprint 9.1 — Durable Persistence Contract Verification
+
+## Main Prompt
+
+Verify runtime contracts against:
+
+* durability_contract.md
+* idempotency_strategy.md
+* event_audit_correlation.md
+
+Validate:
+
+* correlation identities
+* transaction identities
+* recovery identities
+* replay safety
+* durability representation
+* audit correlation
+
+without modifying functionality.
+
+---
+
+# Architectural Reasoning
+
+The platform prioritizes:
+
+* runtime-first implementation
+* contract-based evolution
+* deterministic behavior
+* infrastructure isolation
+* persistence abstraction
+* audit-ready traceability
+* progressive scalability
+
+before introducing large-scale persistence infrastructure.
+
+---
+
+# Governance Note
+
+Only major architectural prompts should be preserved.
+
+Avoid storing implementation-level conversations.
+
+This document serves as a historical record of the major architectural reasoning processes that guide the evolution of SGC-DM.
+
+# Sprint 9.3 — Snapshot Persistence Foundations
+
+## Main Prompt Objective
+
+Verify the architectural readiness of snapshot persistence foundations before introducing durable storage providers.
+
+## Validation Areas
+
+- draft snapshot identity
+- recovery snapshot identity
+- lineage preservation
+- replay readiness
+- metadata consistency
+- snapshot lifecycle
+- provider abstraction readiness
+
+## Outcomes
+
+- snapshot contracts validated
+- recovery contracts validated
+- lifecycle contracts validated
+- persistence boundaries preserved
+- provider independence maintained
+
+## Governance Note
+
+Physical storage providers remain intentionally postponed.
+
+The project continues following:
+
+- runtime-first architecture
+- contract-based orchestration
+- database-agnostic persistence
+- recovery-safe execution
+- replay-safe evolution
+- infrastructure isolation
+- enterprise scalability principles
+
+# Sprint 9.4 — Durable Persistence Provider Architecture
+
+## Main Prompt Objective
+
+Validate that the runtime persistence architecture can support future durable storage providers without runtime refactoring.
+
+## Validation Areas
+
+- persistence boundary isolation
+- provider abstraction
+- provider readiness
+- fallback readiness
+- capability abstraction readiness
+- multi-database readiness
+
+## Outcomes
+
+- provider-agnostic runtime confirmed
+- persistence contracts validated
+- future provider integration validated
+- fallback architecture validated
+- multi-database readiness confirmed
+
+## Governance Note
+
+Durable storage providers remain intentionally deferred.
+
+The architecture continues to evolve through:
+
+- runtime-first design
+- contract-based orchestration
+- infrastructure isolation
+- provider abstraction
+- database independence
+- enterprise scalability principles

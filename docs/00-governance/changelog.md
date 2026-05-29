@@ -615,3 +615,407 @@ Fecha: 2026-05-24
 
 READY FOR SPRINT 8 — Offline Draft & Recovery Layer
 
+# [v0.8.1] — Offline Draft Foundations
+
+Fecha: 2026-05-25
+
+## Objetivo
+
+Introducir las primeras capacidades de recuperación y preservación de estado runtime para soportar futuras capacidades offline-first.
+
+## Resultado
+
+* Draft Snapshot Foundations
+* Recovery lifecycle conceptual
+* Preparación para retry semantics
+
+## Estado
+
+READY FOR v0.8.2
+
+---
+
+# [v0.8.2] — Recovery State Machine
+
+Fecha: 2026-05-26
+
+## Objetivo
+
+Formalizar el modelo de estados de recuperación mediante reducers determinísticos.
+
+## Resultado
+
+* RuntimeRecoveryStateMachine
+* Reducers puros
+* Separación de side-effects
+
+## Estado
+
+READY FOR v0.8.3
+
+---
+
+# [v0.8.3] — Recovery Orchestration Layer
+
+Fecha: 2026-05-26
+
+## Objetivo
+
+Introducir la capa de orquestación de recuperación desacoplada.
+
+## Resultado
+
+* RuntimeRecoveryOrchestrator
+* Recovery lifecycle events
+* Retry coordination
+
+## Estado
+
+READY FOR v0.8.4
+
+---
+
+# [v0.8.4] — Recovery Storage Boundaries
+
+Fecha: 2026-05-27
+
+## Objetivo
+
+Preparar los contratos necesarios para futura persistencia durable.
+
+## Resultado
+
+* Recovery Storage Contracts
+* Snapshot Contracts
+* Queue Contracts
+
+## Estado
+
+READY FOR v0.8.5
+
+---
+
+# [v0.8.5] — Runtime Enterprise Stabilization
+
+Fecha: 2026-05-28
+
+## Objetivo
+
+Realizar auditoría arquitectónica de runtime y recovery.
+
+## Resultado
+
+Identificados gaps documentales:
+
+* Idempotency Strategy
+* Event Audit Correlation
+* Durability Contract
+
+## Estado
+
+READY FOR v0.8.6
+
+---
+
+# [v0.8.6] — Architecture Verification
+
+Fecha: 2026-05-29
+
+## Objetivo
+
+Validar coherencia documental completa para habilitar Durable Persistence Layer.
+
+## Resultado
+
+Auditoría documental ejecutada.
+
+Hallazgos:
+
+* Idempotencia contractual incompleta
+* Correlación commit → audit → analytics incompleta
+* Durable persistence definition incompleta
+
+## Estado
+
+READY FOR v0.8.7
+
+---
+
+# [v0.8.7] — Persistence Contract Formalization
+
+Fecha: 2026-05-29
+
+## Agregado
+
+* idempotency_strategy.md
+* event_audit_correlation.md
+* durability_contract.md
+
+## Objetivo
+
+Formalizar los contratos documentales requeridos para Durable Persistence Layer.
+
+## Hallazgos Cerrados
+
+* Idempotencia y deduplicación
+* Replay safety
+* Offline recovery consistency
+* Correlación Runtime → Persistence → Audit → Analytics → IA
+* Durability guarantees
+* Retryable / Non-Retryable semantics
+
+# [v0.9.0] — Enterprise Persistence Readiness
+
+Fecha: 2026-05-29
+
+Estado: COMPLETADO ✅
+
+## Objetivo
+
+Consolidar la estabilización arquitectónica del runtime enterprise antes de iniciar la implementación de persistencia durable.
+
+---
+
+## Agregado
+
+* Runtime recovery analysis
+* Determinism verification
+* Recovery invariant validation
+* Replay-readiness review
+* Hydration readiness assessment
+* Documentation governance consolidation
+* AI Context System
+* Sprint History tracking
+* Prompt History tracking
+* Current State tracking
+* Formal persistence contracts
+
+---
+
+## Documentación Agregada
+
+```plaintext
+docs/10-ai-context/
+├── AI_HANDOFF_INDEX.md
+├── CURRENT_STATE.md
+├── PROJECT_STORY.md
+├── PROMPTS_HISTORY.md
+├── SPRINT_HISTORY.md
+```
+
+```plaintext
+docs/04-infrastructure/
+├── durability_contract.md
+├── event_audit_correlation.md
+├── idempotency_strategy.md
+```
+
+---
+
+## Arquitectura
+
+* Formalización completa de durable persistence contracts
+* Formalización de idempotency contracts
+* Formalización de audit correlation contracts
+* Consolidación de runtime recovery model
+* Consolidación de replay-safe architecture
+* Consolidación de offline-first evolution path
+
+---
+
+## Resultado
+
+```plaintext
+DOCUMENTATION READY FOR SPRINT 9
+```
+
+---
+
+## Estado
+
+```plaintext
+READY FOR SPRINT 9.1
+```
+
+---
+
+# [v0.9.1] — Durable Persistence Contract Verification
+
+Fecha: 2026-05-29
+
+Estado: COMPLETADO ✅
+
+## Objetivo
+
+Verificar alineación entre contratos runtime y contratos documentales de persistencia durable.
+
+---
+
+## Verificaciones
+
+### Identity Model
+
+Verificados:
+
+* correlationId
+* transactionId
+* recoveryId
+* clientRequestId
+* draftSnapshotId
+
+---
+
+### Recovery Model
+
+Verificados:
+
+* recovery lineage
+* transaction lineage
+* draft lineage
+* replay safety
+
+---
+
+### Correlation Model
+
+Verificada propagación:
+
+```plaintext
+Runtime
+→ Transaction
+→ Persistence
+→ Audit
+→ Analytics
+```
+
+---
+
+### Durability Readiness
+
+Capacidad contractual validada para:
+
+* before commit
+* during commit
+* after commit
+* retry execution
+* recovery execution
+* offline synchronization
+
+---
+
+## Testing
+
+```bash
+npm run build
+```
+
+Resultado:
+
+```plaintext
+BUILD PASSED
+```
+
+---
+
+## Resultado
+
+```plaintext
+SPRINT 9.1 COMPLETED
+```
+
+---
+
+## Estado
+
+```plaintext
+READY FOR SPRINT 9.2
+```
+
+# [v0.9.2] — Durable Persistence Identity Verification
+
+Fecha: 2026-05-29
+
+## Objetivo
+
+Validar la preparación runtime para Durable Persistence mediante verificación de identidades, lineage, recovery y metadata.
+
+## Resultado
+
+Se confirmó la existencia y propagación de:
+
+- correlationId
+- transactionId
+- recoveryId
+- clientRequestId
+- draftSnapshotId
+
+Se verificó:
+
+- replay readiness
+- recovery lineage preservation
+- runtime boundary isolation
+- persistence abstraction
+
+## Testing
+
+- npm run build exitoso
+- verificación contractual runtime
+- validación de recovery lineage
+- validación de durable identity propagation
+
+## Estado
+
+READY FOR SPRINT 9.3 — Offline Snapshot Persistence Foundations
+
+## v0.9.4 — Durable Persistence Provider Architecture
+
+Status:
+COMPLETED
+
+Objectives:
+
+- validate provider abstraction
+- validate provider readiness
+- validate multi-database readiness
+- validate fallback architecture readiness
+- validate persistence boundary isolation
+
+Key Outcomes:
+
+- runtime confirmed provider-agnostic
+- persistence boundaries verified
+- future provider support validated
+- multi-database compatibility preserved
+- future provider factory introduction validated
+
+Architectural Impact:
+
+The persistence architecture now supports future durable providers through contract-based boundaries without requiring runtime refactoring.
+
+Build Status:
+
+PASSED
+
+Next Step:
+
+Sprint 9.5 — Durable Storage Provider Foundations
+
+## v0.9.0 — Durable Persistence Foundations Completed
+
+### Completed
+
+- Durable persistence architecture validated
+- Identity layer verified
+- Snapshot foundations verified
+- Recovery lineage verified
+- Persistence boundaries verified
+- Idempotency strategy verified
+- Durability contracts formalized
+- Runtime persistence readiness confirmed
+
+### Result
+
+SPRINT 9 COMPLETED
+
+No architectural blockers identified for Sprint 10 implementation.
+
