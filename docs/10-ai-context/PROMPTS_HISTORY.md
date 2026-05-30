@@ -466,3 +466,129 @@ The architecture continues to evolve through:
 - provider abstraction
 - database independence
 - enterprise scalability principles
+
+# Sprint 10.1 — Provider Factory Contracts Foundation
+
+## Primary Objective
+
+Create the foundational contracts required to support a future provider factory architecture while preserving runtime isolation and database independence.
+
+## Main Architectural Prompt
+
+Create ONLY the contract layer for a future Persistence Provider Factory architecture.
+
+No implementations.
+
+No provider logic.
+
+No runtime modifications.
+
+Only contract definitions.
+
+## Architectural Decisions
+
+* contract-first development enforced
+* provider implementations intentionally postponed
+* runtime boundaries preserved
+* capability-driven architecture introduced
+* factory infrastructure prepared incrementally
+
+## Key Outcomes
+
+* persistence provider contract created
+* provider capability contract created
+* provider registry contract created
+* provider resolver contract created
+* provider factory contract created
+
+---
+
+# Long-Term Prompt Evolution
+
+The project continues evolving according to:
+
+* runtime-first architecture
+* metadata-driven systems
+* provider-agnostic persistence
+* database independence
+* infrastructure isolation
+* deterministic behavior
+* enterprise scalability
+
+The architecture intentionally prioritizes infrastructure contracts before infrastructure implementations.
+
+---
+
+# Governance Note
+
+Only major architectural prompts should be preserved.
+
+Avoid storing implementation-level conversations.
+
+Maintain this file as a strategic architecture evolution record.
+
+
+# Sprint 11 — Persistence Runtime Control Layer
+
+## Architectural Goal
+
+Complete the operational persistence runtime layer by introducing active provider management, execution routing, health validation, and future intelligent persistence decision mechanisms.
+
+---
+
+## Prompt Evolution
+
+### Sprint 11.0
+
+Persistence Provider Bootstrap
+
+Objective:
+
+Connect real providers to the Provider Factory infrastructure without coupling runtime modules to provider implementations.
+
+---
+
+### Sprint 11.1
+
+Active Provider Runtime Binding
+
+Objective:
+
+Introduce runtime awareness of active persistence providers and centralize execution through a provider-aware router.
+
+---
+
+### Sprint 11.2
+
+Provider Health & Execution Safety
+
+Objective:
+
+Validate provider availability before execution and establish fail-fast runtime behavior.
+
+---
+
+## Future Direction
+
+The next architectural evolution will focus on:
+
+* durable providers
+* offline-first persistence
+* provider lifecycle management
+* intelligent provider selection
+* future AI decision engines
+* advanced fallback strategies
+
+---
+
+## Architectural Philosophy
+
+The system continues prioritizing:
+
+* runtime isolation
+* provider abstraction
+* deterministic execution
+* auditability
+* maintainability
+* scalability
+* AI readiness

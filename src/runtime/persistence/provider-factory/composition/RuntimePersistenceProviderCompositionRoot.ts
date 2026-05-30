@@ -8,8 +8,8 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  * Provider-factory composition wiring only.
  *
  * - Creates deterministic in-memory contracts infrastructure (registry/registration/resolver/factory)
- * - Does NOT register any real providers
- * - Does NOT instantiate DB-specific adapters
+ * - Composition scaffolding only; provider bootstrap occurs in RuntimePersistenceBootstrap.
+ * - Does NOT register any real providers by default.
  */
 export class RuntimePersistenceProviderCompositionRoot {
   public readonly registry: RuntimePersistenceProviderRegistry;
@@ -17,9 +17,14 @@ export class RuntimePersistenceProviderCompositionRoot {
   public readonly resolver: RuntimePersistenceProviderResolver;
   public readonly factory: RuntimePersistenceProviderFactory;
 
+  public readonly activeProviderManager;
+  public readonly executionRouter;
+
+
+
+
   /**
    * Initialization result to support future bootstrapping flows.
-   * Currently: no providers registered.
    */
   public readonly initResult: {
     providersRegistered: number;
@@ -31,9 +36,17 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.resolver = new RuntimePersistenceProviderResolver(this.registry);
     this.factory = new RuntimePersistenceProviderFactory(this.registry, this.resolver);
 
+    // Runtime control bindings (future-proof, no orchestration lifecycle)
+    const { ActivePersistenceProviderManager } = require("../runtime/ActivePersistenceProviderManager");
+    const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
+    this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
+    this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager);
+
     this.initResult = {
       providersRegistered: 0,
     };
   }
+
 }
+
 

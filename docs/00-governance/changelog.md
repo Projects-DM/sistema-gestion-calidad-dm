@@ -1019,3 +1019,147 @@ SPRINT 9 COMPLETED
 
 No architectural blockers identified for Sprint 10 implementation.
 
+## [v0.10.1] — Provider Factory Contracts Foundation
+
+### Added
+
+* PersistenceProvider contract
+* PersistenceProviderCapabilities contract
+* PersistenceProviderFactoryContracts
+* PersistenceProviderRegistryContracts
+* PersistenceProviderResolverContracts
+
+### Architectural Impact
+
+Introduced the foundational Provider Factory contract layer required for future provider registration, discovery, resolution and capability-based persistence selection.
+
+### Validation
+
+* Build Passed
+* Runtime Unchanged
+* Recovery Unchanged
+* Transaction Unchanged
+
+### Status
+
+READY FOR SPRINT 10.2
+
+Version: v0.10.0
+
+Title:
+Provider Factory Infrastructure Complete
+
+Summary:
+
+Completed Provider Factory subsystem implementation.
+
+Delivered:
+
+- Provider Contracts Foundation
+- Provider Registry Infrastructure
+- Provider Resolver Infrastructure
+- Provider Factory Infrastructure
+- Provider Registration Infrastructure
+- Provider Composition Root
+
+Architecture Status:
+
+Provider-Agnostic Persistence Infrastructure Ready
+
+Build Status:
+
+All Sprint 10 infrastructure builds completed successfully.
+
+Sprint Status:
+
+SPRINT 10 COMPLETED
+
+Next Phase:
+
+Sprint 11 — Durable Storage Providers
+
+# v0.11.0 — Persistence Runtime Control Layer
+
+## Overview
+
+Sprint 11 introduced the runtime control layer responsible for managing active persistence providers, execution routing, provider health validation, and future intelligent provider selection.
+
+This phase completes the Persistence Provider Architecture initiated during Sprint 10 and establishes the operational runtime layer required for future AI-driven persistence strategies.
+
+---
+
+## Sprint 11.0 — Persistence Provider Bootstrap
+
+### Added
+
+- SupabasePersistenceProvider
+- RuntimePersistenceBootstrap
+
+### Capabilities
+
+- provider registration bootstrap
+- provider activation readiness
+- integration with composition root
+- registration through provider registry
+
+### Result
+
+Persistence providers can now be registered and exposed through the Provider Factory infrastructure.
+
+---
+
+## Sprint 11.1 — Active Provider Runtime Binding
+
+### Added
+
+- ActivePersistenceProviderManager
+- PersistenceExecutionRouter
+
+### Capabilities
+
+- active provider management
+- runtime provider switching readiness
+- centralized persistence execution routing
+- future AI routing hooks
+- future fallback routing hooks
+
+### Result
+
+Runtime persistence execution is now fully controlled through a provider-aware execution layer.
+
+---
+
+## Sprint 11.2 — Provider Health & Execution Safety Layer
+
+### Added
+
+- ProviderHealth model
+- ProviderHealthChecker
+
+### Capabilities
+
+- provider availability verification
+- fail-fast execution validation
+- execution safety guards
+- health-aware runtime persistence
+
+### Result
+
+Persistence execution is protected against unavailable providers while preserving runtime isolation and future extensibility.
+
+---
+
+## Final Status
+
+SPRINT 11 COMPLETED
+
+Architecture Status:
+
+- Runtime First
+- Provider Agnostic
+- Database Agnostic
+- Audit Ready
+- Recovery Ready
+- AI Ready
+- Fallback Ready
+- Enterprise Scalable
