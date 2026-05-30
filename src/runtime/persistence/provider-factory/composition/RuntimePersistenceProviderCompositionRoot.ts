@@ -11,6 +11,8 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  * - Composition scaffolding only; provider bootstrap occurs in RuntimePersistenceBootstrap.
  * - Does NOT register any real providers by default.
  */
+import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
+
 export class RuntimePersistenceProviderCompositionRoot {
   public readonly registry: RuntimePersistenceProviderRegistry;
   public readonly registration: RuntimePersistenceProviderRegistration;
@@ -20,8 +22,12 @@ export class RuntimePersistenceProviderCompositionRoot {
   public readonly activeProviderManager;
   public readonly executionRouter;
 
-
-
+  /**
+   * Execution audit observability foundations (in-memory, deterministic, provider-agnostic).
+   * Wiring-only; no changes to runtime behavior.
+   */
+  public readonly auditRegistry: RuntimeExecutionAuditRegistry;
+  public readonly auditRecorder: RuntimeExecutionAuditRecorder;
 
   /**
    * Initialization result to support future bootstrapping flows.
@@ -36,11 +42,18 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.resolver = new RuntimePersistenceProviderResolver(this.registry);
     this.factory = new RuntimePersistenceProviderFactory(this.registry, this.resolver);
 
+    // Execution audit foundations (no DB, no provider coupling)
+    this.auditRegistry = new RuntimeExecutionAuditRegistry();
+    this.auditRecorder = new RuntimeExecutionAuditRecorder(this.auditRegistry);
+
     // Runtime control bindings (future-proof, no orchestration lifecycle)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { ActivePersistenceProviderManager } = require("../runtime/ActivePersistenceProviderManager");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
     this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager);
+
 
     this.initResult = {
       providersRegistered: 0,
@@ -48,5 +61,6 @@ export class RuntimePersistenceProviderCompositionRoot {
   }
 
 }
+
 
 

@@ -644,3 +644,50 @@ Future persistence evolution should continue following:
 This document records major architectural reasoning and evolution milestones.
 
 Avoid storing implementation-level details or conversation transcripts.
+
+# Sprint 13.0 — Execution Audit & Traceability Foundations
+
+## Primary Objective
+
+Create a provider-agnostic audit subsystem capable of recording execution traces without introducing runtime coupling or infrastructure dependencies.
+
+## Main Architectural Prompt
+
+Implement execution audit foundations using contracts, registry, and recorder abstractions.
+
+The subsystem must:
+
+- remain deterministic
+- remain provider-agnostic
+- remain infrastructure-independent
+- avoid runtime orchestration modifications
+
+## Key Outcomes
+
+- audit contracts introduced
+- execution registry introduced
+- execution recorder introduced
+- analytics readiness established
+
+---
+
+# Sprint 13.1 — Audit Infrastructure Readiness Review
+
+## Primary Objective
+
+Perform architectural validation of the audit subsystem.
+
+## Main Architectural Prompt
+
+Review contracts, registry, recorder, composition wiring, dependency directions, and runtime isolation.
+
+Validate:
+
+- no coupling violations
+- no runtime leakage
+- no infrastructure dependencies
+- build stability
+
+## Outcome
+
+Audit subsystem approved for future telemetry and analytics evolution.

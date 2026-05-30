@@ -1198,3 +1198,59 @@ Architecture Status:
 ### Result
 
 Runtime persistence execution can now operate through a registered and active provider while remaining provider-agnostic.
+
+# Changelog
+
+## v0.13.1 — Audit Infrastructure Readiness Review
+
+### Verified
+
+- ProviderExecutionAuditRecord contract validated
+- ProviderExecutionAuditStatus contract validated
+- ProviderExecutionAuditType contract validated
+- Audit Registry validated
+- Audit Recorder validated
+- Composition Root audit wiring validated
+
+### Architecture Validation
+
+- Audit subsystem remains provider-agnostic
+- Audit subsystem remains runtime-isolated
+- No coupling with workflow/recovery/transaction layers
+- No database dependencies introduced
+- No Supabase dependencies introduced
+
+### Build
+
+✅ npm run build passed
+
+---
+
+## v0.13.0 — Execution Audit & Traceability Foundations
+
+### Added
+
+- RuntimeExecutionAuditRegistry
+- RuntimeExecutionAuditRecorder
+
+### Added Contracts
+
+- ProviderExecutionAuditRecord
+- ProviderExecutionAuditStatus
+- ProviderExecutionAuditType
+
+### Composition Root
+
+- auditRegistry exposed
+- auditRecorder exposed
+
+### Architecture
+
+- In-memory deterministic audit storage
+- Provider-agnostic audit model
+- Future analytics readiness
+
+### Build
+
+✅ npm run build passed
+
