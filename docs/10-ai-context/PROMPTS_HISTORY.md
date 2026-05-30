@@ -592,3 +592,55 @@ The system continues prioritizing:
 * maintainability
 * scalability
 * AI readiness
+
+# Sprint 12 — Runtime Persistence Activation
+
+## Primary Evolution Goal
+
+Move the Provider Factory subsystem from architectural readiness into runtime execution readiness.
+
+## Architectural Evolution
+
+The project now evolves through:
+
+- provider-driven persistence
+- runtime-first orchestration
+- composition-root initialization
+- capability-based provider management
+- future AI-assisted provider selection
+- future fallback-based provider routing
+
+## Major Architectural Prompts
+
+### Sprint 12.1
+
+Implement the first runtime persistence provider using the existing provider-factory contracts.
+
+### Sprint 12.2
+
+Integrate provider registration into bootstrap initialization.
+
+### Sprint 12.3
+
+Audit the runtime execution path and identify active provider binding requirements.
+
+### Sprint 12.4
+
+Complete bootstrap-driven active provider initialization and enable execution routing.
+
+## Long-Term Direction
+
+Future persistence evolution should continue following:
+
+- provider abstraction
+- deterministic runtime execution
+- capability-driven provider selection
+- AI-assisted routing readiness
+- infrastructure independence
+- multi-database compatibility
+
+## Governance Note
+
+This document records major architectural reasoning and evolution milestones.
+
+Avoid storing implementation-level details or conversation transcripts.

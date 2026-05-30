@@ -1,3 +1,139 @@
+Roadmap Sprint 12
+Sprint 12.1
+Memory Persistence Provider
+
+Primer provider completamente funcional.
+
+Implementar:
+
+src/runtime/persistence/provider-factory/providers/
+
+MemoryPersistenceProvider.ts
+
+Características:
+
+implementación real de IRuntimePersistenceLayer
+almacenamiento en memoria
+saveDraft()
+loadDraft()
+submit()
+
+Objetivo:
+
+Validar completamente:
+
+Provider
+→ Registry
+→ Resolver
+→ Factory
+→ Active Provider
+→ Execution Router
+
+sin depender de Supabase.
+
+Sprint 12.2
+Provider Lifecycle Management
+
+Agregar lifecycle estándar.
+
+initializing
+ready
+degraded
+unavailable
+shutdown
+
+Esto permitirá:
+
+health más avanzado
+fallback futuro
+IA futura
+Sprint 12.3
+Local Storage Persistence Provider
+
+Primer provider durable browser-side.
+
+Implementar:
+
+LocalStoragePersistenceProvider.ts
+
+Capacidades:
+
+draft persistence
+recovery persistence
+metadata persistence
+
+Sin sincronización todavía.
+
+Sprint 12.4
+IndexedDB Persistence Provider
+
+Provider preparado para datasets grandes.
+
+Implementar:
+
+IndexedDBPersistenceProvider.ts
+
+Capacidades:
+
+evidencias
+drafts grandes
+recovery snapshots
+Sprint 12.5
+Provider Capability Expansion
+
+Formalizar:
+
+supportsOffline
+supportsRecovery
+supportsReplay
+supportsSnapshots
+supportsSync
+supportsAnalytics
+supportsAIOptimization
+
+Actualmente existen parcialmente.
+
+Aquí quedan estandarizadas.
+
+Sprint 12.6
+Runtime Provider Switching
+
+Permitir:
+
+setActiveProvider()
+
+durante ejecución.
+
+Manteniendo:
+
+Runtime
+→ Router
+→ Provider
+
+sin reiniciar sistema.
+
+Sprint 12.7
+Sprint 12 Readiness Review
+
+Auditoría completa.
+
+Validar:
+
+Registry
+Resolver
+Factory
+Bootstrap
+Active Provider
+Health
+Lifecycle
+Memory Provider
+LocalStorage Provider
+IndexedDB Provider
+
+Resultado esperado:
+
+SPRINT 12 COMPLETED
+
 # SPRINT_HISTORY.md
 
 # SGC-DM — Enterprise Sprint Evolution History
@@ -716,3 +852,51 @@ The project continues evolving through:
 This document should preserve only major architectural milestones.
 
 Avoid storing implementation-level details or conversation history.
+
+# Sprint 12 — Runtime Persistence Activation
+
+## Primary Objective
+
+Transform the Provider Factory subsystem into an executable runtime persistence infrastructure.
+
+## Main Architectural Prompt
+
+Implement the first runtime-executable persistence provider while preserving:
+
+- runtime-first architecture
+- provider isolation
+- future AI readiness
+- future fallback readiness
+- database independence
+
+## Architectural Decisions
+
+- Memory provider selected as first executable provider.
+- Bootstrap became responsible for provider registration.
+- Active provider binding moved into bootstrap initialization.
+- Execution routing remains provider-agnostic.
+- Runtime remains unaware of provider implementations.
+
+## Key Outcomes
+
+### Sprint 12.1
+
+Memory Persistence Provider implemented.
+
+### Sprint 12.2
+
+Bootstrap registration integrated.
+
+### Sprint 12.3
+
+Active provider execution path audited.
+
+### Sprint 12.4
+
+Bootstrap active provider binding completed.
+
+## Final Outcome
+
+The runtime can now execute persistence operations through an active provider without direct knowledge of database implementations.
+
+The Provider Factory architecture is no longer only structural; it is operational.

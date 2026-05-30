@@ -1,17 +1,26 @@
-# SGC-DM Sprint 7 — Runtime Transaction Facade & Event Dispatcher
+# TODO - SPRINT 12.2 Memory Provider Bootstrap Integration
 
-## Plan (approved)
-1. Leer contratos de transacción y orquestadores existentes.
-2. Implementar `RuntimeSubmitFacade`.
-3. Implementar distribuidor de eventos solo en runtime y en memoria.
-4. Integrar cableado opcional de smoke test en `RuntimePlaygroundSandbox`.
-5. Ejecutar verificación de compilación.
-6. Informar archivos afectados y cobertura de pruebas restante.
+## Step 1: Bootstrap registration
+- [x] Modify `src/runtime/persistence/provider-factory/bootstrap/RuntimePersistenceBootstrap.ts`
+  - Register `MemoryPersistenceProvider` using existing `root.registration.registerProvider(...)` infrastructure.
+  - Preserve deterministic registration order.
 
-## Progress
-- [x] 1. Leer contratos de transacción y orquestadores existentes.
-- [x] 2. Crear `src/runtime/transaction/submit/RuntimeSubmitFacade.ts`.
-- [x] 3. Crear `src/runtime/eventing/SaveLifecycleEventDispatcher.ts`.
-- [x] 4. Actualizar `src/runtime/playground/RuntimePlaygroundSandbox.tsx` con smoke test opcional.
-- [x] 5. Ejecutar `npm run build`.
-- [ ] 6. Reportar archivos afectados y pruebas restantes.
+
+## Step 2: Active provider assignment verification
+- [ ] Locate where `ActivePersistenceProviderManager.setActiveProvider(...)` is called (active-provider binding path).
+- [ ] Verify whether provider-factory active provider wiring is used by runtime submit flow (not by direct adapter injection).
+
+
+## Step 3: Runtime isolation verification
+- [x] Memory is now registered during provider-factory bootstrap (Memory → Registration → Registry).
+- [ ] Resolver/Factory/ActiveProviderManager/PersistenceExecutionRouter chain validation requires locating the call site that sets the active provider.
+
+
+
+## Step 4: Build
+- [x] Run `npm run build` and confirm it passes.
+
+## Sprint 12.3 verification notes
+- [x] Router binding uses activeProviderManager.getActiveProviderContract()
+- [x] Active provider assignment call site not found (setActiveProvider never invoked in current codebase)
+

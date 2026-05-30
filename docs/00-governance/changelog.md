@@ -1163,3 +1163,38 @@ Architecture Status:
 - AI Ready
 - Fallback Ready
 - Enterprise Scalable
+
+## [0.12.0] - Sprint 12 Completed
+
+### Added
+
+#### Sprint 12.1 — Memory Persistence Provider
+
+- Added MemoryPersistenceProvider.
+- Implemented in-memory IRuntimePersistenceLayer.
+- Added submit(), saveDraft(), and loadDraft() support.
+- Introduced provider capabilities for offline, recovery, snapshots, replay, and transactions.
+- Runtime-first provider implementation without external dependencies.
+
+#### Sprint 12.2 — Memory Provider Bootstrap Integration
+
+- Registered MemoryPersistenceProvider during bootstrap.
+- Preserved deterministic registration order.
+- Extended bootstrap provider registration pipeline.
+
+#### Sprint 12.3 — Active Provider Binding Audit
+
+- Verified ActivePersistenceProviderManager usage.
+- Identified missing active provider initialization path.
+- Confirmed PersistenceExecutionRouter provider-agnostic execution design.
+
+#### Sprint 12.4 — Active Provider Bootstrap Binding
+
+- Added deterministic active provider initialization during bootstrap.
+- Bound MemoryPersistenceProvider as initial active provider.
+- Completed execution chain:
+  Bootstrap → Registry → Resolver → Factory → Active Provider Manager → Execution Router.
+
+### Result
+
+Runtime persistence execution can now operate through a registered and active provider while remaining provider-agnostic.
