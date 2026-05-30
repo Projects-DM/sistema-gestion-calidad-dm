@@ -1254,3 +1254,64 @@ Runtime persistence execution can now operate through a registered and active pr
 
 ✅ npm run build passed
 
+## Sprint 14.0
+
+Added Provider Analytics subsystem.
+
+Features:
+- Analytics contracts
+- Analytics registry
+- Analytics engine
+- Provider execution aggregation
+- Success/failure metrics
+- Average duration metrics
+- Last execution tracking
+
+Architecture:
+- In-memory only
+- Provider-agnostic
+- Consumes Execution Audit records
+- No database dependencies
+
+# CHANGELOG
+
+## Sprint 15.0
+
+### Added
+
+Provider Scoring System
+
+Archivos:
+
+* ProviderScore.ts
+* ProviderScoreSnapshot.ts
+* ProviderScoreBreakdown.ts
+* RuntimeProviderScoreRegistry.ts
+* RuntimeProviderScoringEngine.ts
+
+### Added to Composition Root
+
+* scoreRegistry
+* scoringEngine
+
+### Architecture impact
+
+Nueva capa:
+
+Audit
+→ Analytics
+→ Scoring
+
+Ahora el sistema puede:
+
+* medir ejecución
+* generar métricas
+* calcular ranking de providers
+
+### Build
+
+PASSED
+
+### Status
+
+SPRINT 15 COMPLETED

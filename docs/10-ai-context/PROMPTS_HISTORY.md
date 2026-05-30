@@ -691,3 +691,62 @@ Validate:
 ## Outcome
 
 Audit subsystem approved for future telemetry and analytics evolution.
+
+# PROJECT CONTEXT
+
+Proyecto:
+Sistema de Gestión de Calidad DM
+
+Objetivo:
+
+Digitalizar aproximadamente 140 formatos físicos mediante un Runtime Engine reutilizable y escalable.
+
+Principios arquitectónicos:
+
+* Runtime First
+* Provider Agnostic
+* Contract Driven
+* Composition Root
+* Dependency Injection
+* Offline First Ready
+* Future AI Ready
+* Replay Ready
+* Recovery Ready
+* Multi Database Ready
+
+Reglas:
+
+1. Nunca romper boundaries.
+2. Nunca acoplar runtime a Supabase.
+3. Toda persistencia debe pasar por Provider Factory.
+4. Todo provider debe implementar contratos.
+5. Mantener compatibilidad futura con:
+
+   * IndexedDB
+   * LocalStorage
+   * Memory
+   * Supabase
+   * PostgreSQL
+   * MySQL
+
+Documentos obligatorios antes de cada sprint:
+
+1. current-state.md
+2. sprint-history.md
+3. changelog.md
+
+Objetivo actual:
+
+Construir las capas avanzadas de:
+
+* AI Routing
+* Fallback Selection
+* Offline Synchronization
+* Replay Engine
+* Durable Persistence
+
+Estado:
+
+Sprint 15 completado.
+Arquitectura estable.
+Lista para Sprint 16.

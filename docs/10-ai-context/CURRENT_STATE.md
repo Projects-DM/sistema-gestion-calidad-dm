@@ -1218,3 +1218,319 @@ Goal:
 
 Create runtime execution metrics and telemetry foundations using the audit subsystem as source data while preserving provider isolation.
 
+Persistence Analytics Layer completed.
+
+- RuntimeProviderAnalyticsRegistry
+- RuntimeProviderAnalyticsEngine
+- ProviderAnalyticsSnapshot
+- ProviderAnalyticsMetric
+- ProviderAnalyticsSummary
+
+Analytics consume Execution Audit data and generates aggregated provider metrics.
+
+No persistence.
+No AI.
+No fallback.
+In-memory only.
+Provider-agnostic.
+
+Current Phase:
+Provider Intelligence Foundations
+
+Completed Layers:
+
+✔ Provider Factory
+✔ Runtime Binding
+✔ Active Provider Management
+✔ Execution Routing
+✔ Execution Audit
+✔ Analytics Engine
+✔ Provider Scoring Engine
+
+Current Architecture:
+
+Provider
+ → Execution Router
+ → Audit
+ → Analytics
+ → Scoring
+
+Build Status:
+PASSING
+
+Architecture Status:
+STABLE
+
+Runtime Status:
+PROVIDER-AGNOSTIC
+
+Next Target:
+Sprint 16.0 — Provider Decision Foundations
+
+# CURRENT STATE
+
+## Project
+
+Sistema de Gestión de Calidad DM (SGC DM)
+
+## Current Phase
+
+Runtime Persistence Intelligence Layer
+
+## Current Sprint
+
+Sprint 15.0 — Provider Scoring Foundations
+
+## Status
+
+COMPLETED
+
+---
+
+## Provider Factory Architecture
+
+Completed layers:
+
+### Sprint 10
+
+* Provider Contracts
+* Provider Registry
+* Provider Resolver
+* Provider Factory
+* Registration Layer
+* Composition Root
+
+### Sprint 11
+
+* Supabase Provider Bootstrap
+* Active Provider Manager
+* Persistence Execution Router
+* Provider Health Layer
+
+### Sprint 12
+
+* Memory Persistence Provider
+* Bootstrap Registration
+* Active Provider Bootstrap Binding
+
+### Sprint 13
+
+* Execution Audit Contracts
+* Audit Registry
+* Audit Recorder
+* Router Audit Integration
+
+### Sprint 14
+
+* Analytics Contracts
+* Analytics Registry
+* Analytics Engine
+
+### Sprint 15
+
+* Scoring Contracts
+* Score Registry
+* Scoring Engine
+* Composition Root Integration
+
+---
+
+## Current Runtime Flow
+
+Provider
+↓
+Registry
+↓
+Resolver
+↓
+Factory
+↓
+Active Provider Manager
+↓
+Persistence Execution Router
+↓
+Audit Recorder
+↓
+Analytics Engine
+↓
+Scoring Engine
+
+---
+
+## Active Providers
+
+### MemoryPersistenceProvider
+
+Capabilities:
+
+* Offline
+* Recovery
+* Snapshots
+* Replay
+* Transactions
+
+### SupabasePersistenceProvider
+
+Capabilities:
+
+* Transactions
+* Workflow
+* Verification
+* Evidence Registration
+
+---
+
+## Build Status
+
+Latest build:
+npm run build
+
+Result:
+PASSED
+
+No architecture blockers detected.
+
+---
+
+## Next Planned Phase
+
+Sprint 15.1
+
+Provider Ranking Infrastructure
+
+Goal:
+Introduce deterministic provider ranking using the scoring subsystem while preserving provider-agnostic runtime boundaries.
+
+# CURRENT STATE
+
+## Project
+
+Sistema de Gestión de Calidad DM (SGC DM)
+
+## Current Phase
+
+Runtime Persistence Intelligence Layer
+
+## Current Sprint
+
+Sprint 15.0 — Provider Scoring Foundations
+
+## Status
+
+COMPLETED
+
+---
+
+## Provider Factory Architecture
+
+Completed layers:
+
+### Sprint 10
+
+* Provider Contracts
+* Provider Registry
+* Provider Resolver
+* Provider Factory
+* Registration Layer
+* Composition Root
+
+### Sprint 11
+
+* Supabase Provider Bootstrap
+* Active Provider Manager
+* Persistence Execution Router
+* Provider Health Layer
+
+### Sprint 12
+
+* Memory Persistence Provider
+* Bootstrap Registration
+* Active Provider Bootstrap Binding
+
+### Sprint 13
+
+* Execution Audit Contracts
+* Audit Registry
+* Audit Recorder
+* Router Audit Integration
+
+### Sprint 14
+
+* Analytics Contracts
+* Analytics Registry
+* Analytics Engine
+
+### Sprint 15
+
+* Scoring Contracts
+* Score Registry
+* Scoring Engine
+* Composition Root Integration
+
+---
+
+## Current Runtime Flow
+
+Provider
+↓
+Registry
+↓
+Resolver
+↓
+Factory
+↓
+Active Provider Manager
+↓
+Persistence Execution Router
+↓
+Audit Recorder
+↓
+Analytics Engine
+↓
+Scoring Engine
+
+---
+
+## Active Providers
+
+### MemoryPersistenceProvider
+
+Capabilities:
+
+* Offline
+* Recovery
+* Snapshots
+* Replay
+* Transactions
+
+### SupabasePersistenceProvider
+
+Capabilities:
+
+* Transactions
+* Workflow
+* Verification
+* Evidence Registration
+
+---
+
+## Build Status
+
+Latest build:
+npm run build
+
+Result:
+PASSED
+
+No architecture blockers detected.
+
+---
+
+## Next Planned Phase
+
+Sprint 15.1
+
+Provider Ranking Infrastructure
+
+Goal:
+Introduce deterministic provider ranking using the scoring subsystem while preserving provider-agnostic runtime boundaries.

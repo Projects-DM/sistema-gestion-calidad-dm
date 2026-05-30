@@ -13,6 +13,8 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  */
 import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
 import { RuntimeProviderAnalyticsEngine, RuntimeProviderAnalyticsRegistry } from "../analytics";
+import { RuntimeProviderScoringEngine, RuntimeProviderScoreRegistry } from "../scoring";
+
 
 export class RuntimePersistenceProviderCompositionRoot {
   public readonly registry: RuntimePersistenceProviderRegistry;
