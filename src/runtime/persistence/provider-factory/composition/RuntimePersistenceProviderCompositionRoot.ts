@@ -12,6 +12,7 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  * - Does NOT register any real providers by default.
  */
 import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
+import { RuntimeProviderAnalyticsEngine, RuntimeProviderAnalyticsRegistry } from "../analytics";
 
 export class RuntimePersistenceProviderCompositionRoot {
   public readonly registry: RuntimePersistenceProviderRegistry;
@@ -54,6 +55,11 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
     this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager);
 
+    // Analytics foundations (in-memory only, deterministic)
+    const analyticsRegistry = new RuntimeProviderAnalyticsRegistry();
+    // Engine is created lazily to avoid unnecessary coupling; exposed in root for future consumption.
+    (this as any).analyticsRegistry = analyticsRegistry;
+    (this as any).analyticsEngine = new RuntimeProviderAnalyticsEngine(this.auditRegistry, analyticsRegistry);
 
     this.initResult = {
       providersRegistered: 0,
