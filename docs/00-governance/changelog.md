@@ -1603,3 +1603,32 @@ RuntimeProviderScoreRegistry is automatically populated.
 
 Build Status:
 PASSED
+
+## [22.5] — Decision Runtime Wiring
+
+### Added
+
+- Automatic decision recomputation after scoring updates
+
+### Execution Flow
+
+Execution
+→ Audit
+→ Analytics
+→ Scoring
+→ Decision
+
+### Architecture
+
+RuntimeProviderDecisionEngine now executes automatically after score recomputation.
+
+RuntimeProviderDecisionRegistry is automatically populated.
+
+### Stability
+
+- No DB access
+- No Supabase coupling
+- No provider changes
+
+Build Status:
+PASSED

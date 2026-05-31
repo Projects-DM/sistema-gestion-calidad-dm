@@ -1313,3 +1313,26 @@ Audit
 
 Build:
 PASSED
+
+## Sprint 22.5 — Decision Runtime Wiring
+
+Status: COMPLETED
+
+Modified:
+
+- RuntimePersistenceProviderCompositionRoot.ts
+- PersistenceExecutionRouter.ts
+
+Result:
+
+Scoring updates automatically trigger decision recomputation.
+
+Execution Flow:
+
+Audit
+→ Analytics
+→ Scoring
+→ Decision
+
+Build:
+PASSED
