@@ -5,7 +5,7 @@ import type {
   TransactionKind,
   TransactionResult,
 } from "../../../transaction/contracts/transactionContracts";
-import type { IRuntimePersistenceLayer } from "../../../persistence/PersistenceBoundary";
+
 
 
 import type { ActivePersistenceProviderManager } from "./ActivePersistenceProviderManager";
@@ -21,14 +21,22 @@ import type { ActivePersistenceProviderManager } from "./ActivePersistenceProvid
 import type { RuntimeExecutionAuditRecorder } from "../audit/RuntimeExecutionAuditRecorder";
 import type { RuntimeProviderAnalyticsEngine } from "../analytics/RuntimeProviderAnalyticsEngine";
 import type { RuntimeProviderScoringEngine } from "../scoring/RuntimeProviderScoringEngine";
+import type { RuntimeProviderDecisionEngine } from "../decision/RuntimeProviderDecisionEngine";
+import type { RuntimeProviderDecisionRegistry } from "../decision/RuntimeProviderDecisionRegistry";
+import type { IRuntimePersistenceLayer } from "../../contracts/runtimePersistenceContracts";
 
 export class PersistenceExecutionRouter {
   constructor(
     private readonly activeProviderManager: ActivePersistenceProviderManager,
     private readonly auditRecorder?: RuntimeExecutionAuditRecorder,
     private readonly analyticsEngine?: RuntimeProviderAnalyticsEngine,
-    private readonly scoringEngine?: RuntimeProviderScoringEngine
+    private readonly scoringEngine?: RuntimeProviderScoringEngine,
+    private readonly decisionEngine?: RuntimeProviderDecisionEngine,
+    private readonly decisionRegistry?: RuntimeProviderDecisionRegistry
   ) {}
+
+
+
 
 
 
@@ -75,6 +83,8 @@ export class PersistenceExecutionRouter {
         });
         this.analyticsEngine?.getProviderAnalytics(provider.id);
         this.scoringEngine?.refreshScores();
+        const decision = this.decisionEngine?.computeSnapshot();
+        if (decision) this.decisionRegistry?.store(decision);
       } else {
 
         this.auditRecorder.recordExecutionFailed({
@@ -89,6 +99,8 @@ export class PersistenceExecutionRouter {
           metadata: { payloadKind: "submit" },
         });
         this.analyticsEngine?.getProviderAnalytics(provider.id);
+        this.scoringEngine?.refreshScores();
+
       }
       return result;
     } catch (e: any) {
@@ -137,8 +149,13 @@ export class PersistenceExecutionRouter {
       });
       this.analyticsEngine?.getProviderAnalytics(provider.id);
       this.scoringEngine?.refreshScores();
+      const decision = this.decisionEngine?.computeSnapshot();
+      if (decision) this.decisionRegistry?.store(decision);
       return res;
     } catch (e: any) {
+      this.analyticsEngine?.getProviderAnalytics(provider.id);
+      this.scoringEngine?.refreshScores();
+
       this.auditRecorder.recordExecutionFailed({
         auditId: auditStarted.auditId,
         startedAt: auditStarted.startedAt,
