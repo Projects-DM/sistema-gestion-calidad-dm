@@ -1314,4 +1314,33 @@ PASSED
 
 ### Status
 
-SPRINT 15 COMPLETED
+SPRINT 16
+
+Added Decision Layer.
+
+The runtime can now transform provider scores into deterministic provider recommendations.
+
+Decision Engine consumes scoring data and produces provider decision snapshots.
+
+No runtime orchestration changes.
+No fallback logic.
+No AI routing.
+No provider auto-switching.
+# CHANGELOG
+
+## [17.0.0] — Selection Layer Added
+
+### Added
+- ProviderSelectionPolicy
+- ProviderSelectionDecision
+- ProviderSelectionSnapshot
+- RuntimeProviderSelectionRegistry
+- RuntimeProviderSelectionEngine
+
+### Architecture
+- Introduced Selection Layer between Decision and Execution
+- Decoupled scoring decision from runtime selection policy
+
+### Stability
+- No changes to runtime execution layer
+- No changes to provider implementations

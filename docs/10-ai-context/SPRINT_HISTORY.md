@@ -1059,3 +1059,57 @@ Scoring Layer Completed
 Estado actual:
 
 SPRINT 15 COMPLETED
+
+Sprint 16.0 — Provider Decision Foundations
+Status: COMPLETED
+
+Created:
+- ProviderDecision.ts
+- ProviderDecisionSnapshot.ts
+- ProviderDecisionReason.ts
+- RuntimeProviderDecisionRegistry.ts
+- RuntimeProviderDecisionEngine.ts
+
+Integrated:
+- decisionRegistry
+- decisionEngine
+
+Build:
+PASSED
+
+# SPRINT HISTORY
+
+## Sprint 10 — Provider Factory Core
+- Contracts, registry, resolver, factory, composition root
+
+## Sprint 11 — Active Provider System
+- Active provider manager
+- Execution router
+- Health layer foundation
+
+## Sprint 12 — Provider Bootstrap Layer
+- Memory provider
+- Supabase provider
+- Bootstrap initialization
+
+## Sprint 13 — Execution Audit Layer
+- Audit contracts
+- Execution tracking
+- Registry + recorder
+
+## Sprint 14 — Analytics Layer
+- Provider execution analytics
+- Metrics computation engine
+
+## Sprint 15 — Scoring Layer
+- Provider scoring system
+- Normalization + ranking
+
+## Sprint 16 — Decision Layer
+- Provider decision engine
+- Score-based selection logic
+
+## Sprint 17 — Selection Layer
+- Runtime selection engine
+- Policy-based provider selection
+
