@@ -20,13 +20,16 @@ import type { ActivePersistenceProviderManager } from "./ActivePersistenceProvid
  */
 import type { RuntimeExecutionAuditRecorder } from "../audit/RuntimeExecutionAuditRecorder";
 import type { RuntimeProviderAnalyticsEngine } from "../analytics/RuntimeProviderAnalyticsEngine";
+import type { RuntimeProviderScoringEngine } from "../scoring/RuntimeProviderScoringEngine";
 
 export class PersistenceExecutionRouter {
   constructor(
     private readonly activeProviderManager: ActivePersistenceProviderManager,
     private readonly auditRecorder?: RuntimeExecutionAuditRecorder,
-    private readonly analyticsEngine?: RuntimeProviderAnalyticsEngine
+    private readonly analyticsEngine?: RuntimeProviderAnalyticsEngine,
+    private readonly scoringEngine?: RuntimeProviderScoringEngine
   ) {}
+
 
 
   private async getPersistencePortAndProviderId(): Promise<{
@@ -71,7 +74,9 @@ export class PersistenceExecutionRouter {
           recoveryId: (payload as any)?.metadata?.recoveryId,
         });
         this.analyticsEngine?.getProviderAnalytics(provider.id);
+        this.scoringEngine?.refreshScores();
       } else {
+
         this.auditRecorder.recordExecutionFailed({
           auditId: auditStarted.auditId,
           startedAt: auditStarted.startedAt,
@@ -131,6 +136,7 @@ export class PersistenceExecutionRouter {
         metadata: { payloadKind: "loadDraft" },
       });
       this.analyticsEngine?.getProviderAnalytics(provider.id);
+      this.scoringEngine?.refreshScores();
       return res;
     } catch (e: any) {
       this.auditRecorder.recordExecutionFailed({
@@ -180,7 +186,9 @@ export class PersistenceExecutionRouter {
         metadata: { payloadKind: "saveDraft" },
       });
       this.analyticsEngine?.getProviderAnalytics(provider.id);
+      this.scoringEngine?.refreshScores();
     } catch (e: any) {
+
       this.auditRecorder.recordExecutionFailed({
         auditId: auditStarted.auditId,
         startedAt: auditStarted.startedAt,

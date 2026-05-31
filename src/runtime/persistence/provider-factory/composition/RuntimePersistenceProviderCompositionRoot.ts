@@ -63,9 +63,20 @@ export class RuntimePersistenceProviderCompositionRoot {
     const analyticsRegistry = new RuntimeProviderAnalyticsRegistry();
     const analyticsEngine = new RuntimeProviderAnalyticsEngine(this.auditRegistry, analyticsRegistry);
 
+    // Scoring subsystem (runtime-first, deterministic; consumes analytics registry)
+    const { RuntimeProviderScoreRegistry, RuntimeProviderScoringEngine } = require("../scoring");
+    const scoreRegistry = new RuntimeProviderScoreRegistry();
+    const scoringEngine = new RuntimeProviderScoringEngine(analyticsRegistry, scoreRegistry);
+
+
     // IMPORTANT: keep single router instance; inject analytics at construction time.
     const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
-    this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager, this.auditRecorder, analyticsEngine);
+    this.executionRouter = new PersistenceExecutionRouter(
+      this.activeProviderManager,
+      this.auditRecorder,
+      analyticsEngine,
+      scoringEngine
+    );
 
     this.initResult = {
       providersRegistered: 0,

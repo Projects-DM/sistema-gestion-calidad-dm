@@ -1291,3 +1291,25 @@ Analytics Registry
 
 Build:
 PASSED
+
+## Sprint 22.4A — Scoring Runtime Wiring
+
+Status: COMPLETED
+
+Modified:
+
+- RuntimePersistenceProviderCompositionRoot.ts
+- PersistenceExecutionRouter.ts
+
+Result:
+
+Analytics updates automatically trigger scoring recomputation.
+
+Execution Flow:
+
+Audit
+→ Analytics
+→ Scoring
+
+Build:
+PASSED

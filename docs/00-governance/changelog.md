@@ -1575,3 +1575,31 @@ automatically trigger analytics recomputation.
 
 Build Status:
 PASSED
+
+## [22.4A] — Scoring Runtime Wiring
+
+### Added
+
+- Automatic score recomputation after analytics updates
+
+### Execution Flow
+
+Execution
+→ Audit
+→ Analytics
+→ Scoring
+
+### Architecture
+
+RuntimeProviderScoringEngine now executes automatically after analytics recomputation.
+
+RuntimeProviderScoreRegistry is automatically populated.
+
+### Stability
+
+- No DB access
+- No Supabase coupling
+- No provider changes
+
+Build Status:
+PASSED
