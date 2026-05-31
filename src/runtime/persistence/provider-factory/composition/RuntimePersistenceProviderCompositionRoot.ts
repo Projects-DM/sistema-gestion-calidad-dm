@@ -12,8 +12,8 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  * - Does NOT register any real providers by default.
  */
 import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
-import { RuntimeProviderAnalyticsEngine, RuntimeProviderAnalyticsRegistry } from "../analytics";
-import { RuntimeProviderScoringEngine, RuntimeProviderScoreRegistry } from "../scoring";
+
+
 
 
 export class RuntimePersistenceProviderCompositionRoot {
@@ -50,6 +50,7 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.auditRecorder = new RuntimeExecutionAuditRecorder(this.auditRegistry);
 
     // Runtime control bindings (future-proof, no orchestration lifecycle)
+    // IMPORTANT: keep original require-based wiring (existing codebase pattern).
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { ActivePersistenceProviderManager } = require("../runtime/ActivePersistenceProviderManager");
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -57,11 +58,10 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
     this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager);
 
-    // Analytics foundations (in-memory only, deterministic)
-    const analyticsRegistry = new RuntimeProviderAnalyticsRegistry();
-    // Engine is created lazily to avoid unnecessary coupling; exposed in root for future consumption.
-    (this as any).analyticsRegistry = analyticsRegistry;
-    (this as any).analyticsEngine = new RuntimeProviderAnalyticsEngine(this.auditRegistry, analyticsRegistry);
+
+    // Analytics foundations intentionally not wired in Sprint 13.0.
+    // (keeping subsystem deterministic + provider-agnostic audit focus)
+
 
     this.initResult = {
       providersRegistered: 0,
