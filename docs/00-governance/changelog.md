@@ -1382,3 +1382,32 @@ No provider auto-switching.
 ### Stability
 - No changes to execution router logic
 - No changes to provider implementations
+
+## [20.0.0] — Unified Runtime Orchestration Core
+
+### Added
+
+- ProviderOrchestrationContext
+- ProviderOrchestrationResult
+- RuntimeProviderOrchestrationRegistry
+- RuntimeProviderOrchestrationEngine
+- RuntimeProviderExecutionCoordinator
+
+### Architecture
+
+- Introduced Unified Runtime Orchestration Core
+- Connected Routing, Decision, Selection and Resilience layers
+- Added orchestration registry and execution coordinator
+- Established centralized runtime coordination model
+
+### Stability
+
+- No provider execution changes
+- No provider implementation changes
+- No DB coupling introduced
+- No Supabase coupling introduced
+- No UI coupling introduced
+
+### Build
+
+- npm run build PASSED

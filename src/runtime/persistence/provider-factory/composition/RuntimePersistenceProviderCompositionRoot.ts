@@ -14,8 +14,16 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
 import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
 import { RuntimeProviderRoutingDecisionEngine, RuntimeProviderRoutingEngine, RuntimeProviderRoutingHistory } from "../routing";
 
+import type { RuntimeProviderOrchestrationEngine } from "../orchestration/RuntimeProviderOrchestrationEngine";
+import type { RuntimeProviderOrchestrationRegistry } from "../orchestration/RuntimeProviderOrchestrationRegistry";
+import type { RuntimeProviderExecutionCoordinator } from "../orchestration/RuntimeProviderExecutionCoordinator";
+
 export class RuntimePersistenceProviderCompositionRoot {
+  public readonly orchestrationRegistry: RuntimeProviderOrchestrationRegistry;
+  public readonly orchestrationEngine: RuntimeProviderOrchestrationEngine;
+  public readonly executionCoordinator: RuntimeProviderExecutionCoordinator;
   public readonly registry: RuntimePersistenceProviderRegistry;
+
   public readonly registration: RuntimePersistenceProviderRegistration;
   public readonly resolver: RuntimePersistenceProviderResolver;
   public readonly factory: RuntimePersistenceProviderFactory;

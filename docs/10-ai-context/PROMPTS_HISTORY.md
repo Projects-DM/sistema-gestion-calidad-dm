@@ -750,3 +750,26 @@ Estado:
 Sprint 15 completado.
 Arquitectura estable.
 Lista para Sprint 16.
+
+# Sprint 20.0 — Unified Runtime Orchestration Core
+
+## Primary Objective
+
+Create a centralized orchestration layer capable of coordinating all runtime intelligence systems before execution.
+
+## Scope
+
+- orchestration/**
+- composition/**
+
+## Validation Rules
+
+- No DB access
+- No Supabase coupling
+- No UI coupling
+- No execution side-effects
+- No provider-specific logic
+
+## Outcome
+
+Runtime orchestration core approved and integrated into Composition Root.
