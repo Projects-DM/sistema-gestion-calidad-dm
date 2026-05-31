@@ -682,3 +682,24 @@ Connect execution flow with audit lifecycle.
 Execution Router now generates runtime audit events.
 
 Audit Layer became the first advanced runtime subsystem participating in real execution.
+
+# STORY HISTORY — Runtime Evolution
+
+---
+
+## Sprint 22.5A → 22.5B
+Decision layer introduced and stabilized across all runtime paths.
+
+## Sprint 22.6 → 22.9
+System validation phase:
+- Audit confirmed stable execution
+- Analytics confirmed deterministic derivation
+- Scoring confirmed reactive computation
+- Decision confirmed consistent selection logic
+- Selection layer identified as missing activation
+
+## Sprint 22.10
+Final activation phase:
+- Selection Engine wired into runtime execution
+- Active Provider Binding connected
+- Full pipeline activated end-to-end

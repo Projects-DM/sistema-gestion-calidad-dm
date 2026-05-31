@@ -1682,3 +1682,80 @@ including:
 Audit → Analytics → Scoring → Decision → (Selection pending)
 
 System is now in a fully deterministic runtime execution pipeline stage.
+
+# CHANGELOG — Runtime Persistence Architecture
+
+---
+
+## [22.5A] — Decision Runtime Activation
+
+### Added
+- RuntimeProviderDecisionEngine wired into PersistenceExecutionRouter
+- RuntimeProviderDecisionRegistry integration
+- Decision execution after Scoring layer
+
+### Flow
+Audit → Analytics → Scoring → Decision
+
+---
+
+## [22.5B] — Decision Completion Fix
+
+### Fixed
+- Added missing decision execution in exception paths (submit/saveDraft/loadDraft)
+- Ensured decision consistency across all runtime execution branches
+
+### Flow Updated
+Audit → Analytics → Scoring → Decision (all paths)
+
+---
+
+## [22.6] — Runtime Verification Sprint
+
+### Verified
+- Full pipeline execution integrity
+- Audit → Analytics → Scoring → Decision consistency confirmed
+- Selection layer identified as missing
+
+---
+
+## [22.7] — Selection Activation Analysis
+
+### Findings
+- Selection layer exists but is not executed in runtime path
+- ActiveProvider binding not connected
+
+### Status
+- Pipeline incomplete beyond Decision layer
+
+---
+
+## [22.8] — Selection Activation Design
+
+### Added (Design Only)
+- Selection execution specification
+- Active provider binding design
+- Pipeline closure definition
+
+---
+
+## [22.9] — Runtime Audit Validation
+
+### Verified
+- Audit → Analytics → Scoring → Decision fully operational
+- Selection layer confirmed NOT active in execution path
+
+---
+
+## [22.10] — FULL RUNTIME PIPELINE ACTIVATION
+
+### Added
+- RuntimeProviderSelectionEngine wiring
+- RuntimeProviderSelectionRegistry wiring
+- ActivePersistenceProviderManager binding activation
+
+### Activated Flow
+Audit → Analytics → Scoring → Decision → Selection → Active Provider Binding → Execution
+
+### Final Result
+FULL RUNTIME ENGINE ACTIVATED

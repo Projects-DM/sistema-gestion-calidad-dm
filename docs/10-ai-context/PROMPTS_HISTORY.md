@@ -835,3 +835,19 @@ audit records.
 
 Build:
 PASSED
+
+# PROMPTS HISTORY — Runtime Engine Evolution
+
+---
+
+## Sprint 22.5A
+Decision Engine activation into runtime execution router.
+
+## Sprint 22.5B
+Completion of decision execution across exception paths.
+
+## Sprint 22.6–22.9
+System-wide validation of runtime pipeline integrity.
+
+## Sprint 22.10
+Final activation of Selection Layer + Active Provider Binding.

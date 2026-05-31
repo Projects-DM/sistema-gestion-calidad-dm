@@ -23,7 +23,12 @@ import type { RuntimeProviderAnalyticsEngine } from "../analytics/RuntimeProvide
 import type { RuntimeProviderScoringEngine } from "../scoring/RuntimeProviderScoringEngine";
 import type { RuntimeProviderDecisionEngine } from "../decision/RuntimeProviderDecisionEngine";
 import type { RuntimeProviderDecisionRegistry } from "../decision/RuntimeProviderDecisionRegistry";
-import type { IRuntimePersistenceLayer } from "../../contracts/runtimePersistenceContracts";
+import type { RuntimeProviderSelectionEngine } from "../selection/RuntimeProviderSelectionEngine";
+import type { RuntimeProviderSelectionRegistry } from "../selection/RuntimeProviderSelectionRegistry";
+
+
+
+
 
 export class PersistenceExecutionRouter {
   constructor(
@@ -32,7 +37,9 @@ export class PersistenceExecutionRouter {
     private readonly analyticsEngine?: RuntimeProviderAnalyticsEngine,
     private readonly scoringEngine?: RuntimeProviderScoringEngine,
     private readonly decisionEngine?: RuntimeProviderDecisionEngine,
-    private readonly decisionRegistry?: RuntimeProviderDecisionRegistry
+    private readonly decisionRegistry?: RuntimeProviderDecisionRegistry,
+    private readonly selectionEngine?: RuntimeProviderSelectionEngine,
+    private readonly selectionRegistry?: RuntimeProviderSelectionRegistry
   ) {}
 
 
@@ -40,8 +47,10 @@ export class PersistenceExecutionRouter {
 
 
 
+
   private async getPersistencePortAndProviderId(): Promise<{
-    port: IRuntimePersistenceLayer;
+    port: any;
+
     providerId: string;
     operationType: import("../../../transaction/contracts/transactionContracts").TransactionKind;
   }> {
@@ -84,7 +93,15 @@ export class PersistenceExecutionRouter {
         this.analyticsEngine?.getProviderAnalytics(provider.id);
         this.scoringEngine?.refreshScores();
         const decision = this.decisionEngine?.computeSnapshot();
-        if (decision) this.decisionRegistry?.store(decision);
+        if (decision) {
+          this.decisionRegistry?.store(decision);
+          const selection = this.selectionEngine?.selectHighestScore();
+          if (selection) {
+            this.selectionRegistry?.store(selection);
+            this.activeProviderManager.setActiveProvider({ providerId: selection.providerId });
+          }
+        }
+
       } else {
 
         this.auditRecorder.recordExecutionFailed({

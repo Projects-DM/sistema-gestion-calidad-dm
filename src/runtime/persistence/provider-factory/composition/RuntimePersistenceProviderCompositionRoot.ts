@@ -70,12 +70,23 @@ export class RuntimePersistenceProviderCompositionRoot {
 
 
     // IMPORTANT: keep single router instance; inject analytics at construction time.
+    const { RuntimeProviderSelectionRegistry, RuntimeProviderSelectionEngine } = require("../selection");
+    const selectionRegistry = new RuntimeProviderSelectionRegistry();
+    // select engine deterministically from decisions (decision registry is created inside router today)
+    const { RuntimeProviderDecisionRegistry } = require("../decision");
+    const decisionRegistry = new RuntimeProviderDecisionRegistry();
+    const selectionEngine = new RuntimeProviderSelectionEngine(decisionRegistry);
+
     const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
     this.executionRouter = new PersistenceExecutionRouter(
       this.activeProviderManager,
       this.auditRecorder,
       analyticsEngine,
-      scoringEngine
+      scoringEngine,
+      undefined,
+      decisionRegistry,
+      selectionEngine,
+      selectionRegistry
     );
 
     this.initResult = {
