@@ -1344,3 +1344,41 @@ No provider auto-switching.
 ### Stability
 - No changes to runtime execution layer
 - No changes to provider implementations
+
+
+## [18.0.0] — Resilience Layer Added
+
+### Added
+- ProviderFallbackPolicy
+- ProviderExecutionFailure
+- ProviderFallbackDecision
+- RuntimeProviderRetryController
+- RuntimeProviderFallbackEngine
+- RuntimeProviderResilienceOrchestrator
+
+### Architecture
+- Introduced resilience layer for controlled failure handling
+- Added retry + fallback orchestration model
+- Execution remains provider-agnostic
+
+### Stability
+- No changes to runtime execution contracts
+- No DB / Supabase coupling introduced
+
+
+## [19.0.0] — Adaptive Routing Layer Added
+
+### Added
+- ProviderRoutingContext
+- RuntimeProviderRoutingHistory
+- RuntimeProviderRoutingEngine
+- RuntimeProviderRoutingDecisionEngine
+
+### Architecture
+- Introduced adaptive routing layer based on historical execution
+- Integrated audit + analytics signals for routing decisions
+- Pre-selection intelligence layer added before decision engine
+
+### Stability
+- No changes to execution router logic
+- No changes to provider implementations
