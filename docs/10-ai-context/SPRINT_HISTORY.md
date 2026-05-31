@@ -1336,3 +1336,38 @@ Audit
 
 Build:
 PASSED
+## Sprint 22.5B — Scoring & Decision Completion Runtime Fix
+
+Status: COMPLETED
+
+### Objective
+
+Fix missing execution paths in Scoring and Decision layers for exception handling.
+
+---
+
+### Changes
+
+* Fixed submit() exception scoring execution
+* Fixed submit() exception decision execution
+* Ensured saveDraft/loadDraft full lifecycle coverage
+
+---
+
+### Final Pipeline
+
+Audit → Analytics → Scoring → Decision
+
+All paths covered:
+
+* success
+* failure (boolean)
+* exception (catch)
+
+---
+
+### Result
+
+Runtime pipeline fully deterministic up to Decision layer.
+
+Build: PASSED

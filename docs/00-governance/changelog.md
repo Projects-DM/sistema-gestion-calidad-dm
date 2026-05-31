@@ -1632,3 +1632,53 @@ RuntimeProviderDecisionRegistry is automatically populated.
 
 Build Status:
 PASSED
+
+## [22.5B] — Scoring & Decision Completion Runtime Fix
+
+### Fixed
+
+* submit() exception path scoring execution corrected
+* submit() exception path decision execution corrected
+* saveDraft/loadDraft full lifecycle consistency ensured
+* unified analytics → scoring → decision execution chain across all paths
+
+### Runtime Behavior
+
+All execution paths now consistently trigger:
+
+Audit
+→ Analytics
+→ Scoring
+→ Decision
+
+including:
+
+* success paths
+* failure (success=false) paths
+* exception (catch) paths
+
+---
+
+### Stability Improvements
+
+* Removed partial execution gaps in scoring layer
+* Removed partial execution gaps in decision layer
+* Ensured deterministic execution order across runtime lifecycle
+
+---
+
+## [22.5A] — Decision Runtime Activation (previous)
+
+### Added
+
+* Runtime Decision execution layer activation
+* ProviderDecisionSnapshot generation
+* Decision registry persistence
+
+---
+
+## Architecture Evolution Summary
+
+Audit → Analytics → Scoring → Decision → (Selection pending)
+
+System is now in a fully deterministic runtime execution pipeline stage.

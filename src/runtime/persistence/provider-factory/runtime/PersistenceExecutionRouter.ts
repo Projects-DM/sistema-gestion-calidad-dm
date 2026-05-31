@@ -115,8 +115,15 @@ export class PersistenceExecutionRouter {
         error: { message: e?.message ?? String(e), retryable: false },
         metadata: { payloadKind: "submit" },
       });
+
+      this.analyticsEngine?.getProviderAnalytics(provider.id);
+      this.scoringEngine?.refreshScores();
+      const decision = this.decisionEngine?.computeSnapshot();
+      if (decision) this.decisionRegistry?.store(decision);
+
       throw e;
     }
+
   }
 
 
