@@ -19,9 +19,7 @@ import type { RuntimeProviderOrchestrationRegistry } from "../orchestration/Runt
 import type { RuntimeProviderExecutionCoordinator } from "../orchestration/RuntimeProviderExecutionCoordinator";
 
 export class RuntimePersistenceProviderCompositionRoot {
-  public readonly orchestrationRegistry: RuntimeProviderOrchestrationRegistry;
-  public readonly orchestrationEngine: RuntimeProviderOrchestrationEngine;
-  public readonly executionCoordinator: RuntimeProviderExecutionCoordinator;
+
   public readonly registry: RuntimePersistenceProviderRegistry;
 
   public readonly registration: RuntimePersistenceProviderRegistration;
@@ -62,7 +60,8 @@ export class RuntimePersistenceProviderCompositionRoot {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
-    this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager);
+    this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager, this.auditRecorder);
+
 
 
     // Analytics foundations intentionally not wired in Sprint 13.0.
