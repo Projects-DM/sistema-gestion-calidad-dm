@@ -1244,3 +1244,50 @@ PASSED
 Outcome:
 
 Audit Layer now executes in runtime.
+
+## Sprint 22.3A — Analytics Runtime Wiring
+
+Status: COMPLETED
+
+### Objective
+
+Connect RuntimeExecutionAuditRegistry to RuntimeProviderAnalyticsEngine using existing infrastructure only.
+
+### Modified
+
+* RuntimePersistenceProviderCompositionRoot.ts
+* PersistenceExecutionRouter.ts
+
+### Result
+
+Audit events now automatically trigger analytics recomputation.
+
+### Execution Flow
+
+submit()
+saveDraft()
+loadDraft()
+
+↓
+
+Audit Registry
+
+↓
+
+Analytics Engine
+
+↓
+
+Analytics Registry
+
+### Validation
+
+* Provider Agnostic
+* No DB
+* No Supabase
+* No UI coupling
+* No workflow changes
+* No recovery changes
+
+Build:
+PASSED

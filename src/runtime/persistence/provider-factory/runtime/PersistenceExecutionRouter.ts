@@ -5,7 +5,8 @@ import type {
   TransactionKind,
   TransactionResult,
 } from "../../../transaction/contracts/transactionContracts";
-import type { IRuntimePersistenceLayer } from "../../persistence/PersistenceBoundary";
+import type { IRuntimePersistenceLayer } from "../../../persistence/PersistenceBoundary";
+
 
 import type { ActivePersistenceProviderManager } from "./ActivePersistenceProviderManager";
 
@@ -18,12 +19,15 @@ import type { ActivePersistenceProviderManager } from "./ActivePersistenceProvid
  * - Extension placeholders reserved for future AI routing/fallback logic
  */
 import type { RuntimeExecutionAuditRecorder } from "../audit/RuntimeExecutionAuditRecorder";
+import type { RuntimeProviderAnalyticsEngine } from "../analytics/RuntimeProviderAnalyticsEngine";
 
 export class PersistenceExecutionRouter {
   constructor(
     private readonly activeProviderManager: ActivePersistenceProviderManager,
-    private readonly auditRecorder?: RuntimeExecutionAuditRecorder
+    private readonly auditRecorder?: RuntimeExecutionAuditRecorder,
+    private readonly analyticsEngine?: RuntimeProviderAnalyticsEngine
   ) {}
+
 
   private async getPersistencePortAndProviderId(): Promise<{
     port: IRuntimePersistenceLayer;
@@ -66,6 +70,7 @@ export class PersistenceExecutionRouter {
           transactionId: (payload as any)?.metadata?.transactionId,
           recoveryId: (payload as any)?.metadata?.recoveryId,
         });
+        this.analyticsEngine?.getProviderAnalytics(provider.id);
       } else {
         this.auditRecorder.recordExecutionFailed({
           auditId: auditStarted.auditId,
@@ -78,6 +83,7 @@ export class PersistenceExecutionRouter {
           error: { code: result?.error?.code, message: result?.error?.message, retryable: result?.error?.retryable },
           metadata: { payloadKind: "submit" },
         });
+        this.analyticsEngine?.getProviderAnalytics(provider.id);
       }
       return result;
     } catch (e: any) {
@@ -124,6 +130,7 @@ export class PersistenceExecutionRouter {
         operationType: "persistence.loadDraft" as any,
         metadata: { payloadKind: "loadDraft" },
       });
+      this.analyticsEngine?.getProviderAnalytics(provider.id);
       return res;
     } catch (e: any) {
       this.auditRecorder.recordExecutionFailed({
@@ -172,6 +179,7 @@ export class PersistenceExecutionRouter {
         recoveryId: (params.draft as any)?.metadata?.recoveryId,
         metadata: { payloadKind: "saveDraft" },
       });
+      this.analyticsEngine?.getProviderAnalytics(provider.id);
     } catch (e: any) {
       this.auditRecorder.recordExecutionFailed({
         auditId: auditStarted.auditId,
@@ -184,6 +192,7 @@ export class PersistenceExecutionRouter {
         error: { message: e?.message ?? String(e), retryable: false },
         metadata: { payloadKind: "saveDraft" },
       });
+      this.analyticsEngine?.getProviderAnalytics(provider.id);
       throw e;
     }
   }

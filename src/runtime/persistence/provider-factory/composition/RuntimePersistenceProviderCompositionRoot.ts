@@ -54,19 +54,18 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.auditRecorder = new RuntimeExecutionAuditRecorder(this.auditRegistry);
 
     // Runtime control bindings (future-proof, no orchestration lifecycle)
-    // IMPORTANT: keep original require-based wiring (existing codebase pattern).
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { ActivePersistenceProviderManager } = require("../runtime/ActivePersistenceProviderManager");
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
-    this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager, this.auditRecorder);
 
+    // Analytics foundations wiring (runtime-first, provider-agnostic).
+    // Uses the existing in-memory audit registry (no DB access).
+    const { RuntimeProviderAnalyticsRegistry, RuntimeProviderAnalyticsEngine } = require("../analytics");
+    const analyticsRegistry = new RuntimeProviderAnalyticsRegistry();
+    const analyticsEngine = new RuntimeProviderAnalyticsEngine(this.auditRegistry, analyticsRegistry);
 
-
-    // Analytics foundations intentionally not wired in Sprint 13.0.
-    // (keeping subsystem deterministic + provider-agnostic audit focus)
-
+    // IMPORTANT: keep single router instance; inject analytics at construction time.
+    const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
+    this.executionRouter = new PersistenceExecutionRouter(this.activeProviderManager, this.auditRecorder, analyticsEngine);
 
     this.initResult = {
       providersRegistered: 0,
