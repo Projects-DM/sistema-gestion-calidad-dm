@@ -26,6 +26,9 @@ import type { RuntimeProviderDecisionRegistry } from "../decision/RuntimeProvide
 import type { RuntimeProviderSelectionEngine } from "../selection/RuntimeProviderSelectionEngine";
 import type { RuntimeProviderSelectionRegistry } from "../selection/RuntimeProviderSelectionRegistry";
 
+import { EventSafetyLayer } from "./EventSafetyLayer";
+
+
 
 
 
@@ -39,8 +42,10 @@ export class PersistenceExecutionRouter {
     private readonly decisionEngine?: RuntimeProviderDecisionEngine,
     private readonly decisionRegistry?: RuntimeProviderDecisionRegistry,
     private readonly selectionEngine?: RuntimeProviderSelectionEngine,
-    private readonly selectionRegistry?: RuntimeProviderSelectionRegistry
+    private readonly selectionRegistry?: RuntimeProviderSelectionRegistry,
+    private readonly eventSafetyLayer: EventSafetyLayer = new EventSafetyLayer()
   ) {}
+
 
 
 
@@ -69,24 +74,35 @@ export class PersistenceExecutionRouter {
     }
 
     const provider = await this.activeProviderManager.getActiveProviderContract();
-
     const translatedEvent = (payload as any)?.__runtime_internal_event;
 
-    // BusinessEventTranslationLayer is invoked upstream by SaaS hooks.
-    // Runtime injects only the translated event envelope into audit.
-    if (translatedEvent && this.auditRecorder) {
+    // EventSafetyLayer gate (strict)
+    let eventAccepted = true;
+    if (translatedEvent) {
+      const safetyDecision = this.eventSafetyLayer.validateAndProcess(translatedEvent);
+      eventAccepted = safetyDecision.kind === "accepted";
+      if (!eventAccepted) {
+        // Reject taxonomy/correlation or ignore duplicate/replay
+        // Skip analytics/scoring refresh; persistence still proceeds.
+      }
+    }
+
+    // business audit marker only when accepted
+    if (translatedEvent && eventAccepted) {
       this.auditRecorder.recordExecutionStarted({
         providerId: provider.id,
-        operationType: `business.${translatedEvent.type}` as any,
+        operationType: `business.${translatedEvent.eventType ?? translatedEvent.type}` as any,
         correlationId: translatedEvent.correlationId,
-        transactionId: translatedEvent.responseId,
-        metadata: { payloadKind: translatedEvent.type },
+        transactionId: translatedEvent.responseId ?? translatedEvent.transactionId,
+        metadata: { payloadKind: translatedEvent.eventType ?? translatedEvent.type },
       });
     }
 
 
     const auditStarted = this.auditRecorder.recordExecutionStarted({
+
       providerId: provider.id,
+
       operationType: "persistence.submit",
       correlationId: (payload as any)?.correlationId,
       transactionId: (payload as any)?.metadata?.transactionId,
@@ -106,8 +122,15 @@ export class PersistenceExecutionRouter {
           transactionId: (payload as any)?.metadata?.transactionId,
           recoveryId: (payload as any)?.metadata?.recoveryId,
         });
+        if (eventAccepted) {
+      if (eventAccepted) {
         this.analyticsEngine?.getProviderAnalytics(provider.id);
         this.scoringEngine?.refreshScores();
+      }
+
+        }
+
+
         const decision = this.decisionEngine?.computeSnapshot();
         if (decision) {
           this.decisionRegistry?.store(decision);
@@ -131,10 +154,13 @@ export class PersistenceExecutionRouter {
           error: { code: result?.error?.code, message: result?.error?.message, retryable: result?.error?.retryable },
           metadata: { payloadKind: "submit" },
         });
-        this.analyticsEngine?.getProviderAnalytics(provider.id);
-        this.scoringEngine?.refreshScores();
+        if (eventAccepted) {
+          this.analyticsEngine?.getProviderAnalytics(provider.id);
+          this.scoringEngine?.refreshScores();
+        }
 
       }
+
       return result;
     } catch (e: any) {
       this.auditRecorder.recordExecutionFailed({
