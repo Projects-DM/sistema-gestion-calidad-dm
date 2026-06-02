@@ -703,3 +703,5 @@ Final activation phase:
 - Selection Engine wired into runtime execution
 - Active Provider Binding connected
 - Full pipeline activated end-to-end
+
+No se implementó funcionalidad.
