@@ -108,15 +108,34 @@ export const dynamicService = {
     }
 
     // 4. Register Audit Log (Create)
-    await supabase.from('sgc_audit_logs').insert({
-      response_id: response.id,
-      action_type: 'create',
-      modified_by: userId,
-      new_data: values,
-      reason: 'Creación inicial del registro'
-    });
+    const { data: auditInsertData, error: auditError } = await supabase
+      .from('sgc_audit_logs')
+      .insert({
+        response_id: response.id,
+        action_type: 'create',
+        modified_by: userId,
+        new_data: values,
+        reason: 'Creación inicial del registro'
+      })
+      .select()
+      .single();
 
-    return response;
+    if (auditError) throw auditError;
+
+    // 5. Runtime bridge hook (no DB schema changes)
+    // Emit normalized internal event object (translation happens server-side in runtime injection path).
+    // This is deliberately side-effect free regarding existing business logic.
+    const internalEvent = {
+      type: 'create',
+      formId,
+      responseId: response.id,
+      actorId: userId,
+      timestamp: new Date().toISOString(),
+      correlationId: response.id,
+      auditEventId: auditInsertData?.id,
+    };
+
+    return { ...response, __runtime_internal_event: internalEvent };
   },
 
   async verifyFormResponse(responseId, userId, status, comment) {
@@ -136,13 +155,33 @@ export const dynamicService = {
     if (updateError) throw updateError;
 
     // Register Audit Log
-    await supabase.from('sgc_audit_logs').insert({
-      response_id: responseId,
-      action_type: 'verify',
-      modified_by: userId,
-      new_data: { status, verification_comment: comment },
-      reason: `Verificación operativa: ${status}`
-    });
+    const { data: auditInsertData, error: auditError } = await supabase
+      .from('sgc_audit_logs')
+      .insert({
+        response_id: responseId,
+        action_type: 'verify',
+        modified_by: userId,
+        new_data: { status, verification_comment: comment },
+        reason: `Verificación operativa: ${status}`
+      })
+      .select()
+      .single();
+
+    if (auditError) throw auditError;
+
+    // 4. Runtime bridge hook: return internal normalized event object
+    // (consumed by runtime injection path).
+    const internalEvent = {
+      type: 'verify',
+      formId: null,
+      responseId,
+      actorId: userId,
+      timestamp: new Date().toISOString(),
+      correlationId: responseId,
+      auditEventId: auditInsertData?.id,
+    };
+
+    return internalEvent;
   },
 
   async verifyMultipleFormResponses(responseIds, userId, status, comment) {

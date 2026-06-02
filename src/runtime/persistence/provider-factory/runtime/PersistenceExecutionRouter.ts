@@ -63,12 +63,28 @@ export class PersistenceExecutionRouter {
     };
   }
 
-  async submit(payload: SubmitTransactionPayload): Promise<TransactionResult> {
+  async submit(payload: SubmitTransactionPayload & { __runtime_internal_event?: any }): Promise<TransactionResult> {
     if (!this.auditRecorder) {
       return (await this.getPersistencePortAndProviderId()).port.submit(payload);
     }
 
     const provider = await this.activeProviderManager.getActiveProviderContract();
+
+    const translatedEvent = (payload as any)?.__runtime_internal_event;
+
+    // BusinessEventTranslationLayer is invoked upstream by SaaS hooks.
+    // Runtime injects only the translated event envelope into audit.
+    if (translatedEvent && this.auditRecorder) {
+      this.auditRecorder.recordExecutionStarted({
+        providerId: provider.id,
+        operationType: `business.${translatedEvent.type}` as any,
+        correlationId: translatedEvent.correlationId,
+        transactionId: translatedEvent.responseId,
+        metadata: { payloadKind: translatedEvent.type },
+      });
+    }
+
+
     const auditStarted = this.auditRecorder.recordExecutionStarted({
       providerId: provider.id,
       operationType: "persistence.submit",
