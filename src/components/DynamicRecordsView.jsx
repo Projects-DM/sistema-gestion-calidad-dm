@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dynamicService } from '../services/dynamicService';
 import { useAuth } from '../hooks/useAuth';
+import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
 import { 
   Search, 
   Filter, 
@@ -99,7 +100,10 @@ export default function DynamicRecordsView({ moduleId }) {
     
     try {
       setVerifying(true);
-      await dynamicService.verifyFormResponse(selectedRecord.id, user.id, verifyStatus, verifyComment);
+      const internalEvent = await dynamicService.verifyFormResponse(selectedRecord.id, user.id, verifyStatus, verifyComment);
+      if (internalEvent) {
+        await runtimeActivationLayer.activate(internalEvent);
+      }
       
       // Update local state
       const updatedRec = {

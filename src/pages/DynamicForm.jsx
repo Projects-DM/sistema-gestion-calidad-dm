@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
+import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
 
 import BaseChecklist from '../components/engines/BaseChecklist';
 import BaseMediciones from '../components/engines/BaseMediciones';
@@ -122,7 +123,10 @@ export default function DynamicForm() {
         processedValues[key] = val;
       });
 
-      await dynamicService.submitFormResponse(formDef.id, user.id, processedValues, evidences);
+      const result = await dynamicService.submitFormResponse(formDef.id, user.id, processedValues, evidences);
+      if (result && result.__runtime_internal_event) {
+        await runtimeActivationLayer.activate(result.__runtime_internal_event);
+      }
       setSuccess(true);
       setTimeout(() => {
         navigate(`/${moduleSlug}`);
