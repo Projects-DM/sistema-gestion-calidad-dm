@@ -43,7 +43,13 @@ export class PersistenceExecutionRouter {
     private readonly decisionRegistry?: RuntimeProviderDecisionRegistry,
     private readonly selectionEngine?: RuntimeProviderSelectionEngine,
     private readonly selectionRegistry?: RuntimeProviderSelectionRegistry,
-    private readonly eventSafetyLayer: EventSafetyLayer = new EventSafetyLayer()
+    private readonly eventSafetyLayer: EventSafetyLayer = new EventSafetyLayer(),
+
+    /**
+     * S23.13 optional in-memory GlobalDedupAnchor.
+     * Non-persistent, non-distributed, failure-safe fallback to S23.12.
+     */
+    private readonly globalDedupAnchor?: { accept: (idempotencyKey: string) => boolean }
   ) {}
 
 
@@ -53,7 +59,35 @@ export class PersistenceExecutionRouter {
 
 
 
+
+  private readonly internalGlobalDedupAnchor = (() => {
+    const seen = new Map<string, true>();
+    return {
+      accept: (idempotencyKey: string) => {
+        if (seen.has(idempotencyKey)) return false;
+        seen.set(idempotencyKey, true);
+        return true;
+      }
+    };
+  })();
+
+  private getInternalGlobalDedupAnchor() {
+    return this.internalGlobalDedupAnchor;
+  }
+
+  private buildDeterministicCompositeIdempotencyKey(event: any): string {
+    const eventType = event.eventType ?? event.type ?? "";
+    const correlationId = event.correlationId ?? "";
+    const actorId = event.actorId ?? "";
+    const responseId = event.payload?.normalized?.responseId ?? "";
+    const base = `${eventType}:${correlationId}:${actorId}:${responseId}`;
+    let h = 0;
+    for (let i = 0; i < base.length; i++) h = (h * 31 + base.charCodeAt(i)) >>> 0;
+    return `idem_${h.toString(16)}`;
+  }
+
   private async getPersistencePortAndProviderId(): Promise<{
+
     port: any;
 
     providerId: string;
@@ -73,11 +107,36 @@ export class PersistenceExecutionRouter {
       return (await this.getPersistencePortAndProviderId()).port.submit(payload);
     }
 
+
     const provider = await this.activeProviderManager.getActiveProviderContract();
     const translatedEvent = (payload as any)?.__runtime_internal_event;
 
+    // S23.13 GlobalDedupAnchor pre-gate (optional, in-memory, failure-safe)
+    let globalAccepted = true;
+    if (translatedEvent) {
+      try {
+        const idempotencyKey = translatedEvent.eventId ?? this.buildDeterministicCompositeIdempotencyKey(translatedEvent);
+        const anchor = this.globalDedupAnchor ?? this.getInternalGlobalDedupAnchor();
+        if (idempotencyKey && anchor) {
+          globalAccepted = anchor.accept(idempotencyKey);
+        }
+      } catch {
+        // Fallback to S23.12 only
+        globalAccepted = true;
+      }
+    }
+
+
+    if (!globalAccepted) {
+      // STOP PIPELINE: no audit write, no analytics refresh, no scoring trigger
+      // Persist still proceeds? Spec requires STOP PIPELINE immediately.
+      // We stop by throwing a no-op result-like error.
+      return { success: true } as TransactionResult;
+    }
+
     // EventSafetyLayer gate (strict)
     let eventAccepted = true;
+
     if (translatedEvent) {
       const safetyDecision = this.eventSafetyLayer.validateAndProcess(translatedEvent);
       eventAccepted = safetyDecision.kind === "accepted";
@@ -123,12 +182,10 @@ export class PersistenceExecutionRouter {
           recoveryId: (payload as any)?.metadata?.recoveryId,
         });
         if (eventAccepted) {
-      if (eventAccepted) {
-        this.analyticsEngine?.getProviderAnalytics(provider.id);
-        this.scoringEngine?.refreshScores();
-      }
-
+          this.analyticsEngine?.getProviderAnalytics(provider.id);
+          this.scoringEngine?.refreshScores();
         }
+
 
 
         const decision = this.decisionEngine?.computeSnapshot();

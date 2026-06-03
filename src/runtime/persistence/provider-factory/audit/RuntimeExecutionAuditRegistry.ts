@@ -7,13 +7,23 @@ import type { ProviderExecutionAuditRecord } from "./contracts/ProviderExecution
  * - no database
  * - runtime-first (pure TS)
  */
+export type GlobalDedupAnchor = {
+  /**
+   * Returns true when key was NOT seen before (and should be registered by the implementation).
+   * Returns false when key is a duplicate.
+   */
+  accept(idempotencyKey: string): boolean;
+};
+
 export class RuntimeExecutionAuditRegistry {
   private readonly recordsByProviderId = new Map<string, ProviderExecutionAuditRecord[]>();
   private readonly recordsByCorrelationId = new Map<string, ProviderExecutionAuditRecord[]>();
   private readonly recordsByTransactionId = new Map<string, ProviderExecutionAuditRecord[]>();
 
   /** Store record and update all deterministic indices. */
+
   public store(record: ProviderExecutionAuditRecord): void {
+
     const providerId = record.providerId;
 
     const byProvider = this.recordsByProviderId.get(providerId) ?? [];
