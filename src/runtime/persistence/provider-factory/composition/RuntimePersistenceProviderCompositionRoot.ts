@@ -12,11 +12,9 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  * - Does NOT register any real providers by default.
  */
 import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
-import { RuntimeProviderRoutingDecisionEngine, RuntimeProviderRoutingEngine, RuntimeProviderRoutingHistory } from "../routing";
 
-import type { RuntimeProviderOrchestrationEngine } from "../orchestration/RuntimeProviderOrchestrationEngine";
-import type { RuntimeProviderOrchestrationRegistry } from "../orchestration/RuntimeProviderOrchestrationRegistry";
-import type { RuntimeProviderExecutionCoordinator } from "../orchestration/RuntimeProviderExecutionCoordinator";
+
+
 
 export class RuntimePersistenceProviderCompositionRoot {
 
@@ -57,37 +55,31 @@ export class RuntimePersistenceProviderCompositionRoot {
     const { ActivePersistenceProviderManager } = require("../runtime/ActivePersistenceProviderManager");
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
 
-    // Analytics foundations wiring (runtime-first, provider-agnostic).
-    // Uses the existing in-memory audit registry (no DB access).
+    // Analytics runtime wiring (Sprint 22.3A)
     const { RuntimeProviderAnalyticsRegistry, RuntimeProviderAnalyticsEngine } = require("../analytics");
     const analyticsRegistry = new RuntimeProviderAnalyticsRegistry();
     const analyticsEngine = new RuntimeProviderAnalyticsEngine(this.auditRegistry, analyticsRegistry);
 
-    // Scoring subsystem (runtime-first, deterministic; consumes analytics registry)
-    const { RuntimeProviderScoreRegistry, RuntimeProviderScoringEngine } = require("../scoring");
-    const scoreRegistry = new RuntimeProviderScoreRegistry();
-    const scoringEngine = new RuntimeProviderScoringEngine(analyticsRegistry, scoreRegistry);
-
-
-    // IMPORTANT: keep single router instance; inject analytics at construction time.
-    const { RuntimeProviderSelectionRegistry, RuntimeProviderSelectionEngine } = require("../selection");
-    const selectionRegistry = new RuntimeProviderSelectionRegistry();
-    // select engine deterministically from decisions (decision registry is created inside router today)
+    // IMPORTANT: keep single router instance; inject only analyticsEngine for this sprint.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { RuntimeProviderDecisionRegistry } = require("../decision");
     const decisionRegistry = new RuntimeProviderDecisionRegistry();
-    const selectionEngine = new RuntimeProviderSelectionEngine(decisionRegistry);
 
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
+
     this.executionRouter = new PersistenceExecutionRouter(
       this.activeProviderManager,
       this.auditRecorder,
       analyticsEngine,
-      scoringEngine,
+      undefined,
       undefined,
       decisionRegistry,
-      selectionEngine,
-      selectionRegistry
+      undefined,
+      undefined
     );
+
+
 
     this.initResult = {
       providersRegistered: 0,
