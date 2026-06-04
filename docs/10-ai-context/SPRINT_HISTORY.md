@@ -1490,3 +1490,21 @@ Ningún formulario nuevo puede crearse fuera del contrato oficial SGC.
 Estado Arquitectura:
 
 Sprint 24 Certificado.
+
+feat(layout-engine): implement Sprint 26 layout architecture layer
+
+* add LayoutContracts.ts (LayoutDefinition, SectionDefinition, ColumnDefinition, FieldReference)
+* add LayoutEngine.tsx structural renderer
+* enable multi-section / multi-column layout rendering
+* integrate DynamicFieldRenderer for field resolution
+* enforce strict separation between layout and business logic
+* maintain compatibility with ComponentRegistry (Sprint 25 renderer system)
+
+ARCHITECTURE:
+LayoutDefinition → LayoutEngine → DynamicFieldRenderer → ComponentRegistry → Field Components
+
+BREAKING CHANGES:
+none
+
+NOTES:
+Layout layer is purely structural and contains no runtime or validation logic.

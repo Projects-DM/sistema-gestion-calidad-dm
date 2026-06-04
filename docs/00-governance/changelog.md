@@ -1786,3 +1786,21 @@ Implemented:
 - Analytics Wiring
 
 Runtime ready for first real business form integration.
+
+feat(layout-engine): implement Sprint 26 layout architecture layer
+
+* add LayoutContracts.ts (LayoutDefinition, SectionDefinition, ColumnDefinition, FieldReference)
+* add LayoutEngine.tsx structural renderer
+* enable multi-section / multi-column layout rendering
+* integrate DynamicFieldRenderer for field resolution
+* enforce strict separation between layout and business logic
+* maintain compatibility with ComponentRegistry (Sprint 25 renderer system)
+
+ARCHITECTURE:
+LayoutDefinition → LayoutEngine → DynamicFieldRenderer → ComponentRegistry → Field Components
+
+BREAKING CHANGES:
+none
+
+NOTES:
+Layout layer is purely structural and contains no runtime or validation logic.
