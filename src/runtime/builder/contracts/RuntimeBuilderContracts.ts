@@ -5,6 +5,8 @@
 
 import type { LayoutDefinition } from "../../layout/contracts/LayoutContracts";
 import type { RuntimeFieldDefinition } from "../../fields/contracts/FieldContracts";
+import type { FieldRule } from "../../rules/contracts/RuleContracts";
+
 
 export interface RuntimeResolvedForm {
   formId: string;
@@ -13,11 +15,12 @@ export interface RuntimeResolvedForm {
   fieldIds: string[];
   ruleIds: string[];
 
-  /**
-   * Optional because Sprint 32 explicitly forbids loading layouts.
-   */
   layout?: LayoutDefinition;
+
+  rules?: FieldRule[];
+
 
   fields: RuntimeFieldDefinition[];
 }
+
 

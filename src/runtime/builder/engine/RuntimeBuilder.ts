@@ -9,6 +9,11 @@ import type { RuntimeResolvedForm } from "../contracts/RuntimeBuilderContracts";
 import { FieldRegistry } from "../../fields/registry/FieldRegistry";
 import { FormRuntimeResolver } from "../../forms/runtime/FormRuntimeResolver";
 
+import { LayoutResolver } from "../../layout/runtime/LayoutRuntimeResolver";
+
+import { getRuleRuntimeResolver } from "../../rules/runtime/RuleRuntimeProvider";
+
+
 export type RuntimeBuilder = {
   resolve(formId: string): RuntimeResolvedForm | undefined;
   has(formId: string): boolean;
@@ -38,8 +43,10 @@ export const RuntimeBuilder: RuntimeBuilder = {
       fieldIds: runtimeForm.fieldIds,
       ruleIds: runtimeForm.ruleIds,
       fields: buildFields(runtimeForm.fieldIds),
-      // layout is intentionally omitted (Sprint 32 forbids layout loading)
+      layout: LayoutResolver.resolve(runtimeForm.layoutId),
+      rules: runtimeForm.ruleIds.map((ruleId) => getRuleRuntimeResolver().resolve(ruleId)).filter((r): r is import("../../rules/contracts/RuleContracts").FieldRule => r != null),
     };
+
   },
 
   has(formId: string): boolean {
