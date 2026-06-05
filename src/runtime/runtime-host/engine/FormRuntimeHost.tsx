@@ -5,20 +5,24 @@
 
 import React from "react";
 
-import type { LayoutDefinition } from "../../layout/contracts/LayoutContracts";
-import type { RuntimeValue } from "../../types/runtimeContracts";
-
 import { FormRendererEngine } from "../../form/engine/FormRendererEngine";
 
+import { LayoutResolver } from "../../layout/runtime/LayoutRuntimeResolver";
+
+import type { LayoutDefinition } from "../../layout/contracts/LayoutContracts";
+
 import type { FormRuntimeHostProps } from "../contracts/RuntimeHostContracts";
+
 import { getRuntimeBuilder } from "../../builder/provider/RuntimeBuilderProvider";
 
 import type { RuntimeResolvedForm } from "../../builder/contracts/RuntimeBuilderContracts";
 
-const resolveLayout = (layout: LayoutDefinition | undefined): LayoutDefinition | undefined => {
-  // Sprint 33 explicitly forbids layout loading.
-  return layout;
+const resolveLayoutById = (layoutId: string | undefined): LayoutDefinition | undefined => {
+  if (!layoutId) return undefined;
+  return LayoutResolver.resolve(layoutId);
 };
+
+
 
 export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   formId,
@@ -30,7 +34,8 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   const builder = getRuntimeBuilder();
   const resolved: RuntimeResolvedForm | undefined = builder.resolve(formId);
 
-  const layout = resolveLayout(resolved?.layout);
+  const layout = resolveLayoutById(resolved?.layoutId);
+
 
   if (!resolved || !layout) {
     return null;
