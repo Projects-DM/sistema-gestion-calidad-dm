@@ -1,0 +1,49 @@
+/**
+ * RuntimeBuilder (Sprint 32)
+ * Builds RuntimeResolvedForm from runtime metadata registries.
+ */
+
+import type { RuntimeFieldDefinition } from "../../fields/contracts/FieldContracts";
+import type { RuntimeResolvedForm } from "../contracts/RuntimeBuilderContracts";
+
+import { FieldRegistry } from "../../fields/registry/FieldRegistry";
+import { FormRuntimeResolver } from "../../forms/runtime/FormRuntimeResolver";
+
+export type RuntimeBuilder = {
+  resolve(formId: string): RuntimeResolvedForm | undefined;
+  has(formId: string): boolean;
+};
+
+const buildFields = (fieldIds: string[]): RuntimeFieldDefinition[] => {
+  const out: RuntimeFieldDefinition[] = [];
+
+  for (const fieldId of fieldIds) {
+    const def = FieldRegistry.get(fieldId);
+    if (!def) continue;
+    out.push(def);
+  }
+
+  return out;
+};
+
+export const RuntimeBuilder: RuntimeBuilder = {
+  resolve(formId: string): RuntimeResolvedForm | undefined {
+    const runtimeForm = FormRuntimeResolver.resolve(formId);
+    if (!runtimeForm) return undefined;
+
+    return {
+      formId: runtimeForm.formId,
+      formName: runtimeForm.formName,
+      layoutId: runtimeForm.layoutId,
+      fieldIds: runtimeForm.fieldIds,
+      ruleIds: runtimeForm.ruleIds,
+      fields: buildFields(runtimeForm.fieldIds),
+      // layout is intentionally omitted (Sprint 32 forbids layout loading)
+    };
+  },
+
+  has(formId: string): boolean {
+    return FormRuntimeResolver.has(formId);
+  },
+};
+
