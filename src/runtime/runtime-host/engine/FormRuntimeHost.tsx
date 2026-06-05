@@ -17,6 +17,9 @@ import { getRuntimeBuilder } from "../../builder/provider/RuntimeBuilderProvider
 
 import type { RuntimeResolvedForm } from "../../builder/contracts/RuntimeBuilderContracts";
 
+import { useRulesEngine } from "../../rules/engine/useRulesEngine";
+
+
 const resolveLayoutById = (layoutId: string | undefined): LayoutDefinition | undefined => {
   if (!layoutId) return undefined;
   return LayoutResolver.resolve(layoutId);
@@ -34,17 +37,35 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   const builder = getRuntimeBuilder();
   const resolved: RuntimeResolvedForm | undefined = builder.resolve(formId);
 
+  const rules: any[] = [];
+
+  const { hiddenFields, disabledFields, computedValues } = useRulesEngine({ rules, formData });
+
+  // Sprint 37:
+  // hiddenFields and disabledFields
+  // will be propagated into LayoutEngine
+
+  const mergedFormData: Record<string, unknown> = {
+    ...formData,
+    ...computedValues,
+  };
+
+
   const layout = resolveLayoutById(resolved?.layoutId);
 
+  void hiddenFields;
+  void disabledFields;
 
   if (!resolved || !layout) {
     return null;
   }
 
+
   return (
     <FormRendererEngine
       layout={layout}
-      formData={resolvedFieldsToFormData(resolved, formData)}
+      formData={resolvedFieldsToFormData(resolved, mergedFormData)}
+
       onChange={onChange}
       disabled={disabled}
       errors={errors}
