@@ -19,11 +19,18 @@ import type { RuntimeResolvedForm } from "../../builder/contracts/RuntimeBuilder
 
 import { useRulesEngine } from "../../rules/engine/useRulesEngine";
 
+import { getRuleRuntimeResolver } from "../../rules/runtime/RuleRuntimeProvider";
+
+import type { FieldRule } from "../../rules/contracts/RuleContracts";
+
 
 const resolveLayoutById = (layoutId: string | undefined): LayoutDefinition | undefined => {
   if (!layoutId) return undefined;
   return LayoutResolver.resolve(layoutId);
 };
+
+
+
 
 
 
@@ -37,9 +44,16 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   const builder = getRuntimeBuilder();
   const resolved: RuntimeResolvedForm | undefined = builder.resolve(formId);
 
-  const rules: any[] = [];
+  const resolvedRuleIds: string[] | undefined = resolved?.ruleIds;
+  const rules: FieldRule[] = resolvedRuleIds?.length
+    ? resolvedRuleIds
+        .map((ruleId) => getRuleRuntimeResolver().resolve(ruleId))
+        .filter((r): r is FieldRule => r != null)
+    : [];
 
   const { hiddenFields, disabledFields, computedValues } = useRulesEngine({ rules, formData });
+
+
 
   // Sprint 37:
   // hiddenFields and disabledFields
