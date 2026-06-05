@@ -22,7 +22,10 @@ export type FormRendererEngineProps = {
   onChange: (fieldId: string, value: unknown) => void;
   disabled?: boolean;
   errors?: Record<string, string>;
+  hiddenFields?: Set<string>;
+  disabledFields?: Set<string>;
 };
+
 
 /**
  * FormRendererEngine
@@ -33,8 +36,20 @@ export const FormRendererEngine: React.FC<FormRendererEngineProps> = ({
   onChange,
   disabled,
   errors,
+  hiddenFields,
+  disabledFields,
 }) => {
-  return <LayoutEngine layout={layout} formData={formData as Record<string, RuntimeValue>} onChange={onChange} disabled={disabled} errors={errors} />;
+  return (
+    <LayoutEngine
+      layout={layout}
+      formData={formData as Record<string, RuntimeValue>}
+      onChange={onChange}
+      disabled={disabled}
+      errors={errors}
+      hiddenFields={hiddenFields}
+      disabledFields={disabledFields}
+    />
+  );
 };
 
 export default FormRendererEngine;

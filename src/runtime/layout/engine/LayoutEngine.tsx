@@ -27,12 +27,15 @@ export type LayoutEngineProps = {
   onChange: (fieldId: string, value: unknown) => void;
   disabled?: boolean;
   errors?: Record<string, string>;
+  hiddenFields?: Set<string>;
+  disabledFields?: Set<string>;
 };
+
 
 /**
  * LayoutEngine component.
  */
-export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, onChange, disabled, errors }) => {
+export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, onChange, disabled, errors, hiddenFields, disabledFields }) => {
   return (
     <div className="runtime-layout">
       {layout.sections.map((section) => (
@@ -56,6 +59,10 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, on
                     __fieldDefs?: Record<string, unknown>;
                   }).__fieldDefs?.[fieldId] as DynamicFieldRendererProps["fieldDef"] | undefined;
 
+                  if (hiddenFields?.has(fieldId)) {
+                    return null;
+                  }
+
                   if (!fieldDef) {
                     return (
                       <div key={fieldId} className="runtime-field-container">
@@ -72,7 +79,7 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, on
                       <DynamicFieldRenderer
                         fieldDef={fieldDef}
                         value={value}
-                        disabled={Boolean(disabled)}
+                        disabled={Boolean(disabled) || (disabledFields?.has(fieldId) ?? false)}
                         error={error}
                         onChange={(id, nextValue) => onChange(id, nextValue)}
                       />
