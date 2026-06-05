@@ -3,15 +3,14 @@
  * Runtime integration host: RuntimeBuilder -> FormRendererEngine.
  */
 
+
 import React from "react";
 
 import { FormRendererEngine } from "../../form/engine/FormRendererEngine";
 
-import { LayoutResolver } from "../../layout/runtime/LayoutRuntimeResolver";
-
-import type { LayoutDefinition } from "../../layout/contracts/LayoutContracts";
-
 import type { FormRuntimeHostProps } from "../contracts/RuntimeHostContracts";
+
+
 
 import { getRuntimeBuilder } from "../../builder/provider/RuntimeBuilderProvider";
 
@@ -24,10 +23,13 @@ import { getRuleRuntimeResolver } from "../../rules/runtime/RuleRuntimeProvider"
 import type { FieldRule } from "../../rules/contracts/RuleContracts";
 
 
-const resolveLayoutById = (layoutId: string | undefined): LayoutDefinition | undefined => {
-  if (!layoutId) return undefined;
-  return LayoutResolver.resolve(layoutId);
+// Layout resolution moved to RuntimeBuilder (Sprint 41)
+// Keeping this helper as a no-op to avoid touching broader host logic.
+const resolveLayoutById = (_layoutId: string | undefined): undefined => {
+  return undefined;
 };
+
+
 
 
 
@@ -65,7 +67,8 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   };
 
 
-  const layout = resolveLayoutById(resolved?.layoutId);
+  const layout = resolved?.layout;
+
 
   void hiddenFields;
   void disabledFields;
