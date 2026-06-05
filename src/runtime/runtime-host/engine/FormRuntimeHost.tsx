@@ -70,8 +70,8 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   const layout = resolved?.layout;
 
 
-  void hiddenFields;
-  void disabledFields;
+  // Propagate rule engine results downstream.
+
 
   if (!resolved || !layout) {
     return null;
@@ -86,6 +86,9 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
       onChange={onChange}
       disabled={disabled}
       errors={errors}
+      hiddenFields={hiddenFields ? new Set(hiddenFields) : undefined}
+      disabledFields={disabledFields ? new Set(disabledFields) : undefined}
+
     />
   );
 };
