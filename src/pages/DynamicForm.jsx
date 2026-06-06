@@ -173,7 +173,7 @@ export default function DynamicForm() {
   // Si runtime está habilitado para el formulario o el formulario está en lista nativa:
   // Runtime es el punto de entrada.
   // Si no: fallback a legacy (BaseChecklist/BaseMediciones/BaseGeneric).
-  const runtimeNativeForms = ["cloro-ph-agua"];
+  const runtimeNativeForms = ["cloro-ph-agua", "limpieza-diaria"];
   const forceRuntime = runtimeNativeForms.includes(formDef?.slug);
 
   const renderEngine = () => {

@@ -78,6 +78,13 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
   }
 
 
+  console.debug("[RuntimeHost]", {
+    formId,
+    fields: resolved?.fields?.length ?? 0,
+    rules: resolved?.rules?.length ?? 0,
+    layout: resolved?.layout?.id,
+  });
+
   return (
     <FormRendererEngine
       layout={layout}
