@@ -77,13 +77,32 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
     return null;
   }
 
-
   console.debug("[RuntimeHost]", {
     formId,
     fields: resolved?.fields?.length ?? 0,
     rules: resolved?.rules?.length ?? 0,
     layout: resolved?.layout?.id,
   });
+
+  // SPRINT 47 - Submission diagnostics (logs only)
+  // Note: runtime render-time does not own persistence. We validate integrity of the runtime fields vs incoming formData.
+  try {
+    const runtimeFieldIds = resolved.fields.map((f) => f.id);
+    const formDataFieldIds = Object.keys(formData ?? {});
+
+    const missingFields = runtimeFieldIds.filter((id) => !(id in (formData ?? {})));
+    const extraFields = formDataFieldIds.filter((id) => !runtimeFieldIds.includes(id));
+
+    console.debug("[RuntimeSubmission]", {
+      formId,
+      fieldCount: resolved?.fields?.length,
+      valuesCount: Object.keys(formData ?? {}).length,
+      missingFields,
+      extraFields,
+    });
+  } catch (e) {
+    console.debug("[RuntimeSubmission] validation_skipped", { formId, reason: e instanceof Error ? e.message : String(e) });
+  }
 
   return (
     <FormRendererEngine

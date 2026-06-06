@@ -64,8 +64,17 @@ export default function DynamicForm() {
   // Feature flag: forms may expose `runtime_enabled` (or `runtimeEnabled`).
   const runtimeEnabled = Boolean(formDef?.runtime_enabled ?? formDef?.runtimeEnabled);
 
+  // SPRINT 47 - DynamicForm compatibility verification logs (no blocking)
+  // runtime vs legacy should preserve the same payload to submitFormResponse().
+  const responsePayloadSize = Object.keys(values ?? {}).length;
+  console.debug("[LegacySubmissionCompatibility]", {
+    runtimeEnabled,
+    formSlug,
+    responsePayloadSize,
+  });
 
   // Recalculate conditional requirements (Evidence and Observations)
+
   useEffect(() => {
     if (!fields.length) return;
     let hasCriticals = false;
