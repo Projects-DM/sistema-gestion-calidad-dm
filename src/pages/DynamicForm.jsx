@@ -169,13 +169,15 @@ export default function DynamicForm() {
     );
   }
 
-  // Runtime Entry Consolidation Layer (SPRINT 43)
-  // Si runtime está habilitado para el formulario: Runtime es el punto de entrada.
+  // Runtime Entry Consolidation Layer (SPRINT 45)
+  // Si runtime está habilitado para el formulario o el formulario está en lista nativa:
+  // Runtime es el punto de entrada.
   // Si no: fallback a legacy (BaseChecklist/BaseMediciones/BaseGeneric).
+  const runtimeNativeForms = ["cloro-ph-agua"];
+  const forceRuntime = runtimeNativeForms.includes(formDef?.slug);
+
   const renderEngine = () => {
-    if (runtimeEnabled && formDef) {
-      // Runtime host encapsula RuntimeBuilder + LayoutEngine + DynamicFieldRenderer.
-      // legacy queda como fallback invisible.
+    if (formDef && (runtimeEnabled || forceRuntime)) {
       return (
         <FormRuntimeHost
           formId={formDef.id}
@@ -185,6 +187,7 @@ export default function DynamicForm() {
         />
       );
     }
+
 
     const props = { fields, values, onChange: handleChange };
     switch (formDef.engine_type) {

@@ -82,7 +82,7 @@ export const FormRuntimeHost: React.FC<FormRuntimeHostProps> = ({
     <FormRendererEngine
       layout={layout}
       formData={resolvedFieldsToFormData(resolved, mergedFormData)}
-
+      fields={resolved.fields}
       onChange={onChange}
       disabled={disabled}
       errors={errors}
