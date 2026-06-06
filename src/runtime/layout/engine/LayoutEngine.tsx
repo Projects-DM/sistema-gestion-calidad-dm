@@ -21,6 +21,8 @@ import type { DynamicFieldRendererProps } from "../../rendering/DynamicFieldRend
 /**
  * LayoutEngine props.
  */
+import type { RuntimeFieldDefinition } from "../../fields/contracts/FieldContracts";
+
 export type LayoutEngineProps = {
   layout: LayoutDefinition;
   formData: Record<string, unknown>;
@@ -29,13 +31,15 @@ export type LayoutEngineProps = {
   errors?: Record<string, string>;
   hiddenFields?: Set<string>;
   disabledFields?: Set<string>;
+  fields?: RuntimeFieldDefinition[];
 };
+
 
 
 /**
  * LayoutEngine component.
  */
-export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, onChange, disabled, errors, hiddenFields, disabledFields }) => {
+export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, fields, onChange, disabled, errors, hiddenFields, disabledFields }) => {
   return (
     <div className="runtime-layout">
       {layout.sections.map((section) => (
@@ -53,11 +57,16 @@ export const LayoutEngine: React.FC<LayoutEngineProps> = ({ layout, formData, on
                   // LayoutContracts intentionally only contains references, so the concrete field
                   // contract must be supplied by a higher layer via formData.
                   //
-                  // If the higher layer stores field definitions inside formData, this contract
-                  // will be compatible. Otherwise, consumers should adapt accordingly.
-                  const fieldDef = (formData as Record<string, unknown> & {
+                  // If fields are provided by the runtime, use them.
+                  // Compatibility layer: if not, fallback to temporary `__fieldDefs` inside formData.
+                  const runtimeFieldDef = fields?.find((f) => f.id === fieldId) as DynamicFieldRendererProps["fieldDef"] | undefined;
+
+                  const fieldDefFromCompat = (formData as Record<string, unknown> & {
                     __fieldDefs?: Record<string, unknown>;
                   }).__fieldDefs?.[fieldId] as DynamicFieldRendererProps["fieldDef"] | undefined;
+
+                  const fieldDef = runtimeFieldDef ?? fieldDefFromCompat;
+
 
                   if (hiddenFields?.has(fieldId)) {
                     return null;

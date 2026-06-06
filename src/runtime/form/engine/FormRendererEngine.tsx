@@ -16,6 +16,8 @@ import type { RuntimeValue } from "../../types/runtimeContracts";
 
 import { LayoutEngine } from "../../layout/engine/LayoutEngine";
 
+import type { RuntimeFieldDefinition } from "../../fields/contracts/FieldContracts";
+
 export type FormRendererEngineProps = {
   layout: LayoutDefinition;
   formData: Record<string, unknown>;
@@ -24,7 +26,9 @@ export type FormRendererEngineProps = {
   errors?: Record<string, string>;
   hiddenFields?: Set<string>;
   disabledFields?: Set<string>;
+  fields?: RuntimeFieldDefinition[];
 };
+
 
 
 /**
@@ -33,6 +37,7 @@ export type FormRendererEngineProps = {
 export const FormRendererEngine: React.FC<FormRendererEngineProps> = ({
   layout,
   formData,
+  fields,
   onChange,
   disabled,
   errors,
@@ -43,6 +48,7 @@ export const FormRendererEngine: React.FC<FormRendererEngineProps> = ({
     <LayoutEngine
       layout={layout}
       formData={formData as Record<string, RuntimeValue>}
+      fields={fields}
       onChange={onChange}
       disabled={disabled}
       errors={errors}
@@ -51,6 +57,7 @@ export const FormRendererEngine: React.FC<FormRendererEngineProps> = ({
     />
   );
 };
+
 
 export default FormRendererEngine;
 
