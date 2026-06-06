@@ -11,6 +11,8 @@ import BaseGeneric from '../components/engines/BaseGeneric';
 import EvidenceUploader from '../components/EvidenceUploader';
 
 import FormRuntimeHost from '../runtime/runtime-host/engine/FormRuntimeHost';
+import { getRuntimeSubmissionAdapter } from '../runtime/submission/provider/RuntimeSubmissionProvider';
+
 
 
 export default function DynamicForm() {
@@ -140,10 +142,18 @@ export default function DynamicForm() {
         processedValues[key] = val;
       });
 
+      const adapter = getRuntimeSubmissionAdapter();
+      await adapter.submit({
+        formId: formDef.id,
+        userId: user.id,
+        values: processedValues,
+      });
+
       const result = await dynamicService.submitFormResponse(formDef.id, user.id, processedValues, evidences);
       if (result && result.__runtime_internal_event) {
         await runtimeActivationLayer.activate(result.__runtime_internal_event);
       }
+
       setSuccess(true);
       setTimeout(() => {
         navigate(`/${moduleSlug}`);
