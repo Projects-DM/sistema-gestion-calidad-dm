@@ -16,11 +16,14 @@ export function getRuntimeBuilder(): RuntimeBuilder {
   if (!runtimeBuilder) {
     // Safe default no-op builder.
     runtimeBuilder = {
-      resolve(): undefined,
+      resolve(): undefined {
+        return undefined;
+      },
       has(): boolean {
         return false;
       },
     };
+
   }
 
   return runtimeBuilder;

@@ -10,6 +10,9 @@ import BaseMediciones from '../components/engines/BaseMediciones';
 import BaseGeneric from '../components/engines/BaseGeneric';
 import EvidenceUploader from '../components/EvidenceUploader';
 
+import FormRuntimeHost from '../runtime/runtime-host/engine/FormRuntimeHost';
+
+
 export default function DynamicForm() {
   const { moduleSlug, formSlug } = useParams();
   const { user, rol } = useAuth();
@@ -56,6 +59,11 @@ export default function DynamicForm() {
     }
     loadForm();
   }, [formSlug, rol, navigate, moduleSlug]);
+
+  // Runtime Entry Consolidation Layer (SPRINT 43)
+  // Feature flag: forms may expose `runtime_enabled` (or `runtimeEnabled`).
+  const runtimeEnabled = Boolean(formDef?.runtime_enabled ?? formDef?.runtimeEnabled);
+
 
   // Recalculate conditional requirements (Evidence and Observations)
   useEffect(() => {
@@ -161,7 +169,23 @@ export default function DynamicForm() {
     );
   }
 
+  // Runtime Entry Consolidation Layer (SPRINT 43)
+  // Si runtime está habilitado para el formulario: Runtime es el punto de entrada.
+  // Si no: fallback a legacy (BaseChecklist/BaseMediciones/BaseGeneric).
   const renderEngine = () => {
+    if (runtimeEnabled && formDef) {
+      // Runtime host encapsula RuntimeBuilder + LayoutEngine + DynamicFieldRenderer.
+      // legacy queda como fallback invisible.
+      return (
+        <FormRuntimeHost
+          formId={formDef.id}
+          formData={values}
+          onChange={handleChange}
+          disabled={saving}
+        />
+      );
+    }
+
     const props = { fields, values, onChange: handleChange };
     switch (formDef.engine_type) {
       case 'BaseChecklist':
@@ -173,6 +197,7 @@ export default function DynamicForm() {
         return <BaseGeneric {...props} />;
     }
   };
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
