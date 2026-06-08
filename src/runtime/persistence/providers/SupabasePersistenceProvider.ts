@@ -1,3 +1,5 @@
+import { dynamicService } from "../../../services/dynamicService";
+
 import type {
   RuntimePersistenceProvider,
   RuntimePersistencePayload,
@@ -8,15 +10,22 @@ export const SupabasePersistenceProvider: RuntimePersistenceProvider = {
   async save(
     payload: RuntimePersistencePayload
   ): Promise<RuntimePersistenceResult> {
-    console.debug("[SupabasePersistenceProvider]", payload);
+    const response =
+      await dynamicService.submitFormResponse(
+        payload.formId,
+        payload.userId,
+        payload.values,
+        [],
+        {}
+      );
 
-    // TODO (SPRINT 50): persist using dynamicService / Supabase calls.
-    // This sprint is diagnostics-only.
     return {
-      success: false,
+      success: Boolean(response),
+      responseId: (response as any)?.id,
     };
   },
 };
 
 export default SupabasePersistenceProvider;
+
 

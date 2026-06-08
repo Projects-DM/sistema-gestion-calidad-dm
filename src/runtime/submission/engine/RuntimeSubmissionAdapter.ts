@@ -4,17 +4,22 @@ import type {
   RuntimeSubmissionResult,
 } from "../contracts/RuntimeSubmissionContracts";
 
+import { getRuntimePersistenceProvider } from "../../persistence/provider/RuntimePersistenceProvider";
+
 export const RuntimeSubmissionAdapterImpl: RuntimeSubmissionAdapter = {
   async submit(
     payload: RuntimeSubmissionPayload
   ): Promise<RuntimeSubmissionResult> {
-    console.debug("[RuntimeSubmissionAdapter]", payload);
+    const provider = getRuntimePersistenceProvider();
 
-    return {
-      success: false,
-    };
+    return await provider.save({
+      formId: payload.formId,
+      userId: payload.userId,
+      values: payload.values,
+    });
   },
 };
 
 export default RuntimeSubmissionAdapterImpl;
+
 
