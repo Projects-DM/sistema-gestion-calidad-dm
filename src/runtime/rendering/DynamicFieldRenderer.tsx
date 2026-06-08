@@ -2,6 +2,8 @@ import React from "react";
 
 import type { FieldDefinition, FieldRenderProps } from "./registry/ComponentRegistryBase";
 import { ComponentRegistry } from "./registry/ComponentRegistry";
+import { normalizeFieldType } from "./registry/FieldTypeNormalizer";
+
 
 export type DynamicFieldRendererProps = {
   fieldDef: FieldDefinition;
@@ -34,7 +36,10 @@ const UnsupportedFieldTypeFallback: React.FC<{ fieldType: string; label: string;
 export function DynamicFieldRenderer(props: DynamicFieldRendererProps) {
   const { fieldDef, value, onChange, disabled, error } = props;
 
-  const component = ComponentRegistry.get(fieldDef.fieldType);
+  const originalType = fieldDef.fieldType;
+  const normalizedType = normalizeFieldType(originalType);
+  const component = ComponentRegistry.get(normalizedType);
+
 
   const fieldRenderProps: FieldRenderProps = {
     fieldDef,
@@ -44,13 +49,26 @@ export function DynamicFieldRenderer(props: DynamicFieldRendererProps) {
     error,
   };
 
+  // Debug (only in browser)
+  if (typeof window !== "undefined") {
+    // eslint-disable-next-line no-console
+    console.debug("[FieldTypeMapping]", {
+      original: originalType,
+      normalized: normalizedType,
+      componentFound: Boolean(component),
+    });
+  }
+
+
   if (!component) {
+
     return (
       <UnsupportedFieldTypeFallback
         fieldType={String(fieldDef.fieldType)}
         label={fieldDef.label}
         error={error}
       />
+
     );
   }
 
