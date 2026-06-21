@@ -19,10 +19,6 @@ export default function FormBuilder({ formDef }) {
   const [optUnit, setOptUnit] = useState('');
   const [optChoices, setOptChoices] = useState('');
 
-  useEffect(() => {
-    loadFields();
-  }, [formDef.id]);
-
   const loadFields = async () => {
     try {
       setLoading(true);
@@ -34,6 +30,10 @@ export default function FormBuilder({ formDef }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadFields();
+  }, [formDef.id]);
 
   const handleAddField = async (e) => {
     e.preventDefault();
@@ -176,6 +176,7 @@ export default function FormBuilder({ formDef }) {
                   <option value="select">Lista desplegable</option>
                   <option value="date">Fecha</option>
                   <option value="time">Hora</option>
+                  <option value="signature">Firma digital</option>
                 </select>
               </div>
             </div>
