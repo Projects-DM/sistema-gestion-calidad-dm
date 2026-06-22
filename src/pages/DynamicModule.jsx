@@ -21,12 +21,6 @@ export default function DynamicModule() {
     async function loadData() {
       try {
         setLoading(true);
-        // Special case to prevent infinite loops or overlaps
-        if (moduleSlug === 'trazabilidad') {
-          navigate('/trazabilidad', { replace: true });
-          return;
-        }
-
         const moduleData = await dynamicService.getModuleBySlug(moduleSlug);
         setModInfo(moduleData);
         

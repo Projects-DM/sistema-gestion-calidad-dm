@@ -1,7 +1,10 @@
-import { Truck, History, FileBarChart, Search, ChevronRight, Route as RouteIcon, ShieldCheck, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Truck, History, FileBarChart, Search, ChevronRight, Route as RouteIcon, ShieldCheck, FileText, Loader2, ClipboardList } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import DocumentModule from '../components/DocumentModule';
+import { dynamicService } from '../services/dynamicService';
 
 const submodules = [
   {
@@ -68,10 +71,31 @@ const submodules = [
 
 export default function Traceability() {
   const { rol } = useAuth();
+  const [dynamicForms, setDynamicForms] = useState([]);
+  const [formsLoading, setFormsLoading] = useState(true);
 
   const filteredSubmodules = submodules.filter(sub =>
     !sub.roles || sub.roles.includes(rol)
   );
+
+  useEffect(() => {
+    async function loadDynamicForms() {
+      try {
+        setFormsLoading(true);
+        const moduleData = await dynamicService.getModuleBySlug('trazabilidad');
+        if (moduleData) {
+          const formsData = await dynamicService.getFormsByModule(moduleData.id);
+          const filtered = formsData.filter(f => !f.roles_allowed || f.roles_allowed.includes(rol));
+          setDynamicForms(filtered);
+        }
+      } catch (error) {
+        console.error('Error cargando formularios dinámicos de Trazabilidad:', error);
+      } finally {
+        setFormsLoading(false);
+      }
+    }
+    loadDynamicForms();
+  }, [rol]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -84,7 +108,7 @@ export default function Traceability() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-medium mb-4">
               <RouteIcon className="w-4 h-4 text-accent" />
-              Módulo 10
+              TRAZABILIDAD
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">Programa de Trazabilidad</h1>
             <p className="text-slate-300 text-lg leading-relaxed">
@@ -130,6 +154,44 @@ export default function Traceability() {
           ))}
         </div>
       </div>
+
+      {/* Dynamic Forms Section — only visible when forms are assigned to this module */}
+      {!formsLoading && dynamicForms.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-primary rounded-full"></div>
+            <ClipboardList className="w-5 h-5 text-primary" />
+            Formularios Dinámicos
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {dynamicForms.map((form) => {
+              const IconComponent = Icons[form.icon || 'FileText'] || Icons.FileText;
+              return (
+                <Link
+                  to={`/modulo/trazabilidad/${form.slug}`}
+                  key={form.id}
+                  className="group flex flex-col bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+                >
+                  <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors"></div>
+
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
+                    <IconComponent className="w-7 h-7" />
+                  </div>
+
+                  <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">{form.name}</h3>
+                  <p className="text-sm text-gray-500 mb-6 flex-1">{form.description}</p>
+
+                  <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto">
+                    Ingresar
+                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
     </div>
   );
