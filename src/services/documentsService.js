@@ -55,15 +55,22 @@ export const documentsService = {
   },
 
   // === NIVEL 2: REGISTROS / CERTIFICADOS (Múltiples por módulo) ===
-  async getRecords(module, type = 'certificado') {
+  async getRecords(module, type) {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase
+
+    // Si type es null/undefined, retornamos todos los records del módulo.
+    // Esto permite que DocumentManager agrupe por categoría (type) sin perder persistencia.
+    let query = supabase
       .from('sgc_records')
       .select('*')
-      .eq('module', module)
-      .eq('type', type)
-      .order('created_at', { ascending: false });
-    
+      .eq('module', module);
+
+    if (type !== null && type !== undefined) {
+      query = query.eq('type', type);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
     if (error) throw error;
     return data;
   },

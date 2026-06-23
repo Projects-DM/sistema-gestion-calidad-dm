@@ -32,7 +32,7 @@ export default function DocumentManager({
   const loadRecords = async () => {
     try {
       setLoading(true);
-      const data = await documentsService.getRecords(module, null);
+      const data = await documentsService.getRecords(module);
       setRecords(data);
     } catch (error) {
       console.error('Error:', error);
