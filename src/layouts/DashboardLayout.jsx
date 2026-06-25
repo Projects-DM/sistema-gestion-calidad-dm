@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
-import { 
-  LayoutDashboard, 
-  Droplets, 
-  Wrench, 
-  Route as RouteIcon, 
-  AlertTriangle, 
+import {
+  LayoutDashboard,
+  Droplets,
+  Wrench,
+  Route as RouteIcon,
+  AlertTriangle,
   LogOut,
   Bell,
   Search,
@@ -21,14 +22,14 @@ import {
 } from 'lucide-react';
 
 const menuItems = [
-  { path: '/dashboard', name: 'Panel Principal', icon: LayoutDashboard, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { path: '/operaciones', name: 'Operaciones', icon: Sparkles, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/trazabilidad', name: 'Trazabilidad', icon: RouteIcon, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { path: '/medicion-control', name: 'Medición y Control', icon: Droplets, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/mantenimiento', name: 'Mantenimiento', icon: Wrench, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/calidad', name: 'Calidad', icon: AlertTriangle, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/gestion-documental', name: 'Gestión Documental', icon: FileText, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: '/configuracion', name: 'Configuración', icon: Settings, roles: ['administrador'] },
+  { path: 'dashboard', name: 'Panel Principal', icon: LayoutDashboard, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
+  { path: 'operaciones', name: 'Operaciones', icon: Sparkles, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: 'trazabilidad', name: 'Trazabilidad', icon: RouteIcon, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
+  { path: 'medicion-control', name: 'Medición y Control', icon: Droplets, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: 'mantenimiento', name: 'Mantenimiento', icon: Wrench, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: 'calidad', name: 'Calidad', icon: AlertTriangle, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: 'gestion-documental', name: 'Gestión Documental', icon: FileText, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
+  { path: 'configuracion', name: 'Configuración', icon: Settings, roles: ['administrador'] },
 ];
 
 export default function DashboardLayout() {
@@ -46,22 +47,20 @@ export default function DashboardLayout() {
     }
   };
 
-  const filteredMenuItems = menuItems.filter(item => 
-    !item.roles || item.roles.includes(rol)
-  );
+  const filteredMenuItems = menuItems.filter((item) => !item.roles || item.roles.includes(rol));
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar Overlay (Mobile) */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-primary/50 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 w-72 bg-primary text-white flex flex-col transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
@@ -72,7 +71,7 @@ export default function DashboardLayout() {
             <h1 className="font-bold text-lg leading-tight tracking-wide">DM Distribuciones</h1>
             <p className="text-xs text-slate-400 font-medium tracking-widest">SISTEMA SGC</p>
           </div>
-          <button 
+          <button
             className="lg:hidden ml-auto text-slate-400 hover:text-white"
             onClick={() => setSidebarOpen(false)}
           >
@@ -84,20 +83,27 @@ export default function DashboardLayout() {
           <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Módulos</p>
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname.startsWith(item.path);
-            
+            const isActive =
+              location.pathname.endsWith('/' + item.path) ||
+              location.pathname.startsWith('/' + item.path + '/') ||
+              location.pathname === '/' + item.path;
+
             return (
               <NavLink
                 key={item.path}
-                to={item.path}
+                to={`/${item.path}`}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center px-3 py-3 rounded-xl transition-all duration-200 group ${
-                  isActive 
-                    ? 'bg-white/10 text-white font-medium' 
+                  isActive
+                    ? 'bg-white/10 text-white font-medium'
                     : 'text-slate-300 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <Icon className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-accent' : 'text-slate-400 group-hover:text-accent'}`} />
+                <Icon
+                  className={`w-5 h-5 mr-3 transition-colors ${
+                    isActive ? 'text-accent' : 'text-slate-400 group-hover:text-accent'
+                  }`}
+                />
                 <span className="text-sm">{item.name}</span>
                 {isActive && <ChevronRight className="w-4 h-4 ml-auto text-white/50" />}
               </NavLink>
@@ -109,7 +115,11 @@ export default function DashboardLayout() {
           <div className="bg-white/5 rounded-xl p-4 flex items-center mb-4">
             <div className="w-10 h-10 rounded-full bg-secondary/20 border border-secondary/30 flex items-center justify-center mr-3 text-secondary-light overflow-hidden">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                <img
+                  src={profile.avatar_url}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <User className="w-5 h-5 text-white" />
               )}
@@ -119,7 +129,7 @@ export default function DashboardLayout() {
               <p className="text-xs text-slate-400 truncate capitalize">{profile?.rol || 'Usuario'}</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-red-500/20 transition-colors"
           >
@@ -134,18 +144,18 @@ export default function DashboardLayout() {
         {/* Topbar */}
         <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 z-30 sticky top-0 shadow-sm">
           <div className="flex items-center">
-            <button 
+            <button
               className="lg:hidden mr-4 text-gray-500 hover:text-primary transition-colors"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu className="w-6 h-6" />
             </button>
-            
+
             <div className="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-2 border border-gray-200 focus-within:border-primary/50 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 transition-all w-80">
               <Search className="w-4 h-4 text-gray-400 mr-2" />
-              <input 
-                type="text" 
-                placeholder="Buscar módulo, registro, lote..." 
+              <input
+                type="text"
+                placeholder="Buscar módulo, registro, lote..."
                 className="bg-transparent border-none outline-none text-sm w-full text-gray-700 placeholder-gray-400"
               />
             </div>
@@ -165,24 +175,25 @@ export default function DashboardLayout() {
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-secondary rounded-full border-2 border-white"></span>
             </button>
-            
+
             <div className="hidden sm:block">
-               <img 
-                 src={`https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.nombre || 'User')}&background=1e293b&color=fff`} 
-                 alt="Profile" 
-                 className="w-10 h-10 rounded-full border-2 border-gray-200"
-               />
+              <img
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(profile?.nombre || 'User')}&background=1e293b&color=fff`}
+                alt="Profile"
+                className="w-10 h-10 rounded-full border-2 border-gray-200"
+              />
             </div>
           </div>
         </header>
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-8 relative">
-           {/* Global decorative background element */}
-           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/[0.02] rounded-full blur-3xl pointer-events-none"></div>
-           <Outlet />
+          {/* Global decorative background element */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/[0.02] rounded-full blur-3xl pointer-events-none"></div>
+          <Outlet />
         </main>
       </div>
     </div>
   );
 }
+

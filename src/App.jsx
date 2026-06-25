@@ -1,4 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+const ROUTER_BASENAME = '/sistema-gestion-calidad-dm';
+
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
@@ -15,9 +18,9 @@ import { RuntimePlaygroundSandbox } from './runtime/playground';
 
 function App() {
   return (
-    <Router>
+    <Router basename={ROUTER_BASENAME}>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="login" element={<Login />} />
         
         <Route 
           path="/" 

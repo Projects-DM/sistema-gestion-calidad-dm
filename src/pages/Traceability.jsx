@@ -70,6 +70,8 @@ const submodules = [
 ];
 
 export default function Traceability() {
+
+
   const { rol } = useAuth();
   const [dynamicForms, setDynamicForms] = useState([]);
   const [formsLoading, setFormsLoading] = useState(true);
@@ -155,7 +157,11 @@ export default function Traceability() {
         </div>
       </div>
 
-      {/* Dynamic Forms Section — only visible when forms are assigned to this module */}
+      {/* Runtime Documental Extension (REMOVIDO) */}
+
+      {/* Dynamic Forms Section — solo formularios dinámicos de Trazabilidad */}
+
+
       {!formsLoading && dynamicForms.length > 0 && (
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">

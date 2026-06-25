@@ -1,10 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
-import { Settings, Plus, LayoutList, Layers, Save, Loader2, ArrowLeft, Trash2, Edit } from 'lucide-react';
+import {
+  Settings,
+  Plus,
+  LayoutList,
+  Layers,
+  Save,
+  Loader2,
+  ArrowLeft,
+  Trash2,
+  Edit,
+  FileText
+} from 'lucide-react';
 import FormBuilder from '../components/FormBuilder';
+import DocumentRepositoriesAdmin from '../components/documentRepositories/DocumentRepositoriesAdmin';
 
 export default function Configuration() {
+
   const { rol } = useAuth();
   const [activeTab, setActiveTab] = useState('formularios');
   
@@ -136,12 +149,19 @@ export default function Configuration() {
           <div className="flex items-center gap-2"><LayoutList className="w-4 h-4" /> Formularios Dinámicos</div>
         </button>
         <button 
+          onClick={() => setActiveTab('documentos')}
+          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'documentos' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+        >
+          <div className="flex items-center gap-2"><FileText className="w-4 h-4" /> Repositorios Documentales</div>
+        </button>
+        <button 
           onClick={() => setActiveTab('modulos')}
           className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'modulos' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
           <div className="flex items-center gap-2"><Layers className="w-4 h-4" /> Módulos</div>
         </button>
       </div>
+
 
       {loading && !isCreatingForm && (
         <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
@@ -162,6 +182,7 @@ export default function Configuration() {
 
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <table className="w-full text-left text-sm">
+
                   <thead className="bg-gray-50 border-b border-gray-200 text-gray-500">
                     <tr>
                       <th className="px-6 py-4 font-semibold">Formulario</th>
@@ -292,11 +313,18 @@ export default function Configuration() {
         </div>
       )}
 
+      {activeTab === 'documentos' && (
+        <div className="space-y-6">
+          <DocumentRepositoriesAdmin />
+        </div>
+      )}
+
       {activeTab === 'modulos' && (
         <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm text-center text-gray-500">
           Los módulos oficiales (Operaciones, Trazabilidad, etc.) están bloqueados por arquitectura. Si deseas agregar nuevos módulos raíz, hazlo vía SQL.
         </div>
       )}
+
     </div>
   );
 }

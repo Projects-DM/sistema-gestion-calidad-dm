@@ -81,6 +81,8 @@ export default function DocumentManager({
     return filteredRecords.filter(r => r.type === categoryId);
   };
 
+  const filteredRecordsSafe = records.filter(r => r.type != null);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}

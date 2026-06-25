@@ -5,7 +5,13 @@ import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import DocumentModule from '../components/DocumentModule';
 import DynamicRecordsView from '../components/DynamicRecordsView';
+import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer';
 import * as Icons from 'lucide-react';
+
+const isDocumentEnabled = (slug) =>
+  ['mantenimiento', 'calidad', 'operaciones', 'gestion-documental'].includes(slug);
+
+
 
 export default function DynamicModule() {
   const { moduleSlug } = useParams();
@@ -38,6 +44,18 @@ export default function DynamicModule() {
     // Reset tab when module changes
     setActiveTab('forms');
   }, [moduleSlug, navigate]);
+  const filteredForms = forms.filter(f => 
+    !f.roles_allowed || f.roles_allowed.includes(rol)
+  );
+
+  const isRepositorioTabAvailable = isDocumentEnabled(moduleSlug);
+
+  useEffect(() => {
+    // si el módulo no soporta repositorio documental, forzamos la pestaña estándar
+    if (!isRepositorioTabAvailable && activeTab === 'repositorio') {
+      setActiveTab('forms');
+    }
+  }, [isRepositorioTabAvailable, activeTab]);
 
   if (loading) {
     return (
@@ -56,12 +74,13 @@ export default function DynamicModule() {
     );
   }
 
-  const filteredForms = forms.filter(f => 
-    !f.roles_allowed || f.roles_allowed.includes(rol)
-  );
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+
+
+
       
       {/* Header */}
       <div className="bg-primary rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden shadow-lg">
@@ -101,12 +120,23 @@ export default function DynamicModule() {
         >
           <div className="flex items-center gap-2"><History className="w-4 h-4" /> Historial y Consultas</div>
         </button>
+        <button
+          onClick={() => setActiveTab('repositorio')}
+          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'repositorio' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          disabled={!isDocumentEnabled(moduleSlug)}
+        >
+          <div className="flex items-center gap-2"><FileText className="w-4 h-4" /> Repositorio Documental</div>
+        </button>
       </div>
+
 
       {/* Content */}
       {activeTab === 'forms' ? (
+
         <div>
+
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+
             <div className="w-1.5 h-6 bg-accent rounded-full"></div>
             Formatos Disponibles
           </h2>
@@ -144,6 +174,10 @@ export default function DynamicModule() {
               </div>
             )}
           </div>
+        </div>
+      ) : activeTab === 'repositorio' ? (
+        <div className="space-y-6">
+        <ModuleDocumentViewer moduleSlug={moduleSlug} />
         </div>
       ) : (
         <DynamicRecordsView moduleId={modInfo.id} />
