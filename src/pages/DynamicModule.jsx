@@ -9,7 +9,8 @@ import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer
 import * as Icons from 'lucide-react';
 
 const isDocumentEnabled = (slug) =>
-  ['mantenimiento', 'calidad', 'operaciones', 'gestion-documental'].includes(slug);
+  ['mantenimiento', 'calidad', 'operaciones', 'gestion-documental', 'medicion-control'].includes(slug);
+
 
 
 

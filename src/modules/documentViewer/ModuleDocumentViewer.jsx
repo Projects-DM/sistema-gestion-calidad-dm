@@ -171,22 +171,6 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="bg-primary rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-medium mb-4">
-              <FileText className="w-4 h-4 text-accent" />
-              REPOSITORIOS DOCUMENTALES
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">{moduleTitle}</h1>
-            <p className="text-slate-300 text-lg leading-relaxed">
-              Estructura documental configurada para este módulo.
-            </p>
-          </div>
-        </div>
-      </div>
-
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
