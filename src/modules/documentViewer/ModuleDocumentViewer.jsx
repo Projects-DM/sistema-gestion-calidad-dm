@@ -5,17 +5,9 @@ import { documentRepositoriesService } from '../../services/documentRepositories
 import { documentsService } from '../../services/documentsService';
 import { useAuth } from '../../hooks/useAuth';
 
-const MODULES_CATEGORY_PLACEHOLDER = {
-  // Para mantener UI idéntica a Trazabilidad/Certificados/Fichas,
-  // pero sin inventar catálogo: usamos las categorías del admin.
-  // Estos defaults solo se usan si por alguna razón no cargan categorías.
-  operaciones: [],
-  trazabilidad: [],
-  'medicion-control': [],
-  mantenimiento: [],
-  calidad: [],
-  'gestion-documental': [],
-};
+import { usePdfViewerStore } from '../../shared/state/viewer/pdfViewer.store';
+import PdfViewerModal from '../../shared/components/viewers/PdfViewerModal';
+
 
 function safeFileType(type) {
   if (!type) return 'application/pdf';
@@ -35,7 +27,11 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
   const [uploading, setUploading] = useState(false);
 
   const [docsByCategory, setDocsByCategory] = useState({}); // { [categoryKey]: records[] }
-  const [viewerDoc, setViewerDoc] = useState(null);
+
+  const viewerDoc = usePdfViewerStore((state) => state.viewerDoc);
+  const openViewer = usePdfViewerStore((state) => state.openViewer);
+  const closeViewer = usePdfViewerStore((state) => state.closeViewer);
+
 
   const uploadInputId = useMemo(() => `upload_${moduleSlug}_${Date.now()}`, [moduleSlug]);
 
@@ -330,7 +326,8 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
                                     <button
                                       type="button"
                                       disabled={uploading || saving}
-                                      onClick={() => setViewerDoc(record)}
+                                      onClick={() => openViewer(record)}
+
                                       className="p-2 rounded-xl border border-gray-200 hover:border-primary/50 hover:text-primary text-gray-500"
                                       title="Ver PDF"
                                     >
@@ -396,47 +393,7 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
       )}
 
       {/* Visor PDF */}
-      {viewerDoc && (
-        <div className="w-full flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-
-          <div className="bg-white w-full max-w-6xl h-[92vh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
-            <div className="p-4 bg-primary text-white flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <div className="font-bold truncate max-w-[60vw]">{viewerDoc.name}</div>
-                  <div className="text-[10px] text-white/60">Vista previa del documento</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewerDoc(null)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 bg-gray-100">
-              <iframe
-                src={`${viewerDoc.file_url}#toolbar=0`}
-                className="w-full h-full border-none"
-                title="Visor PDF"
-              />
-            </div>
-            <div className="p-4 bg-white border-t flex justify-end">
-              <button
-                type="button"
-                onClick={() => setViewerDoc(null)}
-                className="px-8 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all text-sm"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {viewerDoc && <PdfViewerModal doc={viewerDoc} onClose={closeViewer} />}
     </div>
   );
 }
