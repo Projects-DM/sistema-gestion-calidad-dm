@@ -1,15 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
-import { FileText, Upload, Eye, Trash2, RefreshCw, X, Loader2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Upload, Trash2, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { documentsService } from '../services/documentsService';
+
+import { usePdfViewerStore } from '../shared/state/viewer/pdfViewer.store';
+import PdfViewerModal from '../shared/components/viewers/PdfViewerModal';
 
 export default function DocumentModule({ module, title, description }) {
   const { user, isAdmin } = useAuth();
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [showViewer, setShowViewer] = useState(false);
   const fileInputRef = useRef(null);
+
+  const viewerDoc = usePdfViewerStore((s) => s.viewerDoc);
+  const openViewer = usePdfViewerStore((s) => s.openViewer);
+  const closeViewer = usePdfViewerStore((s) => s.closeViewer);
+
 
   useEffect(() => {
     loadDocument();
@@ -99,10 +106,9 @@ export default function DocumentModule({ module, title, description }) {
         // UI cuando SÍ hay documento
         <div className="flex flex-wrap justify-end gap-2">
           <button
-            onClick={() => setShowViewer(true)}
+            onClick={() => openViewer(doc)}
             className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-light text-primary rounded-xl font-bold transition-all text-sm shadow-lg shadow-accent/20"
           >
-            <Eye className="w-4 h-4" />
             Ver Programa
           </button>
 
@@ -135,50 +141,9 @@ export default function DocumentModule({ module, title, description }) {
         </p>
       )}
 
-      {/* Modal Visor de PDF */}
-      {showViewer && doc && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-5xl h-[90vh] rounded-3xl overflow-hidden flex flex-col relative shadow-2xl">
-            <div className="bg-primary p-4 flex items-center justify-between text-white">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <h3 className="font-bold">{title}</h3>
-                  <p className="text-xs text-white/60">Programa Técnico del Módulo</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setShowViewer(false)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="flex-1 bg-gray-100">
-              <iframe
-                src={`${doc.file_url}#toolbar=0`}
-                className="w-full h-full border-none"
-                title="Visor PDF"
-              />
-            </div>
-            
-            <div className="p-4 bg-gray-50 border-t flex justify-between items-center">
-              <p className="text-xs text-gray-500">
-                Archivo: <span className="font-medium">{doc.name}</span>
-              </p>
-              <button 
-                onClick={() => setShowViewer(false)}
-                className="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition-all text-sm"
-              >
-                Cerrar Visor
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Visor PDF global */}
+      {viewerDoc && <PdfViewerModal doc={viewerDoc} onClose={closeViewer} />}
+
     </div>
   );
 }
