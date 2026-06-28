@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
+/* ─── Layout contract anchor ───────────────────────────────────────────────
+   html, body y #root deben tener height: 100% para que la cadena flex
+   del DashboardLayout pueda distribuir altura correctamente.
+   Sin esto, h-screen funciona (100vh es absoluto), pero la cadena no
+   está formalmente anclada al viewport para futuros cambios.
+──────────────────────────────────────────────────────────────────────────── */
+html,
+body {
+  height: 100%;
+}
+
+#root {
+  height: 100%;
+}
+
 @theme {
   --color-primary: #0f172a;
   --color-primary-dark: #020617;
