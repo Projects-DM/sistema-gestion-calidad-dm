@@ -50,7 +50,8 @@ export default function DashboardLayout() {
   const filteredMenuItems = menuItems.filter((item) => !item.roles || item.roles.includes(rol));
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
+
       {/* Sidebar Overlay (Mobile) */}
       {sidebarOpen && (
         <div
@@ -65,7 +66,7 @@ export default function DashboardLayout() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="h-20 flex items-center px-6 bg-primary-dark/50 border-b border-white/10">
+        <div className="h-20 shrink-0 flex items-center px-6 bg-primary-dark/50 border-b border-white/10">
           <ShieldCheck className="w-8 h-8 text-accent mr-3" />
           <div>
             <h1 className="font-bold text-lg leading-tight tracking-wide">DM Distribuciones</h1>
@@ -111,7 +112,7 @@ export default function DashboardLayout() {
           })}
         </div>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="shrink-0 p-4 border-t border-white/10">
           <div className="bg-white/5 rounded-xl p-4 flex items-center mb-4">
             <div className="w-10 h-10 rounded-full bg-secondary/20 border border-secondary/30 flex items-center justify-center mr-3 text-secondary-light overflow-hidden">
               {profile?.avatar_url ? (
@@ -142,7 +143,7 @@ export default function DashboardLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Topbar */}
-        <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 z-30 sticky top-0 shadow-sm">
+        <header className="h-20 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 z-30 sticky top-0 shadow-sm">
           <div className="flex items-center">
             <button
               className="lg:hidden mr-4 text-gray-500 hover:text-primary transition-colors"
@@ -187,7 +188,7 @@ export default function DashboardLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 relative">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 lg:p-8 relative">
           {/* Global decorative background element */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/[0.02] rounded-full blur-3xl pointer-events-none"></div>
           <Outlet />
