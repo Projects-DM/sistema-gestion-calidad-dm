@@ -181,7 +181,8 @@ export default function Configuration() {
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
 
                   <thead className="bg-gray-50 border-b border-gray-200 text-gray-500">
                     <tr>
@@ -237,6 +238,7 @@ export default function Configuration() {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </>
           ) : (
