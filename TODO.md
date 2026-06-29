@@ -1,17 +1,19 @@
-# TODO - Sprint 43.3 (UX/UI Repositorios Documentales)
+# TODO - SPRINT 43.1 (43.1 — Motor de Exportación Reutilizable para Registros Dinámicos)
 
-- [ ] Ajustar UI de `DocumentRepositoriesAdmin.jsx`:
-  - [ ] Modales: cierre con X / Cancelar / ESC / click fuera, sin quedar bloqueados
-  - [ ] Feedback visual: Guardando/Actualizando/Eliminando y deshabilitar botones mientras haya operación en curso
-  - [ ] Estados vacíos con mensajes empresariales y CTA
-  - [ ] Eliminar textos técnicos (ej. “prepara Sprint…”, “CRUD…”)
-  - [ ] Selector visual de `module_slug` (opciones fijas), sin input libre
-  - [ ] Selector de iconos: icono visual + nombre + preview
-  - [ ] Consistencia visual con el estilo de “Formularios Dinámicos” (tarjetas, tipografías, espaciados)
-- [x] Ejecutar `npm run build`
-- [x] Corregir errores si aparecen
-- [ ] Verificar manualmente:
-  - [ ] `Configuration` renderiza
-  - [ ] pestaña “Repositorios Documentales” funciona
-  - [ ] modales funcionan (cierre por ESC y click fuera)
+## Plan de implementación
+- [ ] Auditar DynamicRecordsView: verificar estados (records, filteredRecords, selectedIds) y placeholder de botón Exportar.
+- [ ] Crear capas de exportación:
+  - [ ] src/shared/services/exportService.js
+  - [ ] src/shared/utils/exportDataNormalizer.js
+  - [ ] src/shared/utils/excelExporter.js
+  - [ ] src/shared/utils/exportFileNameBuilder.js
+- [ ] Normalizador: devolver estructura independiente de Excel (sheetName/columns/rows), respetando orden de campos del formulario.
+- [ ] ExcelExporter: generar múltiples hojas (una por formulario) y columnas obligatorias + dinámicas.
+- [ ] Firmas y evidencias: exportar como hipervínculos descriptivos ("Ver Firma", "Ver Evidencia 1", etc.).
+- [x] Conectar botón Exportar en DynamicRecordsView con onClick:
+  - [x] Usar únicamente registros seleccionados (selectedIds)
+  - [x] Si no hay selección: notificación reutilizada del proyecto (alert existente en el componente).
+- [x] Verificar que no haya consultas adicionales a Supabase para exportar.
+
+- [ ] Verificación final: Desktop/Tablet/Mobile + `npm run build`.
 
