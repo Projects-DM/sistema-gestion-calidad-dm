@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { dynamicService } from '../services/dynamicService';
+import { useDashboardMetrics } from '../modules/dashboard/hooks/useDashboardMetrics';
+import { DashboardMetricCard } from '../modules/dashboard/components/DashboardMetricCard';
+import { DashboardRecentActivity } from '../modules/dashboard/components/DashboardRecentActivity';
 import { 
   Sparkles, 
   Droplets, 
@@ -11,11 +12,9 @@ import {
   FileText,
   Settings,
   TrendingUp,
-  Clock,
-  CheckCircle,
+  FileCheck,
   AlertCircle,
-  Activity,
-  FileCheck
+  Loader2
 } from 'lucide-react';
 
 const modules = [
@@ -29,30 +28,35 @@ const modules = [
 ];
 
 export default function Dashboard() {
-  const { profile, rol } = useAuth();
-  const [dashboardData, setDashboardData] = useState({
-    stats: { todayResponses: 0, totalResponses: 0, incumplimientos: 0, alertasActivas: 0 },
-    recent: []
-  });
-
-  useEffect(() => {
-    async function loadDashboard() {
-      const stats = await dynamicService.getDashboardStats();
-      const recent = await dynamicService.getRecentResponses(5);
-      setDashboardData({ stats, recent });
-    }
-    loadDashboard();
-  }, []);
+  const { rol } = useAuth();
+  const { metrics, recentActivity, loading, error } = useDashboardMetrics();
   
   const filteredModules = modules.filter(mod => 
     !mod.roles || mod.roles.includes(rol)
   );
 
-  const stats = [
-    { label: 'Registros Hoy', value: dashboardData.stats.todayResponses, icon: TrendingUp, trend: 'Actividad Diaria', color: 'text-green-600', bg: 'bg-green-100' },
-    { label: 'Total Registros', value: dashboardData.stats.totalResponses, icon: FileCheck, trend: 'Histórico', color: 'text-blue-600', bg: 'bg-blue-100' },
-    { label: 'Incumplimientos', value: dashboardData.stats.incumplimientos, icon: AlertTriangle, trend: 'Requiere revisión', color: 'text-amber-600', bg: 'bg-amber-100' },
-    { label: 'Alertas Activas', value: dashboardData.stats.alertasActivas, icon: AlertCircle, trend: 'Crítico', color: 'text-red-600', bg: 'bg-red-100' },
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20">
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+        <p className="text-gray-500">Cargando panel...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center text-red-500">
+        Error al cargar los datos del panel. Por favor intente de nuevo.
+      </div>
+    );
+  }
+
+  const kpis = [
+    { label: 'Registros Hoy', value: metrics.todayRecords, icon: TrendingUp, trend: 'Actividad Diaria', color: 'text-green-600', bg: 'bg-green-100' },
+    { label: 'Total Registros', value: metrics.totalRecords, icon: FileCheck, trend: 'Histórico', color: 'text-blue-600', bg: 'bg-blue-100' },
+    { label: 'Incumplimientos', value: metrics.rejected, icon: AlertTriangle, trend: 'Desvíos Rechazados', color: 'text-amber-600', bg: 'bg-amber-100' },
+    { label: 'Alertas Activas', value: metrics.critical, icon: AlertCircle, trend: 'Crítico', color: 'text-red-600', bg: 'bg-red-100' },
   ];
 
   return (
@@ -70,21 +74,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] flex items-center justify-between group hover:border-primary/20 transition-colors">
-            <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">{stat.label}</p>
-              <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
-              <p className={`text-xs font-medium mt-1 ${stat.trend === 'Crítico' ? 'text-red-600' : 'text-gray-500'}`}>
-                {stat.trend}
-              </p>
-            </div>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.bg} group-hover:scale-110 transition-transform duration-300`}>
-              <stat.icon className={`w-6 h-6 ${stat.color}`} />
-            </div>
-          </div>
+      {/* KPI Cards — Grid responsivo de 2 columnas compactas en móvil y 4 en desktop */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {kpis.map((kpi, idx) => (
+          <DashboardMetricCard 
+            key={idx}
+            label={kpi.label}
+            value={kpi.value}
+            icon={kpi.icon}
+            trend={kpi.trend}
+            color={kpi.color}
+            bg={kpi.bg}
+          />
         ))}
       </div>
 
@@ -130,39 +131,8 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity Section */}
-      <div className="pt-4">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-          <div className="w-1.5 h-6 bg-accent rounded-full"></div>
-          Actividad Reciente
-        </h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {dashboardData.recent.map((record) => (
-            <div key={record.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 hover:border-primary/30 hover:shadow-md transition-all">
-              <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
-                <Activity className="w-5 h-5" />
-              </div>
-              <p className="text-sm font-bold text-gray-900 line-clamp-2 mb-2 h-10">
-                {record.sgc_forms?.name || 'Formulario Desconocido'}
-              </p>
-              <div className="flex items-center justify-between border-t border-gray-100 pt-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 px-2 py-1 rounded-md">
-                  {record.sgc_forms?.engine_type?.replace('Base', '')}
-                </span>
-                <span className="text-xs font-medium text-gray-500">
-                  {new Date(record.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </span>
-              </div>
-            </div>
-          ))}
-
-          {dashboardData.recent.length === 0 && (
-            <div className="col-span-full bg-white rounded-2xl border border-gray-200 p-8 text-center text-gray-500 text-sm shadow-sm">
-              No hay actividad reciente registrada en el sistema.
-            </div>
-          )}
-        </div>
-      </div>
+      <DashboardRecentActivity recent={recentActivity} />
+      
     </div>
   );
 }
