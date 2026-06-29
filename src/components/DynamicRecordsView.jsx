@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { dynamicService } from '../services/dynamicService';
 import { useAuth } from '../hooks/useAuth';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
+import { exportService } from '../shared/services/exportService';
+import { buildExportFileName } from '../shared/utils/exportFileNameBuilder';
+
 import { 
+
   Search, 
   Filter, 
   Eye, 
@@ -272,9 +276,52 @@ export default function DynamicRecordsView({ moduleId }) {
           <button className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-100 font-medium text-sm transition-colors flex-1 sm:flex-none">
             <Filter className="w-4 h-4" /> Filtros Avanzados
           </button>
-          <button className="flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl hover:bg-primary/20 font-bold text-sm transition-colors flex-1 sm:flex-none">
+          <button 
+            onClick={() => {
+              const selectedRecords = records.filter((r) => selectedIds.includes(r.id));
+              if (!selectedRecords.length) {
+                // Reutiliza el patrón de notificación existente en este módulo
+                alert('Seleccione al menos un registro para exportar.');
+                return;
+              }
+
+              // Exportación sin consultas adicionales: usa data ya cargada en memoria
+              const moduleName = selectedRecords?.[0]?.sgc_forms?.name || 'Reporte';
+              const resolvedModuleId = moduleId || selectedRecords?.[0]?.sgc_forms?.module_id || '';
+
+
+
+
+              // Exportación sin React: reutiliza motor desacoplado
+
+              const nombreArchivo = buildExportFileName({
+                moduleId,
+                moduleName,
+                formatos: 'xlsx',
+              });
+
+
+              console.log("selectedIds", selectedIds);
+              console.log("selectedRecords.length", selectedRecords.length);
+              console.log("selectedRecords", selectedRecords);
+
+              try {
+                exportService({
+                  registros: selectedRecords,
+                  formato: 'xlsx',
+                  nombreArchivo,
+                });
+              } catch (error) {
+                console.error("EXPORT ERROR");
+                console.error(error);
+                console.error(error.stack);
+              }
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl hover:bg-primary/20 font-bold text-sm transition-colors flex-1 sm:flex-none"
+          >
             <Download className="w-4 h-4" /> Exportar
           </button>
+
         </div>
       </div>
 
