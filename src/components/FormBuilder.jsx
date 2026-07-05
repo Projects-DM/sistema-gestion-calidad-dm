@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, GripVertical, Settings } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Settings, MoveUp, MoveDown } from 'lucide-react';
 import { dynamicService } from '../services/dynamicService';
+import { moveUp as motorMoveUp, moveDown as motorMoveDown, toOrderedIds } from '../order-motor/UniversalOrderMotor';
+import { reorderFormFieldsOrder } from '../order-motor/adapters/FormBuilderOrderAdapter';
+
 
 export default function FormBuilder({ formDef }) {
   const [fields, setFields] = useState([]);
@@ -116,13 +119,70 @@ export default function FormBuilder({ formDef }) {
               </div>
               
               <div className="flex items-center gap-2">
-                <button 
+                <button
+                  type="button"
+                  disabled={index === 0 || loading}
+                  onClick={async () => {
+                    // Piloto: calcular nuevo orden con Motor Universal y persistir con Adapter.
+                    const sequenceOrdered = fields;
+                    const targetId = field.id;
+
+                    // Motor recibe la secuencia completa (objetos con propiedad `id`).
+                    const nextSequence = motorMoveUp(sequenceOrdered, targetId);
+                    const nextOrderedIds = toOrderedIds(nextSequence);
+
+                    const res = await reorderFormFieldsOrder({
+                      formId: formDef.id,
+                      orderedIds: nextOrderedIds,
+                    });
+
+                    if (res?.ok) {
+                      setFields(res.refreshedFields || []);
+                    } else {
+                      alert(res?.errorMessage || 'Error reordenando');
+                    }
+                  }}
+                  className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Subir"
+                >
+                  <MoveUp className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={index === fields.length - 1 || loading}
+                  onClick={async () => {
+                    const sequenceOrdered = fields;
+                    const targetId = field.id;
+
+                    const nextSequence = motorMoveDown(sequenceOrdered, targetId);
+                    const nextOrderedIds = toOrderedIds(nextSequence);
+
+                    const res = await reorderFormFieldsOrder({
+                      formId: formDef.id,
+                      orderedIds: nextOrderedIds,
+                    });
+
+                    if (res?.ok) {
+                      setFields(res.refreshedFields || []);
+                    } else {
+                      alert(res?.errorMessage || 'Error reordenando');
+                    }
+                  }}
+                  className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Bajar"
+                >
+                  <MoveDown className="w-4 h-4" />
+                </button>
+
+                <button
                   onClick={() => handleDeleteField(field.id)}
                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
             </div>
           ))}
 
