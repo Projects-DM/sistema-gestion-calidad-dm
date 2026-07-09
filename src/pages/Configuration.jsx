@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
+import WorkspaceFoundation from './WorkspaceFoundation';
 import {
   Settings,
   Plus,
@@ -322,10 +323,11 @@ export default function Configuration() {
       )}
 
       {activeTab === 'modulos' && (
-        <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm text-center text-gray-500">
-          Los módulos oficiales (Operaciones, Trazabilidad, etc.) están bloqueados por arquitectura. Si deseas agregar nuevos módulos raíz, hazlo vía SQL.
+        <div className="space-y-6">
+          <WorkspaceFoundation />
         </div>
       )}
+
 
     </div>
   );

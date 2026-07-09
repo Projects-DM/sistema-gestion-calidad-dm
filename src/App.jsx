@@ -13,8 +13,10 @@ import DynamicModule from './pages/DynamicModule';
 import DynamicForm from './pages/DynamicForm';
 import Configuration from './pages/Configuration';
 import Users from './pages/Users';
+import WorkspaceFoundation from './pages/WorkspaceFoundation';
 import ProtectedRoute from './components/ProtectedRoute';
 import { RuntimePlaygroundSandbox } from './runtime/playground';
+
 
 function App() {
   return (
@@ -56,12 +58,15 @@ function App() {
           />
           
         
+
+
           <Route path="runtime-playground" element={<RuntimePlaygroundSandbox />} />
 
           <Route path=":moduleSlug" element={<DynamicModule />} />
           <Route path="modulo/:moduleSlug/:formSlug" element={<DynamicForm />} />
           
         </Route>
+
       </Routes>
     </Router>
   );
