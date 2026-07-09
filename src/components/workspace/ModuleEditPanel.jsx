@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { dynamicService } from '../../services/dynamicService';
 
 function getModuleField(module, keys) {
+
   for (const k of keys) {
     if (module && module[k] !== undefined && module[k] !== null) return module[k];
   }
@@ -18,6 +20,9 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, formsCount 
   const [slug, setSlug] = useState(slugCurrent);
   const [touched, setTouched] = useState({ name: false, slug: false });
   const [savingInfoVisible, setSavingInfoVisible] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
 
   const errors = useMemo(() => {
     const e = {};
@@ -39,17 +44,40 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, formsCount 
 
   const canSave = Object.keys(errors).length === 0;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     setTouched({ name: true, slug: true });
+    setError('');
+    setSuccess('');
 
     if (!canSave) return;
 
-    // No persistencia aún: Core no expone contrato certificado de update.
-    setSavingInfoVisible(true);
-    if (typeof onSaved === 'function') {
-      onSaved({ moduleId: id, name: name.trim(), slug: slug });
+    try {
+      setSavingInfoVisible(true);
+
+      const payload = {
+        id,
+        name: name.trim(),
+        slug,
+      };
+
+      console.log('[ModuleEditPanel] updateModule payload:', payload);
+      const result = await dynamicService.updateModule(payload);
+
+      if (result && result.success === true) {
+        setSuccess('Módulo actualizado correctamente');
+        if (typeof onSaved === 'function') {
+          onSaved(result.updatedModule);
+        }
+      } else {
+        const msg = result?.error || 'No fue posible actualizar el módulo';
+        setError(msg);
+      }
+    } catch (err) {
+      setError(err?.message || 'No fue posible actualizar el módulo');
+    } finally {
+      setSavingInfoVisible(false);
     }
   };
 
@@ -121,7 +149,19 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, formsCount 
 
           {savingInfoVisible && (
             <div className="mt-2 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-sm text-blue-900">
-              La actualización del módulo requiere un contrato certificado del Core. Persistencia no disponible en esta fase.
+              Guardando módulo...
+            </div>
+          )}
+
+          {!!error && (
+            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-800">
+              {error}
+            </div>
+          )}
+
+          {!!success && (
+            <div className="p-4 rounded-2xl bg-green-50 border border-green-200 text-sm text-green-800">
+              {success}
             </div>
           )}
 
@@ -135,10 +175,10 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, formsCount 
             </button>
             <button
               type="submit"
-              disabled={!canSave}
+              disabled={!canSave || savingInfoVisible}
               className="px-6 py-2.5 bg-primary text-white font-bold hover:bg-primary-light rounded-xl transition-colors flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Guardar pendiente de contrato Core
+              Guardar módulo
             </button>
           </div>
         </form>
