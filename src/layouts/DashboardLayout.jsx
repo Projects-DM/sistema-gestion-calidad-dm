@@ -30,6 +30,7 @@ const menuItems = [
   { path: 'calidad', name: 'Calidad', icon: AlertTriangle, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
   { path: 'gestion-documental', name: 'Gestión Documental', icon: FileText, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
   { path: 'configuracion', name: 'Configuración', icon: Settings, roles: ['administrador'] },
+
 ];
 
 export default function DashboardLayout() {
