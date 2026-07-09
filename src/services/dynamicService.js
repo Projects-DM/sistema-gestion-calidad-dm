@@ -321,13 +321,7 @@ export const dynamicService = {
       .eq('id', id)
         .select('*');
 
-      console.log('[dynamicService.updateModule] UPDATE sgc_modules', {
-        id,
-        payload: { name, slug },
-        data,
-        error,
-        dataLength: Array.isArray(data) ? data.length : null,
-      });
+
 
       if (error) {
         return { success: false, error: error.message };

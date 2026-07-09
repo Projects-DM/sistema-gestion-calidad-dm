@@ -62,7 +62,6 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, formsCount 
         slug,
       };
 
-      console.log('[ModuleEditPanel] updateModule payload:', payload);
       const result = await dynamicService.updateModule(payload);
 
       if (result && result.success === true) {
