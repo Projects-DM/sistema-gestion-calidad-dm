@@ -295,5 +295,56 @@ export const dynamicService = {
       return [];
     }
     return data;
+  },
+
+  async updateModule({ id, name, slug }) {
+    try {
+      // Validation
+      if (id === undefined || id === null || String(id).trim().length === 0) {
+        return { success: false, error: 'El id del módulo es obligatorio.' };
+      }
+      if (!name || String(name).trim().length < 3) {
+        return { success: false, error: 'El nombre del módulo es requerido y debe tener al menos 3 caracteres.' };
+      }
+      if (!slug || String(slug).trim().length === 0) {
+        return { success: false, error: 'El slug del módulo es requerido.' };
+      }
+
+      const supabase = getSupabaseClient();
+
+      const { data, error } = await supabase
+        .from('sgc_modules')
+        .update({
+          name: name,
+          slug: slug,
+        })
+      .eq('id', id)
+        .select('*');
+
+      console.log('[dynamicService.updateModule] UPDATE sgc_modules', {
+        id,
+        payload: { name, slug },
+        data,
+        error,
+        dataLength: Array.isArray(data) ? data.length : null,
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+
+      // update correcto pero sin filas afectadas
+      if (!Array.isArray(data) || data.length === 0) {
+        return { success: false, error: 'No se encontró el módulo para actualizar' };
+      }
+
+      // actualización exitosa: se espera exactamente 1 fila por id, pero manejamos robustamente
+      const updated = data[0];
+      return { success: true, updatedModule: updated };
+    } catch (e) {
+      return { success: false, error: e?.message || 'No fue posible actualizar el módulo.' };
+    }
   }
 };
+

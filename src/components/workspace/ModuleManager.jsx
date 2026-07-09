@@ -173,7 +173,10 @@ export default function ModuleManager() {
                               <div className="flex justify-end gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedModule(m)}
+                                  onClick={() => {
+                                    console.log('[ModuleManager] Selected module:', m);
+                                    setSelectedModule(m);
+                                  }}
                                   className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                                   title="Abrir detalle del módulo (interna, sin rutas)"
                                 >
