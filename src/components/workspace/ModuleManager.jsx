@@ -81,7 +81,21 @@ export default function ModuleManager() {
           module={selectedModule}
           formsCount={formsByModuleId[selectedModule?.id] ?? 0}
           onCancel={() => setIsEditing(false)}
-          onSaved={() => setIsEditing(false)}
+          onSaved={async (updatedModule) => {
+            if (updatedModule?.id) {
+              setIsEditing(false);
+
+              const refreshed = await dynamicService.getModules();
+              setModules(refreshed || []);
+
+              const refreshedSelected = (refreshed || []).find(
+                (m) => m.id === updatedModule.id
+              );
+              if (refreshedSelected) setSelectedModule(refreshedSelected);
+            } else {
+              setIsEditing(false);
+            }
+          }}
         />
       ) : selectedModule ? (
         <ModuleDetailPanel
@@ -174,7 +188,6 @@ export default function ModuleManager() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    console.log('[ModuleManager] Selected module:', m);
                                     setSelectedModule(m);
                                   }}
                                   className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"

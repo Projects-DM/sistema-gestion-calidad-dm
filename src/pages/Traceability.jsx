@@ -167,7 +167,7 @@ export default function Traceability() {
           <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
             <div className="w-1.5 h-6 bg-primary rounded-full"></div>
             <ClipboardList className="w-5 h-5 text-primary" />
-            Formularios Dinámicos
+            Formatos Disponibles
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
