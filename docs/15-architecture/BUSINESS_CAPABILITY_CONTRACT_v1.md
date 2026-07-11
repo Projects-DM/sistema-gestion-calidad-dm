@@ -30,6 +30,22 @@ Diseñar y certificar el **contrato arquitectónico oficial** que permitirá a u
 
 Este contrato define la extensión como **capacidad arquitectónica opcional**, preservando compatibilidad total.
 
+## No Objetivos
+
+Este contrato NO define:
+
+- Implementación técnica.
+- Componentes React.
+- Persistencia.
+- Metadata.
+- Runtime.
+- Navegación.
+- Renderizado.
+- Gestión de permisos.
+- Diseño visual.
+
+Estos aspectos serán gobernados por contratos específicos en sprints posteriores.
+
 ---
 
 ## 2. Motivación (contexto certificado)
@@ -223,6 +239,16 @@ Ejemplos de capacidades de negocio adicionales que podrían extender módulos (c
 4. Se identifica **Trazabilidad → Despachos** como primer caso oficial de aplicación futura, documentado como **Plan Estratégico / Decisión Arquitectónica** si no existe evidencia textual previa.
 5. No se modifica ninguna línea de código del proyecto.
 6. La arquitectura queda preparada para el Sprint 49A-R.5.2 (implementación visual de la primera Business Capability).
+
+## Governance
+
+Este contrato solamente podrá modificarse mediante:
+
+- Sprint arquitectónico certificado.
+- Actualización del SSOT.
+- Compatibilidad demostrada con MODULE_CONTRACT_v1.
+
+No podrán introducirse Business Capabilities mediante modificaciones aisladas del código.
 
 ---
 
