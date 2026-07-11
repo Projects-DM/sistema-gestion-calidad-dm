@@ -1,19 +1,10 @@
-# TODO - SPRINT 43.1 (43.1 — Motor de Exportación Reutilizable para Registros Dinámicos)
+# TODO — SPRINT 49A-R.6.5B (Core Standard Shell Governance Certification)
 
-## Plan de implementación
-- [ ] Auditar DynamicRecordsView: verificar estados (records, filteredRecords, selectedIds) y placeholder de botón Exportar.
-- [ ] Crear capas de exportación:
-  - [ ] src/shared/services/exportService.js
-  - [ ] src/shared/utils/exportDataNormalizer.js
-  - [ ] src/shared/utils/excelExporter.js
-  - [ ] src/shared/utils/exportFileNameBuilder.js
-- [ ] Normalizador: devolver estructura independiente de Excel (sheetName/columns/rows), respetando orden de campos del formulario.
-- [ ] ExcelExporter: generar múltiples hojas (una por formulario) y columnas obligatorias + dinámicas.
-- [ ] Firmas y evidencias: exportar como hipervínculos descriptivos ("Ver Firma", "Ver Evidencia 1", etc.).
-- [x] Conectar botón Exportar en DynamicRecordsView con onClick:
-  - [x] Usar únicamente registros seleccionados (selectedIds)
-  - [x] Si no hay selección: notificación reutilizada del proyecto (alert existente en el componente).
-- [x] Verificar que no haya consultas adicionales a Supabase para exportar.
-
-- [ ] Verificación final: Desktop/Tablet/Mobile + `npm run build`.
+- [x] Leer `docs/15-architecture/CORE_STANDARD_SHELL_MODEL_v1.md` (estado actual).
+- [ ] Reestructurar el documento completo para alinear con FASE 1–10 exigidas por el sprint.
+- [ ] Incorporar nuevas secciones: Shell Identity, Authority Ownership Matrix, Information Flow Model, Shell Stability Principles, Governance Invariants, Governance Boundaries, Evolution Governance, Governance Risks, Governance Statement, Dictamen Arquitectónico Final.
+- [ ] Ampliar Glosario con términos requeridos.
+- [ ] Reemplazar/actualizar Certification Checklist al final con bloque solicitado (con ✓ según sprint).
+- [ ] Validación documental (restricciones conceptuales y prohibiciones de contenido).
+- [ ] Confirmar que se modificó únicamente `docs/15-architecture/CORE_STANDARD_SHELL_MODEL_v1.md`.
 

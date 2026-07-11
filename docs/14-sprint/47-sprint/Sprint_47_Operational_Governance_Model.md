@@ -27,6 +27,21 @@ Para preservar la certificación arquitectónica alcanzada en **Level 3**, el Sp
 
 > **Nota de gobernanza:** el Sprint 47 solamente establece el **modelo operativo de administración y control documental** para módulos metadata-driven.
 
+## 0.1 Non Goals
+
+Este Sprint NO tiene como objetivo:
+
+- introducir nuevas funcionalidades;
+- modificar componentes del Core;
+- modificar el Runtime;
+- modificar contratos;
+- crear nuevos Engines;
+- crear nuevas tablas;
+- redefinir el modelo EAV;
+- sustituir la arquitectura certificada.
+
+Cualquier iniciativa de este tipo pertenece a un Sprint arquitectónico posterior y requiere ADR conforme al Sprint 45.
+
 ---
 
 ## 1. Objetivo del Sprint
@@ -135,6 +150,14 @@ Los registros históricos se administran como semánticamente inmutables respect
 * La evolución futura conserva el significado histórico previo.
 
 > Nota: documento de gobernanza; no propone cambios de código/contratos/DB.
+
+## Backward Compatibility Principle
+
+Toda evolución de la Metadata Module Factory deberá preservar la compatibilidad funcional con los módulos certificados previamente.
+
+Ninguna modificación futura podrá invalidar la operación de módulos ya certificados bajo la Foundation Baseline (Sprint 45–47).
+
+La compatibilidad hacia atrás constituye un requisito obligatorio de gobernanza.
 
 ---
 
@@ -290,6 +313,26 @@ El Sprint 47 formaliza (documentalmente):
 ---
 
 ## 12. Sprint Status
+
+## Architecture Evolution Policy
+
+La arquitectura certificada podrá evolucionar únicamente mediante un Sprint de Arquitectura.
+
+Los sprints funcionales no podrán modificar:
+
+- contratos;
+- Runtime;
+- Core;
+- Factory;
+- SSOT.
+
+Toda evolución arquitectónica requerirá:
+
+1. ADR aprobado.
+2. Auditoría de compatibilidad.
+3. Actualización documental del SSOT.
+4. Nueva certificación.
+
 
 ### ARCHITECTURE STATUS:
 **LEVEL 3 — CERTIFIED**
