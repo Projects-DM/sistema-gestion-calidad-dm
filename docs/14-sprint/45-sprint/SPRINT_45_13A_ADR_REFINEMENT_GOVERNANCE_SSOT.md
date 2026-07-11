@@ -344,3 +344,85 @@ Estado existente en 45.13:
 ---
 
 
+## 9) Governance Rules for the ADR Repository
+
+No es un ADR.
+
+No modifica ningún ADR.
+
+Simplemente define cómo se administra el repositorio.
+
+Algo como:
+
+## 9.1 Creación de un ADR
+
+Se debe crear un ADR cuando exista una decisión que:
+
+afecte contratos públicos
+afecte el Core Arquitectónico
+afecte Runtime
+afecte Persistencia
+afecte Metadata
+introduzca un nuevo Engine
+introduzca un nuevo Service
+cambie Ownership
+modifique reglas oficiales del SSOT
+
+## 9.2 Cuándo NO crear un ADR
+
+No requieren ADR:
+
+cambios visuales
+cambios cosméticos
+mejoras UI
+correcciones menores
+optimizaciones internas
+refactors sin impacto arquitectónico
+
+## 9.3 Aprobación
+
+Todo ADR debe:
+
+mantener compatibilidad con 45.9
+mantener compatibilidad con 45.10
+mantener compatibilidad con 45.11
+mantener compatibilidad con 45.12
+
+En caso contrario:
+
+Debe pasar por revisión arquitectónica obligatoria.
+
+
+## 9.4 Numeración
+
+Los ADR nunca cambian de número.
+
+Si un ADR deja de ser válido:
+
+Nunca se elimina.
+
+Su estado cambia a:
+
+Deprecated
+Superseded
+
+y el nuevo ADR referencia al anterior.
+
+
+## 9.5 Trazabilidad
+
+Todo ADR nuevo deberá indicar:
+
+qué contratos afecta
+qué componentes afecta
+qué dependencias afecta
+qué invariantes afecta
+qué reglas de evolución modifica
+9.6 Auditoría
+
+## Toda auditoría futura deberá verificar:
+
+consistencia con los ADR
+consistencia con Contracts
+consistencia con Evolution Rules
+consistencia con Core Architecture
