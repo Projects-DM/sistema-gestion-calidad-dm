@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, FileText, Loader2, Route as RouteIcon, ListChecks, History } from 'lucide-react';
+import { ChevronRight, FileText, Loader2, ListChecks, History } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import DocumentModule from '../components/DocumentModule';
 import DynamicRecordsView from '../components/DynamicRecordsView';
 import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer';
+import { documentRepositoriesService } from '../services/documentRepositoriesService';
 import * as Icons from 'lucide-react';
-
-const isDocumentEnabled = (slug) =>
-  ['mantenimiento', 'calidad', 'operaciones', 'gestion-documental', 'medicion-control'].includes(slug);
-
-
-
 
 export default function DynamicModule() {
   const { moduleSlug } = useParams();
@@ -24,8 +19,13 @@ export default function DynamicModule() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('forms'); // 'forms' or 'records'
 
+  const [repositoryAvailability, setRepositoryAvailability] = useState({
+    resolved: false,
+    available: false,
+  });
+
   useEffect(() => {
-    async function loadData() {
+    async function loadModuleAndForms() {
       try {
         setLoading(true);
         const moduleData = await dynamicService.getModuleBySlug(moduleSlug);
@@ -41,22 +41,49 @@ export default function DynamicModule() {
         setLoading(false);
       }
     }
-    loadData();
+    loadModuleAndForms();
     // Reset tab when module changes
     setActiveTab('forms');
   }, [moduleSlug, navigate]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function resolveRepositoryAvailability() {
+      try {
+        setRepositoryAvailability({ resolved: false, available: false });
+
+        // Capability availability source of truth: existing data-driven repositories.
+        const repos = await documentRepositoriesService.getRepositories({ moduleSlug });
+        const available = (repos || []).some((r) => r.is_active !== false);
+
+        if (!mounted) return;
+        setRepositoryAvailability({ resolved: true, available });
+
+        // Keep UX identical: if no repository capability, force standard tab.
+        if (!available && activeTab === 'repositorio') {
+          setActiveTab('forms');
+        }
+      } catch (e) {
+        console.error('Error resolving repository availability:', e);
+        if (!mounted) return;
+        setRepositoryAvailability({ resolved: true, available: false });
+        if (activeTab === 'repositorio') setActiveTab('forms');
+      }
+    }
+
+    resolveRepositoryAvailability();
+
+    return () => {
+      mounted = false;
+    };
+  }, [moduleSlug]);
+
   const filteredForms = forms.filter(f => 
     !f.roles_allowed || f.roles_allowed.includes(rol)
   );
 
-  const isRepositorioTabAvailable = isDocumentEnabled(moduleSlug);
-
-  useEffect(() => {
-    // si el módulo no soporta repositorio documental, forzamos la pestaña estándar
-    if (!isRepositorioTabAvailable && activeTab === 'repositorio') {
-      setActiveTab('forms');
-    }
-  }, [isRepositorioTabAvailable, activeTab]);
+  const isRepositorioTabAvailable = repositoryAvailability.available;
 
   if (loading) {
     return (
@@ -124,7 +151,7 @@ export default function DynamicModule() {
         <button
           onClick={() => setActiveTab('repositorio')}
           className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'repositorio' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          disabled={!isDocumentEnabled(moduleSlug)}
+          disabled={!isRepositorioTabAvailable}
         >
           <div className="flex items-center gap-2"><FileText className="w-4 h-4" /> Repositorio Documental</div>
         </button>
