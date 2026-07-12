@@ -6,6 +6,8 @@ import { dynamicService } from '../services/dynamicService';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
 
 import { resolveEngineComponent } from '../core/engine/EngineResolver';
+import { canAccessRole } from '../core/authorization/AuthorizationResolver';
+
 import EvidenceUploader from '../components/EvidenceUploader';
 
 export default function DynamicForm() {
@@ -31,7 +33,7 @@ export default function DynamicForm() {
         setFormDef(form);
         
         if (form) {
-          if (form.roles_allowed && !form.roles_allowed.includes(rol)) {
+          if (!canAccessRole(form?.roles_allowed, rol)) {
              alert('No tienes permisos para acceder a este formulario.');
              navigate(`/${moduleSlug}`, { replace: true });
              return;
