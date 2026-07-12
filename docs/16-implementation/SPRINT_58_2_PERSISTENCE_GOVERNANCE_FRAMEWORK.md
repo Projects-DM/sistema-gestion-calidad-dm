@@ -79,6 +79,27 @@ Para cada una se certifica:
 - owner
 - invariantes
 
+## 2.1) Persistence Authority
+
+Persistence Governance Authority
+
+Platform Governance
+        │
+        ├── Define principios permanentes
+        ├── Certifica cambios estructurales
+        └── Aprueba nuevas políticas
+
+Persistence Governance
+        │
+        ├── Gobierna dominios persistentes
+        ├── Certifica Contracts
+        ├── Certifica Packages
+        └── Supervisa compatibilidad
+
+Persistence Domains
+        │
+        └── Mantienen únicamente información persistente certificada
+
 ---
 
 ## 3) Public vs Internal Architecture
@@ -251,6 +272,50 @@ Certificar principios permanentes.
 - Governance First
 - SSOT Governed
 
+## 11.1) Persistence Resolution Pipeline
+
+Catalog
+
+↓
+
+Definition
+
+↓
+
+Contract
+
+↓
+
+Manifest
+
+↓
+
+Package
+
+↓
+
+Assignment
+
+↓
+
+Validation
+
+↓
+
+Normalization
+
+↓
+
+Dependency Resolution
+
+↓
+
+Capability Set
+
+↓
+
+Runtime
+
 ---
 
 ## 12) Roadmap Consolidado
@@ -282,6 +347,19 @@ Dynamic Module Factory
 
 ↓
 Universal Module Platform
+
+## 12.1) Future Implementation Mapping
+
+| Documento SSOT | Implementación futura                |
+| -------------- | ------------------------------------ |
+| Catalog        | CapabilityCatalogRepository          |
+| Definition     | CapabilityDefinitionRepository       |
+| Contract       | CapabilityContractRepository         |
+| Manifest       | CapabilityManifestRepository         |
+| Package        | CapabilityPackageRepository          |
+| Assignment     | ModuleCapabilityAssignmentRepository |
+| Resolver       | ModuleCapabilityResolver             |
+
 
 ---
 

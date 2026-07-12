@@ -621,5 +621,3 @@ Este dictamen define que Sprint 51 debe enfocarse en convertir esas áreas en me
 - Convertir habilitaciones (document/repository, engines, navigation, evaluation rules) a modelos metadata/capabilities.
 
 ### Roadmap priorizado para Sprint 51
-- Iteraciones 1-4 en Fase 9.
-
