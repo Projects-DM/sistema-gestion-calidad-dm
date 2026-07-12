@@ -94,6 +94,26 @@ Cada Capability deberá registrarse con identidad completa y artefactos oficiale
 - Fecha de publicación
 - Reglas de publicación
 
+Capability Identity
+
+Toda Capability queda identificada por:
+
+Capability ID
+
+Capability Key
+
+Domain
+
+Version
+
+Owner
+
+State
+
+La combinación de estos elementos constituye la identidad oficial de la Capability dentro del Platform Governance.
+
+
+
 ### 2.2 Reglas de publicación
 Una Capability solo podrá publicarse cuando:
 - exista Definition
@@ -110,6 +130,26 @@ Una Capability únicamente podrá retirarse cuando:
 - exista estrategia de migración
 - no rompa contratos certificados
 - exista versión reemplazo cuando aplique
+
+### 2.4 Framework Invariants
+
+Framework Invariants
+
+Las siguientes reglas nunca podrán romperse:
+
+Una Capability nunca conoce módulos.
+
+Una Capability nunca contiene lógica de negocio.
+
+Toda integración ocurre mediante contratos.
+
+Todo Runtime consume Capability Sets.
+
+Toda evolución debe preservar compatibilidad certificada.
+
+Toda nueva funcionalidad reutilizable deberá registrarse en el Capability Catalog.
+
+El Platform Governance constituye la máxima autoridad arquitectónica del Core.
 
 ---
 
