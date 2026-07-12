@@ -5,9 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
 
-import BaseChecklist from '../components/engines/BaseChecklist';
-import BaseMediciones from '../components/engines/BaseMediciones';
-import BaseGeneric from '../components/engines/BaseGeneric';
+import { resolveEngineComponent } from '../core/engine/EngineResolver';
 import EvidenceUploader from '../components/EvidenceUploader';
 
 export default function DynamicForm() {
@@ -163,16 +161,10 @@ export default function DynamicForm() {
 
   const renderEngine = () => {
     const props = { fields, values, onChange: handleChange };
-    switch (formDef.engine_type) {
-      case 'BaseChecklist':
-        return <BaseChecklist {...props} />;
-      case 'BaseMediciones':
-        return <BaseMediciones {...props} />;
-      // Añadir más motores (BaseTrazabilidad, BaseMantenimiento) aquí en el futuro
-      default:
-        return <BaseGeneric {...props} />;
-    }
+    const EngineComponent = resolveEngineComponent(formDef.engine_type);
+    return <EngineComponent {...props} />;
   };
+
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
