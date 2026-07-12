@@ -5,8 +5,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import DocumentModule from '../components/DocumentModule';
 import { dynamicService } from '../services/dynamicService';
-import { canAccessRole } from '../core/authorization/AuthorizationResolver';
-import { NavigationResolver } from '../core/navigation/NavigationResolver';
+import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
+
+const authorization = CapabilityDiscovery.discover('authorization');
+
+
+
 
 
 
@@ -82,7 +86,7 @@ export default function Traceability() {
   const [dynamicForms, setDynamicForms] = useState([]);
   const [formsLoading, setFormsLoading] = useState(true);
 
-  const filteredSubmodules = submodules.filter((sub) => canAccessRole(sub?.roles, rol));
+  const filteredSubmodules = submodules.filter((sub) => authorization.canAccessRole(sub?.roles, rol));
 
 
 
@@ -93,7 +97,7 @@ export default function Traceability() {
         const moduleData = await dynamicService.getModuleBySlug('trazabilidad');
         if (moduleData) {
           const formsData = await dynamicService.getFormsByModule(moduleData.id);
-          const filtered = formsData.filter((f) => canAccessRole(f?.roles_allowed, rol));
+          const filtered = formsData.filter((f) => authorization.canAccessRole(f?.roles_allowed, rol));
 
 
 

@@ -5,11 +5,14 @@ import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
 
-import { resolveEngineComponent } from '../core/engine/EngineResolver';
-import { NavigationResolver } from '../core/navigation/NavigationResolver';
-
-
 import EvidenceUploader from '../components/EvidenceUploader';
+
+import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
+
+const authorization = CapabilityDiscovery.discover('authorization');
+const navigation = CapabilityDiscovery.discover('navigation');
+const engine = CapabilityDiscovery.discover('engine');
+
 
 export default function DynamicForm() {
   const { moduleSlug, formSlug } = useParams();
@@ -34,9 +37,9 @@ export default function DynamicForm() {
         setFormDef(form);
         
         if (form) {
-          if (!canAccessRole(form?.roles_allowed, rol)) {
+          if (!authorization.canAccessRole(form?.roles_allowed, rol)) {
             alert('No tienes permisos para acceder a este formulario.');
-            const redirect = NavigationResolver.resolveRedirect({ moduleSlug });
+            const redirect = navigation.resolveRedirect({ moduleSlug });
             if (redirect) navigate(redirect.to, { replace: redirect.replace });
             return;
           }
@@ -167,7 +170,7 @@ export default function DynamicForm() {
 
   const renderEngine = () => {
     const props = { fields, values, onChange: handleChange };
-    const EngineComponent = resolveEngineComponent(formDef.engine_type);
+    const EngineComponent = engine.resolveEngineComponent(formDef.engine_type);
     return <EngineComponent {...props} />;
   };
 
