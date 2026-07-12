@@ -9,9 +9,11 @@ import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer
 import { documentRepositoriesService } from '../services/documentRepositoriesService';
 import * as Icons from 'lucide-react';
 import { canAccessRole } from '../core/authorization/AuthorizationResolver';
+import { NavigationResolver } from '../core/navigation/NavigationResolver';
 
 
 export default function DynamicModule() {
+
   const { moduleSlug } = useParams();
   const { rol } = useAuth();
   const navigate = useNavigate();
