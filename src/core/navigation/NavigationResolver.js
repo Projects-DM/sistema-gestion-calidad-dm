@@ -2,23 +2,13 @@
  * NavigationResolver
  *
  * Adaptador PÚRÓ para centralizar decisiones de navegación duplicadas.
- * - No importa Runtime
- * - No importa Auth
- * - No importa Metadata
- * - No conoce módulos
- * - No ejecuta navegación (solo resuelve decisiones)
+ *
+ * Reglas de responsabilidad (refinamiento Sprint 54.R):
+ * - NavigationResolver responde ÚNICAMENTE decisiones de navegación.
+ * - No contiene lógica de autorización (RBAC/permisos/roles).
+ * - No importa Auth/Runtime/Metadata/Business Logic.
+ * - Depende únicamente de datos recibidos por parámetros.
  */
-
-/**
- * @param {Array<string>|undefined|null} requiredRoles
- * @param {string|undefined|null} userRole
- * @returns {boolean}
- */
-function canAccessRole(requiredRoles, userRole) {
-  if (!requiredRoles) return true;
-  if (requiredRoles.length === 0) return true;
-  return requiredRoles.includes(userRole);
-}
 
 /**
  * resolveDefaultTab
@@ -46,16 +36,14 @@ function resolveFallbackTab(currentTab, isRepositorioTabAvailable) {
 }
 
 /**
- * canActivateTab
- * Replica las reglas actuales:
- * - "repositorio" requiere disponibilidad
- * - "forms" y "records" siempre se activan
+ * isTabAvailable
+ * Refuerzo semántico: no "activa" tab; solo responde disponibilidad.
  *
  * @param {'forms'|'records'|'repositorio'} tab
  * @param {boolean} isRepositorioTabAvailable
  * @returns {boolean}
  */
-function canActivateTab(tab, isRepositorioTabAvailable) {
+function isTabAvailable(tab, isRepositorioTabAvailable) {
   if (tab === 'repositorio') return !!isRepositorioTabAvailable;
   return true;
 }
@@ -63,8 +51,7 @@ function canActivateTab(tab, isRepositorioTabAvailable) {
 /**
  * resolveRedirect
  * Replica exactamente los redireccionamientos existentes en DynamicForm:
- * - si un formulario no pasa autorización => alert ya se muestra en el caller y luego
- *   navigate(`/${moduleSlug}`, { replace: true })
+ * - redirige hacia `/${moduleSlug}` con { replace: true }
  *
  * Este método solo responde la decisión de redirect (sin navegar).
  *
@@ -79,27 +66,20 @@ function resolveRedirect({ moduleSlug } = {}) {
 
 /**
  * shouldRedirect
- * Replica la condición actual:
- * - DynamicForm redirecciona si !canAccessRole(form.roles_allowed, rol)
+ * Decisión de navegación por autorización: el caller provee la condición.
  *
- * @param {Array<string>|undefined|null} requiredRoles
- * @param {string|undefined|null} userRole
+ * @param {boolean} shouldRedirectNow
  * @returns {boolean}
  */
-function shouldRedirect(requiredRoles, userRole) {
-  return !canAccessRole(requiredRoles, userRole);
+function shouldRedirect(shouldRedirectNow) {
+  return !!shouldRedirectNow;
 }
 
 export const NavigationResolver = {
   resolveDefaultTab,
   resolveFallbackTab,
-  canActivateTab,
+  isTabAvailable,
   resolveRedirect,
   shouldRedirect,
-
-  // Re-export intencionalmente la semántica pura de roles usada por el componente.
-  canAccessRole,
 };
-
-export { canAccessRole };
 

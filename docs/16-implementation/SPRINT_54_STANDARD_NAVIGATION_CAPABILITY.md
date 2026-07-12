@@ -61,12 +61,13 @@ Se identificó duplicación en:
 - No conoce módulos
 - No ejecuta navegación ni llama a React Router
 
-**APIs mínimas implementadas**
-- `resolveDefaultTab()` → replica la pestaña inicial existente (`forms`)
-- `resolveFallbackTab()` → replica el fallback existente (cuando el tab `repositorio` no está disponible)
-- `canActivateTab()` → replica el gating del tab `repositorio`
-- `resolveRedirect()` → replica el redirect existente hacia `/${moduleSlug}` con `replace: true`
-- `shouldRedirect()` → replica la condición de autorización del caller (si no puede acceder)
+**APIs mínimas implementadas (refinamiento Sprint 54.R)**
+- `resolveDefaultTab()`
+- `resolveFallbackTab()`
+- `isTabAvailable()` → reemplaza semánticamente a `canActivateTab()`
+- `resolveRedirect()`
+- `shouldRedirect()` → el caller provee la condición (decisión de autorización) y el resolver responde solo la decisión de navegación
+
 
 ---
 
@@ -103,12 +104,28 @@ Se debe confirmar manualmente:
 ---
 
 ## Criterios de aceptación
-✅ NavigationResolver centraliza decisiones de navegación duplicadas.
-✅ Los componentes consumen el adaptador.
-✅ No se modifican rutas.
-✅ No cambia UX.
-✅ No se modifica ninguna capa certificada del Core.
-✅ La compilación finaliza correctamente.
+✅ NavigationResolver queda completamente desacoplado de Authorization.
+✅ Authorization permanece exclusivamente en AuthorizationResolver.
+✅ Se elimina toda mezcla de responsabilidades.
+✅ La API pública utiliza nomenclatura consistente (`isTabAvailable`).
+✅ Se incorpora la matriz oficial de responsabilidades.
+✅ No cambia ningún comportamiento funcional.
+✅ No cambia ninguna capa certificada del Core.
+✅ npm run build finaliza correctamente.
+
+---
+
+## Responsibility Boundary
+
+| Capability | Responsabilidad |
+|---|---|
+| AuthorizationResolver | Determinar autorización |
+| NavigationResolver | Determinar navegación |
+| EngineResolver | Resolver engines |
+| DynamicModule | Consumidor |
+| DynamicForm | Consumidor |
+| Traceability | Consumidor |
+
 
 ---
 
