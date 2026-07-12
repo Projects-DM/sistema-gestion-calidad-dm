@@ -34,12 +34,13 @@ export default function DynamicForm() {
         setFormDef(form);
         
         if (form) {
-          if (NavigationResolver.shouldRedirect(form?.roles_allowed, rol)) {
+          if (!canAccessRole(form?.roles_allowed, rol)) {
             alert('No tienes permisos para acceder a este formulario.');
             const redirect = NavigationResolver.resolveRedirect({ moduleSlug });
             if (redirect) navigate(redirect.to, { replace: redirect.replace });
             return;
           }
+
 
           const formFields = await dynamicService.getFormFields(form.id);
           setFields(formFields);
