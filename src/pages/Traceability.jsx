@@ -6,9 +6,12 @@ import { useAuth } from '../hooks/useAuth';
 import DocumentModule from '../components/DocumentModule';
 import { dynamicService } from '../services/dynamicService';
 import { canAccessRole } from '../core/authorization/AuthorizationResolver';
+import { NavigationResolver } from '../core/navigation/NavigationResolver';
+
 
 
 const submodules = [
+
   {
     id: 1,
     path: '/trazabilidad/despachos',
@@ -78,7 +81,8 @@ export default function Traceability() {
   const [dynamicForms, setDynamicForms] = useState([]);
   const [formsLoading, setFormsLoading] = useState(true);
 
-  const filteredSubmodules = submodules.filter((sub) => canAccessRole(sub?.roles, rol));
+  const filteredSubmodules = submodules.filter((sub) => NavigationResolver.canAccessRole(sub?.roles, rol));
+
 
   useEffect(() => {
     async function loadDynamicForms() {
@@ -87,7 +91,8 @@ export default function Traceability() {
         const moduleData = await dynamicService.getModuleBySlug('trazabilidad');
         if (moduleData) {
           const formsData = await dynamicService.getFormsByModule(moduleData.id);
-          const filtered = formsData.filter((f) => canAccessRole(f?.roles_allowed, rol));
+          const filtered = formsData.filter((f) => NavigationResolver.canAccessRole(f?.roles_allowed, rol));
+
 
           setDynamicForms(filtered);
         }
