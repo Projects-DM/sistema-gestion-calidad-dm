@@ -8,8 +8,10 @@ import DynamicRecordsView from '../components/DynamicRecordsView';
 import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer';
 import { documentRepositoriesService } from '../services/documentRepositoriesService';
 import * as Icons from 'lucide-react';
-import { canAccessRole } from '../core/authorization/AuthorizationResolver';
-import { NavigationResolver } from '../core/navigation/NavigationResolver';
+import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
+
+const authorization = CapabilityDiscovery.discover('authorization');
+const navigation = CapabilityDiscovery.discover('navigation');
 
 
 export default function DynamicModule() {
@@ -83,7 +85,7 @@ export default function DynamicModule() {
     };
   }, [moduleSlug]);
 
-  const filteredForms = forms.filter((f) => canAccessRole(f?.roles_allowed, rol));
+  const filteredForms = forms.filter((f) => authorization.canAccessRole(f?.roles_allowed, rol));
 
   const isRepositorioTabAvailable = repositoryAvailability.available;
 
