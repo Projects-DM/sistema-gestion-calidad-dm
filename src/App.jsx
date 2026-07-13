@@ -9,6 +9,7 @@ import Traceability from './pages/Traceability';
 import Dispatches from './pages/Dispatches';
 import Certificates from './pages/Certificates';
 import TechnicalSheets from './pages/TechnicalSheets';
+import DynamicModuleById from './pages/DynamicModuleById';
 import DynamicModule from './pages/DynamicModule';
 import DynamicForm from './pages/DynamicForm';
 import Configuration from './pages/Configuration';
@@ -63,7 +64,9 @@ function App() {
           <Route path="runtime-playground" element={<RuntimePlaygroundSandbox />} />
 
           <Route path=":moduleSlug" element={<DynamicModule />} />
+          <Route path=":moduleId" element={<DynamicModuleById />} />
           <Route path="modulo/:moduleSlug/:formSlug" element={<DynamicForm />} />
+
           
         </Route>
 
