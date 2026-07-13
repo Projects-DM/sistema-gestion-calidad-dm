@@ -1,95 +1,204 @@
+/**
+ * DynamicModule
+ *
+ * Core Standard Shell — Sprint 61 (Capability Public Set Integration)
+ *
+ * This component is the certified CORE STANDARD SHELL (DYNAMIC_MODULE_ARCHITECTURE_DECISION_v1).
+ * From Sprint 61 onwards, ALL UI decisions (tabs, visibility, navigation) are driven
+ * EXCLUSIVELY by the Capability Public Set returned by useCapabilityPublicSet.
+ *
+ * What this component KNOWS:
+ *   - moduleSlug (from URL params, for routing and data loading)
+ *   - modInfo    (module metadata from dynamicService — for display only)
+ *   - forms      (form list from dynamicService — for display only)
+ *   - Capability Public Set (via useCapabilityPublicSet — the only UI authority)
+ *
+ * What this component NEVER does:
+ *   - Query documentRepositoriesService directly
+ *   - Make UI decisions based on moduleSlug or module-specific conditions
+ *   - Use if (moduleSlug === ...) or equivalent hardcodes
+ *   - Import persistence, Core internals, or services for UI decisions
+ *
+ * Architecture:
+ *   useCapabilityPublicSet()
+ *         ↓
+ *   CapabilityPublicSet (single source of truth for all UI structure)
+ *         ↓
+ *   DynamicModule renders tabs + content exclusively from capabilityPublicSet
+ */
+
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, FileText, Loader2, ListChecks, History } from 'lucide-react';
+import { ChevronRight, Loader2 } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import DocumentModule from '../components/DocumentModule';
 import DynamicRecordsView from '../components/DynamicRecordsView';
 import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer';
-import { documentRepositoriesService } from '../services/documentRepositoriesService';
-import * as Icons from 'lucide-react';
 import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
+import { useCapabilityPublicSet } from '../core/capabilities/public/useCapabilityPublicSet';
 
+// Authorization capability — governs form access by role (certified, Sprint 52+)
 const authorization = CapabilityDiscovery.discover('authorization');
-const navigation = CapabilityDiscovery.discover('navigation');
 
+// ---------------------------------------------------------------------------
+// Icon resolver — maps Lucide icon name strings from Capability definitions
+// to actual React components. Fallback to FileText for unknown icon names.
+// ---------------------------------------------------------------------------
+function resolveIcon(iconName) {
+  return Icons[iconName] || Icons.FileText;
+}
+
+// ---------------------------------------------------------------------------
+// Tab content renderers — one per capability key.
+// These are purely presentational; the decision of WHICH tabs exist is
+// made entirely by the Capability Public Set, not here.
+// ---------------------------------------------------------------------------
+
+function FormsContent({ forms, moduleSlug }) {
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+        <div className="w-1.5 h-6 bg-accent rounded-full" />
+        Formatos Disponibles
+      </h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {forms.map((form) => {
+          const IconComponent = resolveIcon(form.icon || 'FileText');
+          return (
+            <Link
+              to={`/modulo/${moduleSlug}/${form.slug}`}
+              key={form.id}
+              className="group flex flex-col bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+            >
+              <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
+                <IconComponent className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
+                {form.name}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6 flex-1">{form.description}</p>
+              <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto">
+                Ingresar
+                <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+          );
+        })}
+
+        {forms.length === 0 && (
+          <div className="col-span-full py-10 text-center text-gray-500">
+            No hay formularios configurados para este módulo.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecordsContent({ moduleId }) {
+  return <DynamicRecordsView moduleId={moduleId} />;
+}
+
+function RepositoryContent({ moduleSlug }) {
+  return (
+    <div className="space-y-6">
+      <ModuleDocumentViewer moduleSlug={moduleSlug} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DynamicModule — Core Standard Shell
+// ---------------------------------------------------------------------------
 
 export default function DynamicModule() {
-
   const { moduleSlug } = useParams();
   const { rol } = useAuth();
   const navigate = useNavigate();
-  
-  const [modInfo, setModInfo] = useState(null);
-  const [forms, setForms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('forms'); // 'forms' or 'records'
 
-  const [repositoryAvailability, setRepositoryAvailability] = useState({
-    resolved: false,
-    available: false,
-  });
+  // Module metadata and forms — loaded from service for display purposes only.
+  // These are NOT used for UI decisions (tabs, visibility, navigation).
+  const [modInfo, setModInfo]     = useState(null);
+  const [forms, setForms]         = useState([]);
+  const [loadingModule, setLoadingModule] = useState(true);
 
+  // Active tab key — driven by Capability Public Set (set to first tab on load).
+  const [activeTab, setActiveTab] = useState(null);
+
+  // Load module metadata and forms.
+  // dynamicService is used here ONLY for fetching display data (name, description, forms).
+  // It is NOT consulted for any UI capability decision.
   useEffect(() => {
+    let cancelled = false;
+
     async function loadModuleAndForms() {
       try {
-        setLoading(true);
+        setLoadingModule(true);
+        setActiveTab(null);
+
         const moduleData = await dynamicService.getModuleBySlug(moduleSlug);
+        if (cancelled) return;
         setModInfo(moduleData);
-        
+
         if (moduleData) {
           const formsData = await dynamicService.getFormsByModule(moduleData.id);
+          if (cancelled) return;
           setForms(formsData);
         }
-      } catch (error) {
-        console.error('Error loading module:', error);
+      } catch (err) {
+        console.error('DynamicModule: error loading module data', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoadingModule(false);
       }
     }
+
     loadModuleAndForms();
-    // Reset tab when module changes
-    setActiveTab('forms');
+    return () => { cancelled = true; };
   }, [moduleSlug, navigate]);
 
+  // ---------------------------------------------------------------------------
+  // Capability Public Set — SINGLE SOURCE OF TRUTH for all UI decisions.
+  //
+  // DynamicModule reads ONLY this artifact to determine:
+  //   - which tabs to render
+  //   - which capabilities are available
+  //   - what order and label each tab has
+  //
+  // The hook internally uses CapabilityPublicSetAdapter → ModuleCapabilityResolver.
+  // DynamicModule has no visibility into that pipeline.
+  // ---------------------------------------------------------------------------
+  const { capabilityPublicSet, loading: loadingCapabilities } = useCapabilityPublicSet({
+    moduleSlug,
+    moduleId: modInfo?.id ?? null,
+  });
+
+  // Set the default active tab once the Capability Public Set is resolved.
+  // The default is always the first tab in capability order (order: 1 → 'forms').
   useEffect(() => {
-    let mounted = true;
-
-    async function resolveRepositoryAvailability() {
-      try {
-        setRepositoryAvailability({ resolved: false, available: false });
-
-        // Capability availability source of truth: existing data-driven repositories.
-        const repos = await documentRepositoriesService.getRepositories({ moduleSlug });
-        const available = (repos || []).some((r) => r.is_active !== false);
-
-        if (!mounted) return;
-        setRepositoryAvailability({ resolved: true, available });
-
-        // Keep UX identical: if no repository capability, force standard tab.
-        if (!available && activeTab === 'repositorio') {
-          setActiveTab('forms');
-        }
-      } catch (e) {
-        console.error('Error resolving repository availability:', e);
-        if (!mounted) return;
-        setRepositoryAvailability({ resolved: true, available: false });
-        if (activeTab === 'repositorio') setActiveTab('forms');
-      }
+    if (capabilityPublicSet && !activeTab) {
+      const defaultKey = capabilityPublicSet.getDefaultTabKey();
+      if (defaultKey) setActiveTab(defaultKey);
     }
+  }, [capabilityPublicSet, activeTab]);
 
-    resolveRepositoryAvailability();
+  // Forms are filtered by role authorization (capability: authorization, Sprint 52+).
+  // This is a display-level filter, not a capability decision.
+  const filteredForms = forms.filter((f) => authorization?.canAccessRole(f?.roles_allowed, rol));
 
-    return () => {
-      mounted = false;
-    };
-  }, [moduleSlug]);
+  // Tabs are built exclusively from the Capability Public Set.
+  // No hardcodes. No moduleSlug conditions. No service calls.
+  const tabs = capabilityPublicSet?.getTabs() ?? [];
 
-  const filteredForms = forms.filter((f) => authorization.canAccessRole(f?.roles_allowed, rol));
+  // ---------------------------------------------------------------------------
+  // Loading state: wait for both module data and capabilities to resolve.
+  // ---------------------------------------------------------------------------
+  const isLoading = loadingModule || (modInfo != null && loadingCapabilities);
 
-  const isRepositorioTabAvailable = repositoryAvailability.available;
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
@@ -106,31 +215,49 @@ export default function DynamicModule() {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Tab content — rendered by capability key.
+  // The existence of each case here does NOT enable the tab;
+  // the Capability Public Set is the authority for that.
+  // ---------------------------------------------------------------------------
+  function renderTabContent() {
+    switch (activeTab) {
+      case 'forms':
+        return <FormsContent forms={filteredForms} moduleSlug={moduleSlug} />;
+      case 'records':
+        return <RecordsContent moduleId={modInfo.id} />;
+      case 'repository':
+        return <RepositoryContent moduleSlug={moduleSlug} />;
+      default:
+        return null;
+    }
+  }
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-
-
-
-      
-      {/* Header */}
+      {/* Module Header */}
       <div className="bg-primary rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
-        
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-sm font-medium mb-4 uppercase tracking-widest">
               {modInfo.name}
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">Programa de {modInfo.name}</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
+              Programa de {modInfo.name}
+            </h1>
             <p className="text-slate-300 text-lg leading-relaxed">
               {modInfo.description || `Gestión y control de ${modInfo.name.toLowerCase()}.`}
             </p>
           </div>
 
-          <DocumentModule 
+          <DocumentModule
             module={modInfo.slug}
             title={`Programa de ${modInfo.name}`}
             description="Documento técnico normativo del proceso."
@@ -138,82 +265,34 @@ export default function DynamicModule() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — built exclusively from Capability Public Set */}
       <div className="flex border-b border-gray-200 gap-8">
-        <button 
-          onClick={() => setActiveTab('forms')}
-          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'forms' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <div className="flex items-center gap-2"><ListChecks className="w-4 h-4" /> Diligenciar Registros</div>
-        </button>
-        <button 
-          onClick={() => setActiveTab('records')}
-          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'records' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          <div className="flex items-center gap-2"><History className="w-4 h-4" /> Historial y Consultas</div>
-        </button>
-        <button
-          onClick={() => setActiveTab('repositorio')}
-          className={`pb-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'repositorio' ? 'border-primary text-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-          disabled={!isRepositorioTabAvailable}
-        >
-          <div className="flex items-center gap-2"><FileText className="w-4 h-4" /> Repositorio Documental</div>
-        </button>
+        {tabs.map((tab) => {
+          const TabIcon = resolveIcon(tab.icon);
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              disabled={!tab.enabled}
+              className={`pb-4 text-sm font-bold border-b-2 transition-colors ${
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              <div className="flex items-center gap-2">
+                <TabIcon className="w-4 h-4" />
+                {tab.label}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
+      {/* Tab Content */}
+      {renderTabContent()}
 
-      {/* Content */}
-      {activeTab === 'forms' ? (
-
-        <div>
-
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-
-            <div className="w-1.5 h-6 bg-accent rounded-full"></div>
-            Formatos Disponibles
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {filteredForms.map((form) => {
-              const IconComponent = Icons[form.icon || 'FileText'] || Icons.FileText;
-              
-              return (
-                <Link 
-                  to={`/modulo/${moduleSlug}/${form.slug}`} 
-                  key={form.id}
-                  className="group flex flex-col bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-                >
-                  <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors"></div>
-                  
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
-                    <IconComponent className="w-7 h-7" />
-                  </div>
-                  
-                  <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">{form.name}</h3>
-                  <p className="text-sm text-gray-500 mb-6 flex-1">{form.description}</p>
-                  
-                  <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto">
-                    Ingresar
-                    <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </Link>
-              );
-            })}
-            
-            {filteredForms.length === 0 && (
-              <div className="col-span-full py-10 text-center text-gray-500">
-                No hay formularios configurados para este módulo.
-              </div>
-            )}
-          </div>
-        </div>
-      ) : activeTab === 'repositorio' ? (
-        <div className="space-y-6">
-        <ModuleDocumentViewer moduleSlug={moduleSlug} />
-        </div>
-      ) : (
-        <DynamicRecordsView moduleId={modInfo.id} />
-      )}
     </div>
   );
 }
