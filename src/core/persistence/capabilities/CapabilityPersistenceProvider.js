@@ -94,8 +94,56 @@ export class CapabilityPersistenceProvider {
   }
 
   /**
+   * Operational write: replace assignments for a module.
+   *
+   * Core does not contain business rules.
+   * The repository contract and adapters decide atomicity and persistence.
+   */
+  async replaceAssignmentsForModule({ moduleId, assignments } = {}) {
+    if (!moduleId) throw new Error('CapabilityPersistenceProvider.replaceAssignmentsForModule: moduleId is required');
+    if (!Array.isArray(assignments)) throw new Error('CapabilityPersistenceProvider.replaceAssignmentsForModule: assignments must be an array');
+
+    // Structural validation (pure, deterministic)
+    const validated = assignments.map((a) => {
+      const v = validateModuleCapabilityAssignment(a);
+      if (!v.ok) throw new Error(v.error);
+      return a;
+    });
+
+    // Persistence layer contract (no business logic)
+    const raws = validated.map((a) => ({
+      assignmentId: a.assignmentId,
+      moduleId: a.moduleId,
+      packageId: a.packageId,
+      state: a.state,
+      owner: a.owner,
+      version: a.version,
+    }));
+
+    const result = await this.repositories.moduleCapabilityAssignmentRepository.replaceManyForModule({
+      moduleId,
+      assignments: raws,
+    });
+
+    // Normalize: return domain models when adapter returns raws
+    const out = Array.isArray(result)
+      ? result.map(mapModuleCapabilityAssignment).filter(Boolean)
+      : validated;
+
+    return out;
+  }
+
+  /**
+   * Operational write: delete all assignments for a module.
+   */
+  async deleteAssignmentsForModule({ moduleId } = {}) {
+    if (!moduleId) throw new Error('CapabilityPersistenceProvider.deleteAssignmentsForModule: moduleId is required');
+    const result = await this.repositories.moduleCapabilityAssignmentRepository.deleteManyByModuleId({ moduleId });
+    return result;
+  }
+
+  /**
    * NOTE: No resolution logic here.
-   * This provider only loads persisted capability entities.
    */
 }
 
