@@ -436,7 +436,7 @@ export class ModuleAdministrationApplicationService {
       );
     }
 
-    const { CapabilityAssignmentService } = await import('../../../operationalLayer/capabilityAssignment/CapabilityAssignmentService.js');
+    const { CapabilityAssignmentService } = await import('../../operationalLayer/capabilityAssignment/CapabilityAssignmentService.js');
     const capabilityService = new CapabilityAssignmentService({
       persistenceProvider: this.persistenceProvider,
     });

@@ -10,6 +10,10 @@
  *
  * Both mechanisms NEVER coexist for the same error.
  *
+ * Note: VALIDATION_FAILED exists in ApplicationErrorCode for use with
+ * createApplicationFailure() only. It must NEVER be used with
+ * throw new ApplicationError() — that would violate the SSOT rule.
+ *
  * Constraints:
  * - Zero external dependencies
  * - No React, Runtime, Supabase, or persistence coupling
@@ -87,6 +91,8 @@ export class ApplicationError extends Error {
   constructor(code, message, details, cause) {
     super(message);
     this.name = 'ApplicationError';
+    this.contractName = 'ApplicationError';
+    this.contractVersion = '1.0.0';
     this.code = code;
     this.details = details || undefined;
     this.cause = cause || undefined;
@@ -98,7 +104,7 @@ export class ApplicationError extends Error {
    * @returns {object}
    */
   toJSON() {
-    return {
+    return Object.freeze({
       contractName: 'ApplicationError',
       contractVersion: '1.0.0',
       name: this.name,
@@ -107,6 +113,6 @@ export class ApplicationError extends Error {
       details: this.details,
       timestamp: this.timestamp,
       stack: this.stack,
-    };
+    });
   }
 }
