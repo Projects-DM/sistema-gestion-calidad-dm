@@ -23,6 +23,23 @@ export const dynamicService = {
     return data;
   },
 
+  async getModuleById({ moduleId } = {}) {
+    if (moduleId === undefined || moduleId === null || String(moduleId).trim().length === 0) {
+      throw new Error('dynamicService.getModuleById: moduleId is required');
+    }
+
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_modules')
+      .select('*')
+      .eq('id', moduleId)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+
   async getFormsByModule(moduleId) {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
