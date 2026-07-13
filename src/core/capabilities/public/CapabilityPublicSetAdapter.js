@@ -29,67 +29,48 @@
 
 import { documentRepositoriesService } from '../../../services/documentRepositoriesService';
 
+import { CapabilityPackageRegistry } from '../CapabilityPackageRegistry';
+
+
 // ---------------------------------------------------------------------------
-// Standard Capability Package Catalog
+// Adapter-side Standard Package resolution
 //
-// Defines the Core Standard Shell capabilities for DynamicModule.
-// These match the certified Standard Capabilities from MODULE_CONTRACT_v1.
-//
-// Fields:
-//   packageId    — unique package identity
-//   definitionId — links to the capability definition
-//   contractId   — links to the capability contract
-//   manifestId   — links to the capability manifest
-//   capabilityKey— stable key used by Runtime for UI lookups
-//   label        — display label for the UI tab
-//   icon         — Lucide icon name for the UI tab
-//   order        — display order (ascending)
-//   uiRole       — 'tab' | future roles
-//   version      — capability version
-//   dependencies — declared capability dependencies (none for standard shell)
+// IMPORTANT (SPRINT 62.5 rule):
+// - CapabilityPackageRegistry is the authority for public descriptors.
+// - This adapter still needs to produce the full internal package structure
+//   expected by ModuleCapabilityResolver/CapabilityPublicSetAdapter interface.
+// - Therefore, we *derive* the adapter's internal package definitions from
+//   the public descriptors (no duplicate registry/catalog maintained here).
 // ---------------------------------------------------------------------------
 
-const STANDARD_PACKAGES = {
-  'pkg:standard:forms': {
-    packageId:     'pkg:standard:forms',
-    definitionId:  'def:standard:forms',
-    contractId:    'contract:standard:forms',
-    manifestId:    'manifest:standard:forms',
-    capabilityKey: 'forms',
-    label:         'Diligenciar Registros',
-    icon:          'ListChecks',
-    order:         1,
-    uiRole:        'tab',
-    version:       'v1',
-    dependencies:  [],
-  },
-  'pkg:standard:records': {
-    packageId:     'pkg:standard:records',
-    definitionId:  'def:standard:records',
-    contractId:    'contract:standard:records',
-    manifestId:    'manifest:standard:records',
-    capabilityKey: 'records',
-    label:         'Historial y Consultas',
-    icon:          'History',
-    order:         2,
-    uiRole:        'tab',
-    version:       'v1',
-    dependencies:  [],
-  },
-  'pkg:standard:repository': {
-    packageId:     'pkg:standard:repository',
-    definitionId:  'def:standard:repository',
-    contractId:    'contract:standard:repository',
-    manifestId:    'manifest:standard:repository',
-    capabilityKey: 'repository',
-    label:         'Repositorio Documental',
-    icon:          'FileText',
-    order:         3,
-    uiRole:        'tab',
-    version:       'v1',
-    dependencies:  [],
-  },
-};
+function toInternalPackage({ packageKey, displayName, icon, defaultOrder }) {
+  // Map only stable identity from packageKey to adapter-internal identifiers.
+  // These identifiers are internal to the adapter and not exposed as
+  // "capability package authority".
+  const packageId = `pkg:standard:${packageKey}`;
+  const definitionId = `def:standard:${packageKey}`;
+  const contractId = `contract:standard:${packageKey}`;
+  const manifestId = `manifest:standard:${packageKey}`;
+
+  return {
+    packageId,
+    definitionId,
+    contractId,
+    manifestId,
+    capabilityKey: packageKey,
+    label: displayName,
+    icon,
+    order: defaultOrder,
+    uiRole: 'tab',
+    version: 'v1',
+    dependencies: [],
+  };
+}
+
+const INTERNAL_PACKAGE_BY_KEY = new Map(
+  CapabilityPackageRegistry.listPackages().map((d) => [d.packageKey, toInternalPackage(d)])
+);
+
 
 // ---------------------------------------------------------------------------
 
@@ -180,6 +161,11 @@ export class CapabilityPublicSetAdapter {
    * @returns {Promise<object|null>}
    */
   async getPackageById({ packageId } = {}) {
-    return STANDARD_PACKAGES[packageId] ?? null;
+    if (!packageId) return null;
+    // packageId in resolver pipeline is adapter-internal identity: pkg:standard:<packageKey>
+    const normalizedKey = String(packageId).replace('pkg:standard:', '');
+    return INTERNAL_PACKAGE_BY_KEY.get(normalizedKey) ?? null;
   }
+
 }
+
