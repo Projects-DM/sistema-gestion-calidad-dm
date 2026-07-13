@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { dynamicService } from '../../services/dynamicService';
+import { ModuleAdministrationApplicationService } from '../../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
+import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
+import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
+
+const appService = new ModuleAdministrationApplicationService();
+const appContext = createApplicationContext({ actorId: 'ui-module-edit', actorRole: 'admin' });
 
 function getModuleField(module, keys) {
 
@@ -62,15 +67,22 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, formsCount 
         slug,
       };
 
-      const result = await dynamicService.updateModule(payload);
+      const result = await appService.execute(
+        createApplicationRequest({
+          operation: 'UPDATE_MODULE_METADATA',
+          target: id,
+          payload: { name: name.trim(), slug },
+        }),
+        appContext
+      );
 
       if (result && result.success === true) {
         setSuccess('Módulo actualizado correctamente');
         if (typeof onSaved === 'function') {
-          onSaved(result.updatedModule);
+          onSaved(result.data);
         }
       } else {
-        const msg = result?.error || 'No fue posible actualizar el módulo';
+        const msg = result?.error?.message || 'No fue posible actualizar el módulo';
         setError(msg);
       }
     } catch (err) {

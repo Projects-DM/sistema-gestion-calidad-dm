@@ -6,7 +6,7 @@
  * NOTE: No Runtime/React/DB coupling.
  */
 
-import { validateModuleCapabilityAssignment } from '../../../persistence/capabilities/validation/ModuleCapabilityAssignmentIntegrityValidation';
+import { validateModuleCapabilityAssignment } from '../../persistence/capabilities/validation/ModuleCapabilityAssignmentIntegrityValidation';
 
 function normalizeError(error) {
   if (!error) return 'Validation error';

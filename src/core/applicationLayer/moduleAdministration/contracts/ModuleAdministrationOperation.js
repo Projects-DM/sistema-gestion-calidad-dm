@@ -14,6 +14,12 @@
  */
 
 /**
+ * Contract version for the operation catalog.
+ * Increment when operations are added or modified.
+ */
+export const MODULE_ADMINISTRATION_OPERATION_VERSION = '1.0.0';
+
+/**
  * @readonly
  * @enum {string}
  */

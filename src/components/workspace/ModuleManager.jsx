@@ -2,7 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Edit } from 'lucide-react';
 import ModuleDetailPanel from './ModuleDetailPanel';
 import ModuleEditPanel from './ModuleEditPanel';
-import { dynamicService } from '../../services/dynamicService';
+import { ModuleAdministrationApplicationService } from '../../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
+import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
+import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
+
+const appService = new ModuleAdministrationApplicationService();
+const appContext = createApplicationContext({ actorId: 'ui-module-manager', actorRole: 'admin' });
 
 
 
@@ -42,20 +47,26 @@ export default function ModuleManager() {
         setLoading(true);
         setError(null);
 
-        const mods = await dynamicService.getModules();
+        const modsResult = await appService.execute(
+          createApplicationRequest({ operation: 'GET_MODULES' }),
+          appContext
+        );
         if (cancelled) return;
-        setModules(mods || []);
+        const mods = modsResult.success !== false ? (modsResult.data || []) : [];
+        setModules(mods);
 
-        // Form count: permitido por contrato existente dynamicService.getFormsByModule
         const formsMap = {};
-        if (typeof dynamicService.getFormsByModule === 'function') {
-          await Promise.all(
-            (mods || []).map(async (m) => {
-              const list = await dynamicService.getFormsByModule(m.id);
-              formsMap[m.id] = Array.isArray(list) ? list.length : 0;
-            })
-          );
-        }
+        await Promise.all(
+          mods.map(async (m) => {
+            const configResult = await appService.execute(
+              createApplicationRequest({ operation: 'GET_MODULE_CONFIGURATION', target: m.id }),
+              appContext
+            );
+            formsMap[m.id] = configResult.success !== false
+              ? (configResult.data?.forms?.length || 0)
+              : 0;
+          })
+        );
 
         if (cancelled) return;
         setFormsByModuleId(formsMap);
@@ -85,8 +96,12 @@ export default function ModuleManager() {
             if (updatedModule?.id) {
               setIsEditing(false);
 
-              const refreshed = await dynamicService.getModules();
-              setModules(refreshed || []);
+              const refreshedResult = await appService.execute(
+                createApplicationRequest({ operation: 'GET_MODULES' }),
+                appContext
+              );
+              const refreshed = refreshedResult.success !== false ? (refreshedResult.data || []) : [];
+              setModules(refreshed);
 
               const refreshedSelected = (refreshed || []).find(
                 (m) => m.id === updatedModule.id
