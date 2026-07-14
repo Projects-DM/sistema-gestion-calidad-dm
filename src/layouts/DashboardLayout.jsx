@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
+import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
+import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
+import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
+import { createApplicationContext } from '../core/applicationLayer/common/contracts/ApplicationContext.js';
 import {
   LayoutDashboard,
   Droplets,
@@ -18,26 +22,78 @@ import {
   User,
   Sparkles,
   Settings,
-  FileText
+  FileText,
+  ListChecks,
+  History,
+  BarChart3,
+  Users,
+  Package,
+  Shield,
+  Truck,
+  Heart,
+  GraduationCap,
+  Building2
 } from 'lucide-react';
 
-const menuItems = [
-  { path: 'dashboard', name: 'Panel Principal', icon: LayoutDashboard, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { path: 'operaciones', name: 'Operaciones', icon: Sparkles, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: 'trazabilidad', name: 'Trazabilidad', icon: RouteIcon, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { path: 'medicion-control', name: 'Medición y Control', icon: Droplets, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: 'mantenimiento', name: 'Mantenimiento', icon: Wrench, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: 'calidad', name: 'Calidad', icon: AlertTriangle, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: 'gestion-documental', name: 'Gestión Documental', icon: FileText, roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { path: 'configuracion', name: 'Configuración', icon: Settings, roles: ['administrador'] },
+const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
+const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
 
+const ICON_MAP = {
+  LayoutDashboard, Droplets, Wrench, RouteIcon, AlertTriangle, FileText,
+  Settings, Sparkles, ListChecks, History, BarChart3, Users, Package,
+  Shield, Truck, Heart, GraduationCap, Building2, ShieldCheck,
+};
+
+const STATIC_MENU_ITEMS = [
+  { path: 'dashboard', name: 'Panel Principal', icon: LayoutDashboard, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
+  { path: 'configuracion', name: 'Configuración', icon: Settings, roles: ['administrador'] },
 ];
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [runtimeModules, setRuntimeModules] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut, user, rol } = useAuth();
+
+  const appContext = useMemo(() => createApplicationContext({
+    actorId: user?.id ?? null,
+    source: 'ui-sidebar',
+    actorRole: rol === 'administrador' ? 'admin' : rol,
+  }), [user?.id, rol]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRuntimeModules() {
+      try {
+        const result = await appService.execute(
+          createApplicationRequest({ operation: 'GET_RUNTIME_MODULES' }),
+          appContext
+        );
+        if (!cancelled && result.success !== false) {
+          setRuntimeModules(result.data || []);
+        }
+      } catch {
+        // silent — sidebar shows static items only
+      }
+    }
+    loadRuntimeModules();
+    return () => { cancelled = true; };
+  }, [appContext]);
+
+  const menuItems = useMemo(() => {
+    const staticItems = STATIC_MENU_ITEMS.filter((item) => !item.roles || item.roles.includes(rol));
+    const dynamicItems = runtimeModules.map((mod) => ({
+      path: mod.slug,
+      name: mod.name,
+      icon: ICON_MAP[mod.icon] || FileText,
+      color: mod.color,
+      _runtime: true,
+    }));
+    const staticPaths = new Set(staticItems.map((i) => i.path));
+    const filtered = dynamicItems.filter((item) => !staticPaths.has(item.path));
+    return [...staticItems, ...filtered];
+  }, [runtimeModules, rol]);
 
   const handleLogout = async () => {
     try {
@@ -48,7 +104,7 @@ export default function DashboardLayout() {
     }
   };
 
-  const filteredMenuItems = menuItems.filter((item) => !item.roles || item.roles.includes(rol));
+  const filteredMenuItems = menuItems;
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">

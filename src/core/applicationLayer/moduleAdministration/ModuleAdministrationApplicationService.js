@@ -105,6 +105,8 @@ export class ModuleAdministrationApplicationService {
         // Queries (read-only)
         case ModuleAdministrationQuery.GET_MODULES:
           return await this._handleGetModules(request, context);
+        case ModuleAdministrationQuery.GET_RUNTIME_MODULES:
+          return await this._handleGetRuntimeModules(request, context);
         case ModuleAdministrationQuery.GET_MODULE:
           return await this._handleGetModule(request, context);
         case ModuleAdministrationQuery.GET_MODULE_CONFIGURATION:
@@ -179,6 +181,20 @@ export class ModuleAdministrationApplicationService {
    */
   async _handleGetModules(request, context) {
     const modules = await dynamicService.getModules();
+    return createApplicationResult({
+      data: modules,
+      correlationId: request.correlationId,
+    });
+  }
+
+  /**
+   * GET_RUNTIME_MODULES — Return modules published to the runtime.
+   * Filters: is_active=true, visible=true, state=operational.
+   * Ordered by order_index ascending.
+   * @private
+   */
+  async _handleGetRuntimeModules(request, context) {
+    const modules = await dynamicService.getRuntimeModules();
     return createApplicationResult({
       data: modules,
       correlationId: request.correlationId,

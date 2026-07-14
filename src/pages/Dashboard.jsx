@@ -1,8 +1,13 @@
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDashboardMetrics } from '../modules/dashboard/hooks/useDashboardMetrics';
 import { DashboardMetricCard } from '../modules/dashboard/components/DashboardMetricCard';
 import { DashboardRecentActivity } from '../modules/dashboard/components/DashboardRecentActivity';
+import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
+import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
+import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
+import { createApplicationContext } from '../core/applicationLayer/common/contracts/ApplicationContext.js';
 import { 
   Sparkles, 
   Droplets, 
@@ -14,26 +19,77 @@ import {
   TrendingUp,
   FileCheck,
   AlertCircle,
-  Loader2
+  Loader2,
+  ListChecks,
+  History,
+  BarChart3,
+  Users,
+  Package,
+  Shield,
+  Truck,
+  Heart,
+  GraduationCap,
+  Building2
 } from 'lucide-react';
 
-const modules = [
-  { id: 1, path: '/operaciones', name: 'Operaciones', icon: Sparkles, color: 'bg-blue-500', desc: 'BPM, Limpieza, Plagas', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 2, path: '/trazabilidad', name: 'Trazabilidad', icon: RouteIcon, color: 'bg-accent', desc: 'Despachos, lotes y entregas', featured: true, roles: ['administrador', 'calidad', 'operativo', 'consulta', 'conductor'] },
-  { id: 3, path: '/medicion-control', name: 'Medición y Control', icon: Droplets, color: 'bg-cyan-500', desc: 'Temperatura, pH, Peso', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 4, path: '/mantenimiento', name: 'Mantenimiento', icon: Wrench, color: 'bg-orange-500', desc: 'Equipos y calibraciones', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 5, path: '/calidad', name: 'Calidad', icon: AlertTriangle, color: 'bg-amber-600', desc: 'PQRS, Recall, Auditorías', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 6, path: '/gestion-documental', name: 'Gestión Documental', icon: FileText, color: 'bg-indigo-500', desc: 'Programas y registros', roles: ['administrador', 'calidad', 'operativo', 'consulta'] },
-  { id: 7, path: '/configuracion', name: 'Configuración', icon: Settings, color: 'bg-slate-700', desc: 'Usuarios y parámetros', roles: ['administrador'] },
+const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
+const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
+
+const ICON_MAP = {
+  LayoutDashboard: Sparkles, Droplets, Wrench, RouteIcon, AlertTriangle, FileText,
+  Settings, Sparkles, ListChecks, History, BarChart3, Users, Package,
+  Shield, Truck, Heart, GraduationCap, Building2,
+};
+
+const STATIC_MODULE_CARDS = [
+  { path: '/configuracion', name: 'Configuración', icon: Settings, color: '#374151', desc: 'Usuarios y parámetros', roles: ['administrador'] },
 ];
 
 export default function Dashboard() {
-  const { rol } = useAuth();
+  const { rol, user } = useAuth();
   const { metrics, recentActivity, loading, error } = useDashboardMetrics();
-  
-  const filteredModules = modules.filter(mod => 
-    !mod.roles || mod.roles.includes(rol)
-  );
+  const [runtimeModules, setRuntimeModules] = useState([]);
+
+  const appContext = useMemo(() => createApplicationContext({
+    actorId: user?.id ?? null,
+    source: 'ui-dashboard',
+    actorRole: rol === 'administrador' ? 'admin' : rol,
+  }), [user?.id, rol]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadRuntimeModules() {
+      try {
+        const result = await appService.execute(
+          createApplicationRequest({ operation: 'GET_RUNTIME_MODULES' }),
+          appContext
+        );
+        if (!cancelled && result.success !== false) {
+          setRuntimeModules(result.data || []);
+        }
+      } catch {
+        // silent
+      }
+    }
+    loadRuntimeModules();
+    return () => { cancelled = true; };
+  }, [appContext]);
+
+  const allModules = useMemo(() => {
+    const staticCards = STATIC_MODULE_CARDS.filter((m) => !m.roles || m.roles.includes(rol));
+    const dynamicCards = runtimeModules.map((mod) => ({
+      id: mod.id,
+      path: `/${mod.slug}`,
+      name: mod.name,
+      icon: ICON_MAP[mod.icon] || FileText,
+      color: mod.color || 'bg-blue-500',
+      desc: mod.description || mod.name,
+    }));
+    const staticPaths = new Set(staticCards.map((m) => m.path));
+    return [...dynamicCards.filter((m) => !staticPaths.has(m.path)), ...staticCards];
+  }, [runtimeModules, rol]);
+
+  const filteredModules = allModules;
 
   if (loading) {
     return (
@@ -100,7 +156,7 @@ export default function Dashboard() {
           {filteredModules.map((mod) => (
             <Link 
               to={mod.path} 
-              key={mod.id}
+              key={mod.id || mod.path}
               className={`group relative bg-white rounded-2xl p-6 border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden ${
                 mod.featured ? 'border-accent/50 shadow-md ring-1 ring-accent/10' : 'border-gray-100 hover:border-primary/30'
               }`}
@@ -113,7 +169,10 @@ export default function Dashboard() {
                 </div>
               )}
               
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3 ${mod.color}`}>
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 text-white shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3"
+                style={{ backgroundColor: mod.color || '#3B82F6' }}
+              >
                 <mod.icon className="w-6 h-6" />
               </div>
               
