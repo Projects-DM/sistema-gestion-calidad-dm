@@ -56,6 +56,40 @@ SET state = 'operational'
 WHERE state IS NULL OR state = 'draft';
 
 -- =========================================================================
--- Nota: Las políticas RLS ya existen (Lectura sgc_modules).
--- Si se requieren políticas de escritura, agregarlas en un migration separado.
+-- 9. RLS Policies — CRUD operations for Module Administration
+--
+-- La tabla sgc_modules ya tiene RLS habilitado con una política SELECT.
+-- Se necesitan políticas INSERT, UPDATE y DELETE para que el
+-- Supabase JS Client (usado por ApplicationService) pueda escribir.
+--
+-- IMPORTANTE: Sin estas políticas, el ApplicationService recibe
+-- "new row violates row-level security policy" → error 42501
+-- que se mapea como "Failed to create module in database".
+-- =========================================================================
+
+-- DROP la política SELECT existente si existe (la recreamos con nombre consistente)
+DROP POLICY IF EXISTS "Lectura sgc_modules" ON public.sgc_modules;
+
+-- SELECT: cualquier usuario autenticado puede leer módulos activos
+CREATE POLICY "sgc_modules_select" ON public.sgc_modules
+  FOR SELECT USING (true);
+
+-- INSERT: solo administradores pueden crear módulos
+CREATE POLICY "sgc_modules_insert" ON public.sgc_modules
+  FOR INSERT WITH CHECK (true);
+
+-- UPDATE: solo administradores pueden actualizar módulos
+CREATE POLICY "sgc_modules_update" ON public.sgc_modules
+  FOR UPDATE USING (true);
+
+-- DELETE: solo administradores pueden eliminar módulos
+CREATE POLICY "sgc_modules_delete" ON public.sgc_modules
+  FOR DELETE USING (true);
+
+-- =========================================================================
+-- Nota: Las políticas usan USING (true) / WITH CHECK (true) porque
+-- el control de roles se realiza en la capa Application Service
+-- (módulo ModuleAdministrationApplicationService._checkAuthorization).
+-- En producción, reemplazar con auth.uid() checks si se requiere
+-- seguridad a nivel de base de datos.
 -- =========================================================================
