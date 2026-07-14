@@ -5,10 +5,10 @@ import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
 import { CapabilityPackageRegistry } from '../../core/capabilities/CapabilityPackageRegistry.js';
+import { useAuth } from '../../hooks/useAuth.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
-const appContext = createApplicationContext({ actorId: 'ui-create-wizard', actorRole: 'admin' });
 
 const ICON_OPTIONS = [
   'Layers', 'ClipboardList', 'FileText', 'ListChecks', 'History',
@@ -34,6 +34,13 @@ function resolveIcon(name) {
 const TOTAL_STEPS = 5;
 
 export default function CreateModuleWizard({ onCreated, onCancel }) {
+  const { user, rol } = useAuth();
+  const appContext = useMemo(() => createApplicationContext({
+    actorId: user?.id ?? null,
+    source: 'ui-create-wizard',
+    actorRole: rol === 'administrador' ? 'admin' : rol,
+  }), [user?.id, rol]);
+
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -101,7 +108,7 @@ export default function CreateModuleWizard({ onCreated, onCancel }) {
             category: category.trim() || null,
             grupo: group.trim() || null,
           },
-          actor: { id: 'ui-create-wizard', role: 'admin' },
+          actor: { id: user?.id ?? null, role: rol === 'administrador' ? 'admin' : rol },
         }),
         appContext
       );
@@ -129,7 +136,7 @@ export default function CreateModuleWizard({ onCreated, onCancel }) {
             operation: 'ASSIGN_CAPABILITIES',
             target: moduleId,
             payload: { assignments },
-            actor: { id: 'ui-create-wizard', role: 'admin' },
+            actor: { id: user?.id ?? null, role: rol === 'administrador' ? 'admin' : rol },
           }),
           appContext
         );
@@ -146,7 +153,7 @@ export default function CreateModuleWizard({ onCreated, onCancel }) {
             operation: 'CHANGE_MODULE_STATE',
             target: moduleId,
             payload: { newState: 'configurable' },
-            actor: { id: 'ui-create-wizard', role: 'admin' },
+            actor: { id: user?.id ?? null, role: rol === 'administrador' ? 'admin' : rol },
           }),
           appContext
         );

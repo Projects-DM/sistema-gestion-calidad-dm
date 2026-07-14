@@ -19,7 +19,8 @@
  * @typedef {object} ApplicationContext
  * @property {string} contractName - Contract identifier
  * @property {string} contractVersion - Contract version
- * @property {string} [actorId] - Who is executing the operation
+ * @property {string|null} [actorId] - Identity of the actor (UUID from auth, service-account-id, or null). Never a label or origin string.
+ * @property {string} [source] - Origin of the operation (e.g., 'ui-create-wizard', 'api', 'ai-agent', 'scheduler', 'offline-sync')
  * @property {string} [actorRole] - Role of the actor
  * @property {string} [actorEmail] - Email of the actor
  * @property {string} [tenantId] - Tenant identifier (multi-tenant)
@@ -35,7 +36,8 @@
  * Creates a validated ApplicationContext.
  *
  * @param {object} params
- * @param {string} [params.actorId]
+ * @param {string|null} [params.actorId] - Identity of the actor (UUID or null). Never a label.
+ * @param {string} [params.source] - Origin of the operation (e.g., 'ui-create-wizard', 'api')
  * @param {string} [params.actorRole]
  * @param {string} [params.actorEmail]
  * @param {string} [params.tenantId]
@@ -49,6 +51,7 @@
  */
 export function createApplicationContext({
   actorId,
+  source,
   actorRole,
   actorEmail,
   tenantId,
@@ -62,7 +65,8 @@ export function createApplicationContext({
   return Object.freeze({
     contractName: 'ApplicationContext',
     contractVersion: '1.0.0',
-    actorId: actorId || undefined,
+    actorId: actorId ?? undefined,
+    source: source || undefined,
     actorRole: actorRole || undefined,
     actorEmail: actorEmail || undefined,
     tenantId: tenantId || undefined,
