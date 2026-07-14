@@ -55,6 +55,9 @@ export const ModuleAdministrationQuery = Object.freeze({
   /** Get a list of all modules */
   GET_MODULES: 'GET_MODULES',
 
+  /** Get modules published to the runtime (is_active + visible + state=operational) */
+  GET_RUNTIME_MODULES: 'GET_RUNTIME_MODULES',
+
   /** Get detailed information for a single module */
   GET_MODULE: 'GET_MODULE',
 

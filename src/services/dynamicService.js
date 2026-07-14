@@ -12,6 +12,19 @@ export const dynamicService = {
     return data;
   },
 
+  async getRuntimeModules() {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_modules')
+      .select('*')
+      .eq('is_active', true)
+      .eq('visible', true)
+      .eq('state', 'operational')
+      .order('order_index', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+
   async getModuleBySlug(slug) {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
