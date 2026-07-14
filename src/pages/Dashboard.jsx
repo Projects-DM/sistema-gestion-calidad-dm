@@ -9,6 +9,7 @@ import { ModuleAdministrationApplicationService } from '../core/applicationLayer
 import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../core/applicationLayer/common/contracts/ApplicationContext.js';
+import { onModuleChange } from '../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import { 
   Sparkles, 
   Droplets, 
@@ -74,6 +75,18 @@ export default function Dashboard() {
     }
     loadRuntimeModules();
     return () => { cancelled = true; };
+  }, [appContext]);
+
+  useEffect(() => {
+    const unsubscribe = onModuleChange(() => {
+      appService.execute(
+        createApplicationRequest({ operation: 'GET_RUNTIME_MODULES' }),
+        appContext
+      ).then((result) => {
+        if (result.success !== false) setRuntimeModules(result.data || []);
+      }).catch(() => {});
+    });
+    return unsubscribe;
   }, [appContext]);
 
   const allModules = useMemo(() => {

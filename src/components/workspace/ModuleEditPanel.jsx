@@ -4,6 +4,7 @@ import { ModuleAdministrationApplicationService } from '../../core/applicationLa
 import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
+import { dispatchModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import { CapabilityPackageRegistry } from '../../core/capabilities/CapabilityPackageRegistry.js';
 import { useAuth } from '../../hooks/useAuth.js';
 
@@ -148,6 +149,7 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
       }
 
       setSuccess('Módulo actualizado correctamente');
+      dispatchModuleChange('update');
       if (typeof onSaved === 'function') onSaved(result.data);
     } catch (err) {
       setError(err?.message || 'Error inesperado');
@@ -187,6 +189,7 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
       }
 
       setSuccess('Capacidades actualizadas correctamente');
+      dispatchModuleChange('update');
     } catch (err) {
       setError(err?.message || 'Error inesperado');
     } finally {
@@ -217,6 +220,7 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
       }
 
       setSuccess(`Estado cambiado a "${STATE_OPTIONS.find((s) => s.value === newState)?.label || newState}"`);
+      dispatchModuleChange('state-change');
       setNewState('');
       if (typeof onSaved === 'function') onSaved(result.data);
     } catch (err) {
