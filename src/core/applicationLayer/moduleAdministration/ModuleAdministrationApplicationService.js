@@ -266,8 +266,11 @@ export class ModuleAdministrationApplicationService {
         is_active: true,
         state: 'draft',
         icon: payload.icon || 'Layers',
+        color: payload.color || '#3B82F6',
         order_index: payload.order_index || 0,
         visible: payload.visible !== undefined ? payload.visible : true,
+        category: payload.category || null,
+        grupo: payload.grupo || null,
         created_by: context.actorId || null,
       })
       .select('*')
@@ -330,18 +333,23 @@ export class ModuleAdministrationApplicationService {
       });
     }
 
-    // Update description if provided
-    if (payload.description !== undefined) {
+    // Update optional fields (description, category, grupo)
+    const optionalFields = {};
+    if (payload.description !== undefined) optionalFields.description = payload.description;
+    if (payload.category !== undefined) optionalFields.category = payload.category;
+    if (payload.grupo !== undefined) optionalFields.grupo = payload.grupo;
+
+    if (Object.keys(optionalFields).length > 0) {
       const supabase = getSupabaseClient();
       const { error } = await supabase
         .from('sgc_modules')
-        .update({ description: payload.description })
+        .update(optionalFields)
         .eq('id', moduleId);
 
       if (error) {
         throw new ApplicationError(
           ApplicationErrorCode.INFRASTRUCTURE_ERROR,
-          'Failed to update module description',
+          'Failed to update module metadata fields',
           { supabaseError: error.message, moduleId },
           error
         );
@@ -377,6 +385,7 @@ export class ModuleAdministrationApplicationService {
 
     const updateFields = {};
     if (payload.icon !== undefined) updateFields.icon = payload.icon;
+    if (payload.color !== undefined) updateFields.color = payload.color;
     if (payload.order_index !== undefined) updateFields.order_index = payload.order_index;
     if (payload.visible !== undefined) updateFields.visible = payload.visible;
 
