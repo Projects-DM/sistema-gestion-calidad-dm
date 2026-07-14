@@ -18,6 +18,12 @@ import {
   Wrench,
 } from 'lucide-react';
 import { documentRepositoriesService } from '../../services/documentRepositoriesService';
+import { ModuleAdministrationApplicationService } from '../../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
+import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
+import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
+
+const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
+const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
 
 const ICON_WHITELIST = {
   ShieldCheck: 'ShieldCheck',
@@ -41,25 +47,12 @@ const ICON_COMPONENTS = {
   Wrench,
 };
 
-const MODULE_OPTIONS = [
-  { slug: 'operaciones', label: 'Operaciones' },
-  { slug: 'trazabilidad', label: 'Trazabilidad' },
-  { slug: 'medicion-control', label: 'Medición y Control' },
-  { slug: 'mantenimiento', label: 'Mantenimiento' },
-  { slug: 'calidad', label: 'Calidad' },
-  { slug: 'gestion-documental', label: 'Gestión Documental' },
-];
-
 function iconAllowed(iconKey) {
   return !!(iconKey && ICON_WHITELIST[iconKey]);
 }
 
 function normalizeIconKey(iconKey) {
   return iconAllowed(iconKey) ? iconKey : null;
-}
-
-function formatModuleLabel(slug) {
-  return MODULE_OPTIONS.find((m) => m.slug === slug)?.label || slug || '';
 }
 
 function IconPreview({ iconKey, className = '' }) {
@@ -127,6 +120,7 @@ export default function DocumentRepositoriesAdmin() {
 
   const [repositories, setRepositories] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [modules, setModules] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -172,6 +166,21 @@ export default function DocumentRepositoriesAdmin() {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await appService.execute(
+          createApplicationRequest({ operation: 'GET_RUNTIME_MODULES' }),
+          { actorId: null, actorRole: 'admin', source: 'document-repositories-admin' }
+        );
+        const mods = result.success !== false ? (result.data || []) : [];
+        setModules(mods);
+      } catch (e) {
+        console.error('Error loading modules for repository admin:', e);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -581,9 +590,9 @@ export default function DocumentRepositoriesAdmin() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
               >
                 <option value="">Selecciona un módulo...</option>
-                {MODULE_OPTIONS.map((m) => (
+                {modules.map((m) => (
                   <option key={m.slug} value={m.slug}>
-                    {m.label}
+                    {m.name}
                   </option>
                 ))}
               </select>
