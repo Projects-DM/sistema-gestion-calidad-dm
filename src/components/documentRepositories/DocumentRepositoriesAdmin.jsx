@@ -21,6 +21,7 @@ import { documentRepositoriesService } from '../../services/documentRepositories
 import { ModuleAdministrationApplicationService } from '../../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
+import { onModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -172,7 +173,7 @@ export default function DocumentRepositoriesAdmin() {
     (async () => {
       try {
         const result = await appService.execute(
-          createApplicationRequest({ operation: 'GET_RUNTIME_MODULES' }),
+          createApplicationRequest({ operation: 'GET_MODULES' }),
           { actorId: null, actorRole: 'admin', source: 'document-repositories-admin' }
         );
         const mods = result.success !== false ? (result.data || []) : [];
@@ -181,6 +182,18 @@ export default function DocumentRepositoriesAdmin() {
         console.error('Error loading modules for repository admin:', e);
       }
     })();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onModuleChange(() => {
+      appService.execute(
+        createApplicationRequest({ operation: 'GET_MODULES' }),
+        { actorId: null, actorRole: 'admin', source: 'document-repositories-admin' }
+      ).then((result) => {
+        if (result.success !== false) setModules(result.data || []);
+      }).catch(() => {});
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
