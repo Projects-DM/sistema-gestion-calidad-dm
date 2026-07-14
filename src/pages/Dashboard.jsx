@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { LayoutDashboard } from "lucide-react";
 import { useDashboardMetrics } from '../modules/dashboard/hooks/useDashboardMetrics';
 import { DashboardMetricCard } from '../modules/dashboard/components/DashboardMetricCard';
 import { DashboardRecentActivity } from '../modules/dashboard/components/DashboardRecentActivity';
@@ -36,7 +37,7 @@ const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
 
 const ICON_MAP = {
-  LayoutDashboard: Sparkles, Droplets, Wrench, RouteIcon, AlertTriangle, FileText,
+  LayoutDashboard, Droplets, Wrench, RouteIcon, AlertTriangle, FileText,
   Settings, Sparkles, ListChecks, History, BarChart3, Users, Package,
   Shield, Truck, Heart, GraduationCap, Building2,
 };
