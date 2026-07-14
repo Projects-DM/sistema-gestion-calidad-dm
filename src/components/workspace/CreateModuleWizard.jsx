@@ -95,6 +95,7 @@ export default function CreateModuleWizard({ onCreated, onCancel }) {
             slug: slug.trim().toLowerCase(),
             description: description.trim() || null,
             icon,
+            color,
             order_index: orderIndex,
             visible,
             category: category.trim() || null,
