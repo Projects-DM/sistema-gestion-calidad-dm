@@ -7,6 +7,7 @@ import { ModuleAdministrationApplicationService } from '../../core/applicationLa
 import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
+import { dispatchModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import { useAuth } from '../../hooks/useAuth.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
@@ -123,6 +124,7 @@ export default function ModuleManager() {
 
       if (result.success) {
         await refreshModules();
+        dispatchModuleChange('delete');
         setSelectedModule(null);
       } else {
         alert(result.error?.message || 'Error eliminando módulo');
