@@ -2,22 +2,16 @@
  * CapabilityPublicSetAdapter
  *
  * Sprint 61 — Transitional Capability Persistence Provider.
+ * Sprint 67C — Now reads assignments from sgc_modules.capabilities (SSOT).
  *
  * Implements the EXACT same public interface as CapabilityPersistenceProvider:
  *   - listAssignmentsByModuleId({ moduleId })  ← used by ModuleCapabilityResolver
  *   - getPackageById({ packageId })            ← used by ModuleCapabilityResolver
  *
- * Internally uses dynamicService and documentRepositoriesService as transitional
- * data sources to build Standard Capability assignments. This is a private
- * implementation detail — the interface is identical to the future real provider.
- *
- * Sprint 62 migration (zero changes to DynamicModule / useCapabilityPublicSet / ModuleCapabilityResolver):
- *
- *   // Sprint 61
- *   const provider = new CapabilityPublicSetAdapter({ moduleSlug });
- *
- *   // Sprint 62+
- *   const provider = new CapabilityPersistenceProvider({ repositories });
+ * Resolution order for listAssignmentsByModuleId:
+ *   1. Primary: Read from sgc_modules.capabilities (admin-assigned capabilities)
+ *   2. Fallback: Legacy behavior for modules created before Sprint 67C
+ *      (forms + records always active, repository conditionally active)
  *
  * Rules:
  * - No business logic
@@ -28,6 +22,7 @@
  */
 
 import { documentRepositoriesService } from '../../../services/documentRepositoriesService';
+import { getSupabaseClient } from '../../../lib/supabase';
 
 import { CapabilityPackageRegistry } from '../CapabilityPackageRegistry';
 
@@ -91,14 +86,10 @@ export class CapabilityPublicSetAdapter {
    *
    * Returns the active Standard Capability assignments for a module.
    *
-   * Standard assignments are always active:
-   *   - forms   (Diligenciar Registros)
-   *   - records (Historial y Consultas)
-   *
-   * Conditional assignment:
-   *   - repository (Repositorio Documental) — only when the module has at
-   *     least one active document repository (determined internally via
-   *     documentRepositoriesService, invisible to the caller).
+   * Resolution order:
+   *   1. Primary: Read from sgc_modules.capabilities (admin-assigned capabilities)
+   *   2. Fallback: Legacy behavior for modules created before Sprint 67C
+   *      (forms + records always active, repository conditionally active)
    *
    * @param {object} params
    * @param {string} params.moduleId
@@ -107,6 +98,23 @@ export class CapabilityPublicSetAdapter {
   async listAssignmentsByModuleId({ moduleId } = {}) {
     if (!moduleId) return [];
 
+    // --- Primary: read from DB (Sprint 67C SSOT) ---
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_modules')
+      .select('capabilities')
+      .eq('id', moduleId)
+      .single();
+
+    const dbCapabilities = (!error && Array.isArray(data?.capabilities) && data.capabilities.length > 0)
+      ? data.capabilities
+      : null;
+
+    if (dbCapabilities) {
+      return dbCapabilities;
+    }
+
+    // --- Fallback: legacy modules (no capabilities assigned yet) ---
     const assignments = [
       {
         assignmentId: `assign:${moduleId}:forms`,
@@ -124,9 +132,6 @@ export class CapabilityPublicSetAdapter {
       },
     ];
 
-    // Repository capability is conditionally assigned based on existing
-    // document repositories for this module. This is an internal detail
-    // of the adapter — the caller only sees the resulting assignments.
     try {
       const repos = await documentRepositoriesService.getRepositories({
         moduleSlug: this._moduleSlug,

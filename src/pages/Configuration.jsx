@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
+import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
+import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
+import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import WorkspaceFoundation from './WorkspaceFoundation';
 import {
-  Settings,
   Plus,
   LayoutList,
   Layers,
@@ -16,6 +18,9 @@ import {
 } from 'lucide-react';
 import FormBuilder from '../components/FormBuilder';
 import DocumentRepositoriesAdmin from '../components/documentRepositories/DocumentRepositoriesAdmin';
+
+const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
+const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
 
 export default function Configuration() {
 
@@ -46,7 +51,11 @@ export default function Configuration() {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const mods = await dynamicService.getModules();
+      const modsResult = await appService.execute(
+        createApplicationRequest({ operation: 'GET_MODULES' }),
+        { actorId: null, actorRole: 'admin', source: 'configuration' }
+      );
+      const mods = modsResult.success !== false ? (modsResult.data || []) : [];
       setModules(mods);
       
       const allForms = [];
