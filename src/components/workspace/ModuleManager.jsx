@@ -7,10 +7,10 @@ import { ModuleAdministrationApplicationService } from '../../core/applicationLa
 import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
+import { useAuth } from '../../hooks/useAuth.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
-const appContext = createApplicationContext({ actorId: 'ui-module-manager', actorRole: 'admin' });
 
 const STATE_LABELS = {
   draft: 'Borrador',
@@ -36,6 +36,13 @@ function getModuleField(module, keys) {
 }
 
 export default function ModuleManager() {
+  const { user, rol } = useAuth();
+  const appContext = useMemo(() => createApplicationContext({
+    actorId: user?.id ?? null,
+    source: 'ui-module-manager',
+    actorRole: rol === 'administrador' ? 'admin' : rol,
+  }), [user?.id, rol]);
+
   const [modules, setModules] = useState([]);
   const [formsByModuleId, setFormsByModuleId] = useState({});
   const [loading, setLoading] = useState(true);
@@ -109,7 +116,7 @@ export default function ModuleManager() {
         createApplicationRequest({
           operation: 'DELETE_MODULE',
           target: moduleId,
-          actor: { id: 'ui-module-manager', role: 'admin' },
+          actor: { id: user?.id ?? null, role: rol === 'administrador' ? 'admin' : rol },
         }),
         appContext
       );

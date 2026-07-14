@@ -271,7 +271,7 @@ export class ModuleAdministrationApplicationService {
         visible: payload.visible !== undefined ? payload.visible : true,
         category: payload.category || null,
         grupo: payload.grupo || null,
-        created_by: context.actorId || null,
+        created_by: context.actorId ?? null,
       })
       .select('*')
       .single();

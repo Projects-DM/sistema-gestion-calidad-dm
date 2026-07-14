@@ -5,10 +5,10 @@ import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
 import { CapabilityPackageRegistry } from '../../core/capabilities/CapabilityPackageRegistry.js';
+import { useAuth } from '../../hooks/useAuth.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
-const appContext = createApplicationContext({ actorId: 'ui-module-edit', actorRole: 'admin' });
 
 const ICON_OPTIONS = [
   'Layers', 'ClipboardList', 'FileText', 'ListChecks', 'History',
@@ -55,6 +55,13 @@ function getModuleField(module, keys) {
 }
 
 export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, formsCount }) {
+  const { user, rol } = useAuth();
+  const appContext = useMemo(() => createApplicationContext({
+    actorId: user?.id ?? null,
+    source: 'ui-module-edit',
+    actorRole: rol === 'administrador' ? 'admin' : rol,
+  }), [user?.id, rol]);
+
   const id = useMemo(() => getModuleField(module, ['id']), [module]);
   const currentState = useMemo(() => getModuleField(module, ['state']) || 'draft', [module]);
 
