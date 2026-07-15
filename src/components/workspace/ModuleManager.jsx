@@ -9,6 +9,7 @@ import { createApplicationRequest } from '../../core/applicationLayer/common/con
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
 import { dispatchModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { getSupabaseClient } from '../../lib/supabase.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -29,6 +30,8 @@ const STATE_COLORS = {
   archived: 'bg-red-100 text-red-700',
 };
 
+const CORE_PROTECTED_SLUGS = ['configuracion'];
+
 function getModuleField(module, keys) {
   for (const k of keys) {
     if (module && module[k] !== undefined && module[k] !== null) return module[k];
@@ -46,6 +49,7 @@ export default function ModuleManager() {
 
   const [modules, setModules] = useState([]);
   const [formsByModuleId, setFormsByModuleId] = useState({});
+  const [reposByModuleSlug, setReposByModuleSlug] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
@@ -72,11 +76,13 @@ export default function ModuleManager() {
       appContext
     );
     const mods = modsResult.success !== false ? (modsResult.data || []) : [];
-    setModules(mods);
+    const adminModules = mods.filter((m) => !CORE_PROTECTED_SLUGS.includes(m.slug));
+    setModules(adminModules);
 
     const formsMap = {};
+    const reposMap = {};
     await Promise.all(
-      mods.map(async (m) => {
+      adminModules.map(async (m) => {
         const configResult = await appService.execute(
           createApplicationRequest({ operation: 'GET_MODULE_CONFIGURATION', target: m.id }),
           appContext
@@ -84,9 +90,21 @@ export default function ModuleManager() {
         formsMap[m.id] = configResult.success !== false
           ? (configResult.data?.forms?.length || 0)
           : 0;
+
+        const sb = getSupabaseClient();
+        if (sb) {
+          const { count } = await sb
+            .from('sgc_document_repositories')
+            .select('*', { count: 'exact', head: true })
+            .eq('module_slug', m.slug);
+          reposMap[m.slug] = count || 0;
+        } else {
+          reposMap[m.slug] = 0;
+        }
       })
     );
     setFormsByModuleId(formsMap);
+    setReposByModuleSlug(reposMap);
   };
 
   useEffect(() => {
@@ -109,7 +127,23 @@ export default function ModuleManager() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleDelete = async (moduleId, moduleName) => {
+  const handleDelete = async (moduleId, moduleName, moduleSlug) => {
+    const formsCount = formsByModuleId[moduleId] ?? 0;
+    const reposCount = reposByModuleSlug[moduleSlug] ?? 0;
+
+    if (formsCount > 0 || reposCount > 0) {
+      const deps = [];
+      if (formsCount > 0) deps.push(`- Formularios dinámicos: ${formsCount}`);
+      if (reposCount > 0) deps.push(`- Repositorios documentales: ${reposCount}`);
+      alert(
+        `No es posible eliminar este módulo.\n\n` +
+        `El módulo contiene elementos asociados.\n\n` +
+        `${deps.join('\n')}\n\n` +
+        `Debe eliminar todas las dependencias antes de eliminar el módulo.`
+      );
+      return;
+    }
+
     if (!window.confirm(`¿Eliminar el módulo "${moduleName}"? Esta acción no se puede deshacer.`)) return;
 
     try {
@@ -164,7 +198,7 @@ export default function ModuleManager() {
             }
           }}
           onDelete={async () => {
-            await handleDelete(selectedModule.id, getModuleField(selectedModule, ['name']));
+            await handleDelete(selectedModule.id, getModuleField(selectedModule, ['name']), getModuleField(selectedModule, ['slug']));
             setIsEditing(false);
           }}
         />
@@ -174,7 +208,7 @@ export default function ModuleManager() {
           formsCount={formsByModuleId[selectedModule?.id] ?? 0}
           onBack={() => setSelectedModule(null)}
           onEdit={() => setIsEditing(true)}
-          onDelete={() => handleDelete(selectedModule.id, getModuleField(selectedModule, ['name']))}
+          onDelete={() => handleDelete(selectedModule.id, getModuleField(selectedModule, ['name']), getModuleField(selectedModule, ['slug']))}
         />
       ) : (
         <>
@@ -262,7 +296,7 @@ export default function ModuleManager() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDelete(m.id, name)}
+                                  onClick={() => handleDelete(m.id, name, slug)}
                                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                   title="Eliminar módulo"
                                 >
