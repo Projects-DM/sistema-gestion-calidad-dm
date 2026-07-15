@@ -177,7 +177,7 @@ export default function DocumentRepositoriesAdmin() {
           { actorId: null, actorRole: 'admin', source: 'document-repositories-admin' }
         );
         const mods = result.success !== false ? (result.data || []) : [];
-        setModules(mods);
+        setModules(mods.filter((m) => m.slug !== 'configuracion'));
       } catch (e) {
         console.error('Error loading modules for repository admin:', e);
       }
@@ -189,8 +189,8 @@ export default function DocumentRepositoriesAdmin() {
       appService.execute(
         createApplicationRequest({ operation: 'GET_MODULES' }),
         { actorId: null, actorRole: 'admin', source: 'document-repositories-admin' }
-      ).then((result) => {
-        if (result.success !== false) setModules(result.data || []);
+      )      .then((result) => {
+        if (result.success !== false) setModules((result.data || []).filter((m) => m.slug !== 'configuracion'));
       }).catch(() => {});
     });
     return unsubscribe;
