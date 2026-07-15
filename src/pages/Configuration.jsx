@@ -56,7 +56,7 @@ export default function Configuration() {
         { actorId: null, actorRole: 'admin', source: 'configuration' }
       );
       const mods = modsResult.success !== false ? (modsResult.data || []) : [];
-      setModules(mods);
+      setModules(mods.filter((m) => m.slug !== 'configuracion'));
       
       const allForms = [];
       for (const m of mods) {
