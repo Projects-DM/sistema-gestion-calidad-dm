@@ -189,7 +189,7 @@ export class ModuleAdministrationApplicationService {
 
   /**
    * GET_RUNTIME_MODULES — Return modules published to the runtime.
-   * Filters: is_active=true, visible=true, state=operational.
+   * Filters: is_active=true, visible=true.
    * Ordered by order_index ascending.
    * @private
    */

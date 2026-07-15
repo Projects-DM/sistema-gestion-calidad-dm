@@ -19,7 +19,6 @@ export const dynamicService = {
       .select('*')
       .eq('is_active', true)
       .eq('visible', true)
-      .eq('state', 'operational')
       .order('order_index', { ascending: true });
     if (error) throw error;
     return data;
