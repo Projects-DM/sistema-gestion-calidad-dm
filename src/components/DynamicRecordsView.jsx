@@ -158,7 +158,6 @@ export default function DynamicRecordsView({ moduleId }) {
 
   const [filter, setFilter] = useState('todos'); // todos, pendientes, aprobados, rechazados, criticos, hoy
   const [selectedIds, setSelectedIds] = useState([]);
-  const [bulkComment, setBulkComment] = useState('');
   
   // Selection logic
   const toggleSelection = (id) => {
@@ -170,48 +169,6 @@ export default function DynamicRecordsView({ moduleId }) {
       setSelectedIds([]);
     } else {
       setSelectedIds(filteredRecords.map(r => r.id));
-    }
-  };
-
-  const handleBulkVerify = async (status) => {
-    if (!bulkComment.trim() && status === 'rechazado') {
-      alert('Debe incluir un comentario para rechazar registros.');
-      return;
-    }
-
-    // Check if there are any critical records in the selection that require individual review
-    const hasCritical = records.filter(r => selectedIds.includes(r.id)).some(r => r.computedStatus === 'critico');
-    if (hasCritical && status === 'aprobado') {
-      const confirm = window.confirm('Ha seleccionado registros CRÍTICOS para aprobar masivamente. Estos normalmente requieren revisión individual. ¿Desea continuar?');
-      if (!confirm) return;
-    }
-
-    try {
-      setVerifying(true);
-      await dynamicService.verifyMultipleFormResponses(selectedIds, user.id, status, bulkComment || 'Verificación masiva rápida');
-      
-      // Update local state to reflect changes immediately
-      const updatedRecords = records.map(r => {
-        if (selectedIds.includes(r.id)) {
-          return {
-            ...r,
-            status,
-            verification_comment: bulkComment || 'Verificación masiva rápida',
-            verified_at: new Date().toISOString(),
-            verifier: { nombre: user.user_metadata?.nombre || 'Tú' }
-          };
-        }
-        return r;
-      });
-      
-      setRecords(updatedRecords);
-      setSelectedIds([]);
-      setBulkComment('');
-      alert('Registros actualizados exitosamente.');
-    } catch (e) {
-      alert('Error en verificación masiva: ' + e.message);
-    } finally {
-      setVerifying(false);
     }
   };
 
@@ -325,38 +282,11 @@ export default function DynamicRecordsView({ moduleId }) {
         </div>
       </div>
 
-      {/* Bulk Actions */}
+      {/* Selection Info */}
       {isVerificador && selectedIds.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-3 text-blue-800 font-bold text-sm">
-            <ShieldCheck className="w-5 h-5" />
-            <span>{selectedIds.length} registros seleccionados</span>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-            <input 
-              type="text"
-              value={bulkComment}
-              onChange={e => setBulkComment(e.target.value)}
-              placeholder="Comentario global (opcional)..."
-              className="px-4 py-2 rounded-xl border border-blue-200 text-sm focus:ring-2 focus:ring-blue-500 flex-1 sm:w-64"
-            />
-            <div className="flex gap-2">
-              <button 
-                onClick={() => handleBulkVerify('aprobado')}
-                disabled={verifying}
-                className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex-1 sm:flex-none"
-              >
-                Aprobar
-              </button>
-              <button 
-                onClick={() => handleBulkVerify('rechazado')}
-                disabled={verifying}
-                className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-50 flex-1 sm:flex-none"
-              >
-                Rechazar
-              </button>
-            </div>
-          </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+          <ShieldCheck className="w-5 h-5 text-blue-600" />
+          <span className="text-blue-800 font-bold text-sm">{selectedIds.length} registros seleccionados</span>
         </div>
       )}
 
