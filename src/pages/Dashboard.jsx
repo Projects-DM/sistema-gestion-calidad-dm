@@ -68,9 +68,11 @@ export default function Dashboard() {
         );
         if (!cancelled && result.success !== false) {
           setRuntimeModules(result.data || []);
+        } else if (!cancelled) {
+          console.warn('[Dashboard] GET_RUNTIME_MODULES returned failure:', result.error);
         }
-      } catch {
-        // silent
+      } catch (err) {
+        console.error('[Dashboard] Failed to load runtime modules:', err?.message || err);
       }
     }
     loadRuntimeModules();
@@ -78,13 +80,19 @@ export default function Dashboard() {
   }, [appContext]);
 
   useEffect(() => {
-    const unsubscribe = onModuleChange(() => {
+    const unsubscribe = onModuleChange(({ type }) => {
       appService.execute(
         createApplicationRequest({ operation: 'GET_RUNTIME_MODULES' }),
         appContext
       ).then((result) => {
-        if (result.success !== false) setRuntimeModules(result.data || []);
-      }).catch(() => {});
+        if (result.success !== false) {
+          setRuntimeModules(result.data || []);
+        } else {
+          console.warn('[Dashboard] Re-fetch after', type, 'returned failure:', result.error);
+        }
+      }).catch((err) => {
+        console.error('[Dashboard] Re-fetch after', type, 'failed:', err?.message || err);
+      });
     });
     return unsubscribe;
   }, [appContext]);
