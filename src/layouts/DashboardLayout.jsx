@@ -126,6 +126,7 @@ export default function DashboardLayout() {
   };
 
   const filteredMenuItems = menuItems;
+  console.log('[TRACE][L10][Sidebar] filteredMenuItems:', { length: filteredMenuItems.length, items: filteredMenuItems.map(i => ({ path: i.path, name: i.name })) });
 
   return (
     <div className="h-screen bg-gray-50 flex overflow-hidden">

@@ -112,6 +112,7 @@ export default function Dashboard() {
   }, [runtimeModules, rol]);
 
   const filteredModules = allModules;
+  console.log('[TRACE][L10][Dashboard] filteredModules:', { length: filteredModules.length, modules: filteredModules.map(m => ({ path: m.path, name: m.name })) });
 
   if (loading) {
     return (
