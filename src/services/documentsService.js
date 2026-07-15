@@ -2,6 +2,16 @@ import { getSupabaseClient } from '../lib/supabase';
 
 const BUCKET_NAME = 'documentos-sgc';
 
+function safeStorageName(filename) {
+  if (!filename) return 'documento';
+  return String(filename)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w.\-]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 export const documentsService = {
   // === NIVEL 1: PROGRAMAS (Único por módulo) ===
   async getProgram(module) {
@@ -78,7 +88,8 @@ export const documentsService = {
 
   async uploadRecord(module, type, file, userId) {
     const supabase = getSupabaseClient();
-    const filePath = `records/${module}/${type}/${Date.now()}_${file.name}`;
+    const safeName = safeStorageName(file.name);
+    const filePath = `${module}/${type}/${Date.now()}_${safeName}`;
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
