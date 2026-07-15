@@ -23,6 +23,7 @@ export const documentsService = {
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, file);
+      
 
     if (uploadError) throw uploadError;
 
