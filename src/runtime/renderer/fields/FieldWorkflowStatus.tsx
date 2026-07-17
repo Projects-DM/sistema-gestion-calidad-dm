@@ -2,7 +2,7 @@
  * FieldWorkflowStatus.tsx (Sprint 25.16)
  * Pure renderer only — visualization for field type: workflow_status.
  */
-import React from "react";
+import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 const FieldWorkflowStatus: React.FC<FieldRenderProps> = ({ fieldDef, value, disabled, error }) => {

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { AlertTriangle, Info } from 'lucide-react';
 import SignaturePad from '../SignaturePad';
 

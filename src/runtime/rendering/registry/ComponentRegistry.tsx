@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 
 import FieldText from "../../renderer/fields/FieldText";
 import type { RuntimeFieldType, RuntimeValue } from "../../types/runtimeContracts";

@@ -9,7 +9,7 @@
  * - Handle missing fieldIds without crashing
  */
 
-import React from "react";
+import type React from "react";
 
 import type { LayoutDefinition } from "../../layout/contracts/LayoutContracts";
 import type { RuntimeValue } from "../../types/runtimeContracts";

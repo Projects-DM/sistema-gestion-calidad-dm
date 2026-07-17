@@ -10,7 +10,7 @@
  * - No validation, no persistence, no runtime orchestration
  */
 
-import React from "react";
+import type React from "react";
 
 import type { LayoutDefinition } from "../contracts/LayoutContracts";
 import type { RuntimeValue } from "../../types/runtimeContracts";

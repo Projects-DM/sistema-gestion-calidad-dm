@@ -3,7 +3,7 @@
  * Placeholder renderer for field type: calculated.
  * Pure renderer only — no formulas/calculation engine/runtime orchestration.
  */
-import React from "react";
+import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 const FieldCalculated: React.FC<FieldRenderProps> = ({ fieldDef, value, disabled, error }) => {

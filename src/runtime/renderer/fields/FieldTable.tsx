@@ -2,7 +2,7 @@
  * FieldTable.tsx (Sprint 25.17A)
  * Visual-only renderer for field type: table.
  */
-import React from "react";
+import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 type TableColumnDef = {

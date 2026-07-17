@@ -1,4 +1,4 @@
-import React from "react";
+
 import type { FieldContract, RuntimeFieldType, RuntimeValue } from "../types/runtimeContracts";
 import { componentRegistryBase, type FieldRenderProps } from "./ComponentRegistryBase";
 

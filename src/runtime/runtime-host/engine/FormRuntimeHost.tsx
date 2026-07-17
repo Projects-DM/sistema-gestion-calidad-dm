@@ -4,7 +4,7 @@
  */
 
 
-import React from "react";
+import type React from "react";
 
 import { FormRendererEngine } from "../../form/engine/FormRendererEngine";
 

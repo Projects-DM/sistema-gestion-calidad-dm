@@ -3,7 +3,7 @@
  * Placeholder renderer for field type: signature.
  * Pure renderer only — no persistence/canvas/drawing engine.
  */
-import React from "react";
+import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 const FieldSignature: React.FC<FieldRenderProps> = ({ fieldDef, value, onChange, disabled, error }) => {
