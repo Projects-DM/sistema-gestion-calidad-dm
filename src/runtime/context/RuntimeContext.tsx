@@ -161,8 +161,6 @@ function getDefaultValueForFieldType(fieldType: RuntimeFieldType): RuntimeValue 
     case "select":
     case "text":
     case "textarea":
-    case "date":
-    case "time":
     case "signature":
     case "file_upload":
       return "";

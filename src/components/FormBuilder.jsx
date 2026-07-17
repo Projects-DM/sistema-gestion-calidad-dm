@@ -234,8 +234,6 @@ export default function FormBuilder({ formDef }) {
                   <option value="number">Número</option>
                   <option value="boolean">Casilla (Sí/No - Cumple/No Cumple)</option>
                   <option value="select">Lista desplegable</option>
-                  <option value="date">Fecha</option>
-                  <option value="time">Hora</option>
                   <option value="signature">Firma digital</option>
                 </select>
               </div>
