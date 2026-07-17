@@ -1,4 +1,4 @@
-import React from 'react';
+
 import SignaturePad from '../SignaturePad';
 
 export default function BaseChecklist({ fields, values, onChange }) {

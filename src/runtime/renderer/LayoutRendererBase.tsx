@@ -1,4 +1,4 @@
-import React from "react";
+
 import type { FieldContract } from "../types/runtimeContracts";
 import { FieldRendererWithResolver } from "../registry/registryResolver";
 import { useRuntimeField } from "../hooks/useRuntimeField";

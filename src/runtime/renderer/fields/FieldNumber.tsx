@@ -3,7 +3,7 @@
  * Atomic numeric renderer for field type: number.
  * Receives standardized FieldRenderProps — no business logic.
  */
-import React from "react";
+import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 const FieldNumber: React.FC<FieldRenderProps> = ({ fieldDef, value, onChange, disabled, error }) => {

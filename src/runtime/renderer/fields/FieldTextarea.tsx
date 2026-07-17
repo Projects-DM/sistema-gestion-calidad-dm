@@ -3,7 +3,7 @@
  * Atomic renderer for: textarea field type.
  * Receives standardized FieldRenderProps — no business logic.
  */
-import React from "react";
+import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 const FieldTextarea: React.FC<FieldRenderProps> = ({ fieldDef, value, onChange, disabled, error }) => {

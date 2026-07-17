@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
+import { Navigate, useParams } from 'react-router-dom';
 
 import DynamicModule from './DynamicModule';
 import { dynamicService } from '../services/dynamicService';
@@ -26,7 +26,7 @@ import { dynamicService } from '../services/dynamicService';
  *   without modifying certified Core boundaries.
  */
 export default function DynamicModuleById() {
-  const { moduleId } = require('react-router-dom').useParams();
+  const { moduleId } = useParams();
 
   // Because this wrapper must be synchronous for React Router v6,
   // we use a small component pattern: return Navigate once resolved.
@@ -43,7 +43,6 @@ export default function DynamicModuleById() {
   // The guard component is implemented inline.
 
   const Guard = () => {
-    const { useEffect, useState } = require('react');
     const [slug, setSlug] = useState(null);
     const [loading, setLoading] = useState(true);
 
