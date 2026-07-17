@@ -7,8 +7,6 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Traceability from './pages/Traceability';
 import Dispatches from './pages/Dispatches';
-import Certificates from './pages/Certificates';
-import TechnicalSheets from './pages/TechnicalSheets';
 import DynamicModuleById from './pages/DynamicModuleById';
 import DynamicModule from './pages/DynamicModule';
 import DynamicForm from './pages/DynamicForm';
@@ -37,8 +35,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="trazabilidad" element={<Traceability />} />
           <Route path="trazabilidad/despachos" element={<Dispatches />} />
-          <Route path="trazabilidad/certificados" element={<Certificates />} />
-          <Route path="trazabilidad/fichas-tecnicas" element={<TechnicalSheets />} />
+
           
           <Route 
             path="configuracion" 
