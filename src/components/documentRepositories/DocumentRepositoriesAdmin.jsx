@@ -511,7 +511,7 @@ export default function DocumentRepositoriesAdmin() {
                           <div>
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
-                                <FileText className="w-5 h-5 text-gray-400" />
+                                <IconPreview iconKey={c.icon_key} className="w-5 h-5 text-gray-400" />
                               </div>
                               <div>
                                 <div className="font-bold text-gray-900">{c.name}</div>
@@ -739,18 +739,31 @@ export default function DocumentRepositoriesAdmin() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
               />
             </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Icono (whitelist)</label>
-              <select
-                value={catForm.icon_key}
-                onChange={(e) => setCatForm({ ...catForm, icon_key: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
-              >
-                {Object.values(ICON_WHITELIST).map((k) => (
-                  <option key={k} value={k}>{k}</option>
-                ))}
-              </select>
+          <div className="space-y-2">
+            <label className="block text-sm font-bold text-gray-700 mb-0">Ícono</label>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+                <IconPreview iconKey={catForm.icon_key} className="w-5 h-5 text-gray-500" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-gray-900 truncate">
+                  {catForm.icon_key && iconAllowed(catForm.icon_key) ? catForm.icon_key : 'FileText'}
+                </div>
+                <div className="text-xs text-gray-500">Seleccione un ícono para la categoría.</div>
+              </div>
             </div>
+            <select
+              value={catForm.icon_key}
+              onChange={(e) => setCatForm({ ...catForm, icon_key: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              {Object.values(ICON_WHITELIST).map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </div>
           </div>
 
           <div className="flex items-center gap-3">
