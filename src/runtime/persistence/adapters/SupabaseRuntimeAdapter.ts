@@ -67,9 +67,6 @@ export class SupabaseRuntimeAdapter implements IRuntimePersistenceLayer {
         case "json":
           out[item.fieldId] = item.value.valueJson;
           break;
-        case "date":
-          out[item.fieldId] = item.value.valueDate;
-          break;
         case "null":
           out[item.fieldId] = null;
           break;

@@ -55,7 +55,6 @@ export interface TransactionValueEavItem {
     | { kind: "number"; valueNumeric: number }
     | { kind: "boolean"; valueBoolean: boolean }
     | { kind: "json"; valueJson: unknown }
-    | { kind: "date"; valueDate: string }
     | { kind: "null"; valueNull: null };
 }
 

@@ -34,8 +34,6 @@ function isValidType(fieldType: RuntimeFieldType, value: RuntimeValue): boolean 
     case "select":
     case "text":
     case "textarea":
-    case "date":
-    case "time":
     case "signature":
     case "file_upload":
       return typeof value === "string";

@@ -12,8 +12,6 @@ export type RuntimeFieldType =
   | "text"
   | "textarea"
   | "select"
-  | "date"
-  | "time"
   | "signature"
   | "file_upload"
   | "table"

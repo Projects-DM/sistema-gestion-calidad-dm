@@ -95,10 +95,6 @@ export class RuntimePayloadBuilder {
       case "file_upload":
         return { kind: "text", valueText: typeof raw === "string" ? raw : JSON.stringify(raw) };
 
-      case "date":
-      case "time":
-        return { kind: "text", valueText: typeof raw === "string" ? raw : String(raw) };
-
       case "select":
         return { kind: "text", valueText: typeof raw === "string" ? raw : JSON.stringify(raw) };
 
