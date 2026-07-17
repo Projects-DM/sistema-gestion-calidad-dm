@@ -85,22 +85,10 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
   }, [activeRepositoryId, moduleSlug]);
 
   const moduleTitle = useMemo(() => {
-    switch (moduleSlug) {
-      case 'mantenimiento':
-        return 'Mantenimiento';
-      case 'calidad':
-        return 'Calidad';
-      case 'gestion-documental':
-        return 'Gestión Documental';
-      case 'operaciones':
-        return 'Operaciones';
-      // Nota: Trazabilidad NO es un módulo documental por defecto.
-      // Si se llegara a renderizar, se verá con el slug literal.
-      case 'trazabilidad':
-        return 'trazabilidad';
-      default:
-        return moduleSlug;
-    }
+    return moduleSlug
+      .split('-')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
   }, [moduleSlug]);
 
 
