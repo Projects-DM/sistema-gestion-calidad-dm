@@ -129,6 +129,27 @@ export class CapabilityPublicSet {
     return tabs.length > 0 ? tabs[0].key : null;
   }
 
+  /**
+   * Returns the enabled operational experiences for the 'operational-experiences' capability.
+   * If the capability is not present, returns an empty array.
+   *
+   * @returns {Array<{experienceKey: string, displayName: string, description: string, icon: string}>}
+   */
+  getEnabledExperiences() {
+    const oeDef = this._byKey.get('operational-experiences');
+    if (!oeDef) return [];
+
+    // Read from the assignment metadata (enriched by adapter)
+    const oeAssignment = (this._resolvedSet?.assignments || []).find(
+      (a) => String(a.packageId || '').replace('pkg:standard:', '') === 'operational-experiences'
+    );
+
+    const enabledKeys = oeAssignment?.enabledExperiences || oeDef.enabledExperiences || [];
+    const available = oeAssignment?.availableExperiences || oeDef.availableExperiences || [];
+
+    return available.filter((exp) => enabledKeys.includes(exp.experienceKey));
+  }
+
   // ---------------------------------------------------------------------------
   // Metadata
   // ---------------------------------------------------------------------------

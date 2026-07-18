@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Trash2, ListChecks, History, FileText, Check, Layers, ClipboardList, BarChart3, Settings, Users, Package, Shield, Truck, Wrench, Heart, GraduationCap, Building2 } from 'lucide-react';
+import { ArrowLeft, Trash2, ListChecks, History, FileText, Check, Layers, ClipboardList, BarChart3, Settings, Users, Package, Shield, Truck, Wrench, Heart, GraduationCap, Building2, Zap } from 'lucide-react';
 import { ModuleAdministrationApplicationService } from '../../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
 import { dispatchModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import { CapabilityPackageRegistry } from '../../core/capabilities/CapabilityPackageRegistry.js';
+import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { useAuth } from '../../hooks/useAuth.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
@@ -42,7 +43,7 @@ const VALID_TRANSITIONS = {
   archived: ['draft'],
 };
 
-const ICON_MAP = { Layers, ClipboardList, FileText, ListChecks, History, BarChart3, Settings, Users, Package, Shield, Truck, Wrench, Heart, GraduationCap, Building2 };
+const ICON_MAP = { Layers, ClipboardList, FileText, ListChecks, History, BarChart3, Settings, Users, Package, Shield, Truck, Wrench, Heart, GraduationCap, Building2, Zap };
 
 function resolveIcon(name) {
   return ICON_MAP[name] || ListChecks;
@@ -77,6 +78,7 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
   const [visible, setVisible] = useState(() => getModuleField(module, ['visible']) !== false);
 
   const allCapabilities = useMemo(() => CapabilityPackageRegistry.listPackages(), []);
+  const allExperiences = useMemo(() => OperationalExperienceRegistry.listExperiences(), []);
 
   const [selectedCaps, setSelectedCaps] = useState(() => {
     const rawCaps = getModuleField(module, ['capabilities']);
@@ -84,6 +86,15 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
       return rawCaps.map((c) => String(c.packageId || '').replace('pkg:standard:', '')).filter(Boolean);
     }
     return allCapabilities.filter((c) => c.enabledByDefault).map((c) => c.packageKey);
+  });
+
+  const [enabledExperiences, setEnabledExperiences] = useState(() => {
+    const rawCaps = getModuleField(module, ['capabilities']);
+    if (Array.isArray(rawCaps)) {
+      const oeCap = rawCaps.find((c) => String(c.packageId || '').replace('pkg:standard:', '') === 'operational-experiences');
+      if (oeCap?.enabledExperiences) return oeCap.enabledExperiences;
+    }
+    return allExperiences.map((e) => e.experienceKey);
   });
 
   const [newState, setNewState] = useState('');
@@ -107,6 +118,12 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
 
   const toggleCap = (key) => {
     setSelectedCaps((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const toggleExperience = (key) => {
+    setEnabledExperiences((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
   };
@@ -164,15 +181,21 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
     setSuccess('');
 
     try {
-      const assignments = selectedCaps.map((key, i) => ({
-        assignmentId: `assign:${id}:${key}`,
-        moduleId: id,
-        packageId: `pkg:standard:${key}`,
-        state: 'active',
-        owner: 'system',
-        version: 'v1',
-        orderIndex: i,
-      }));
+      const assignments = selectedCaps.map((key, i) => {
+        const assignment = {
+          assignmentId: `assign:${id}:${key}`,
+          moduleId: id,
+          packageId: `pkg:standard:${key}`,
+          state: 'active',
+          owner: 'system',
+          version: 'v1',
+          orderIndex: i,
+        };
+        if (key === 'operational-experiences') {
+          assignment.enabledExperiences = enabledExperiences;
+        }
+        return assignment;
+      });
 
       const result = await appService.execute(
         createApplicationRequest({
@@ -423,6 +446,43 @@ export default function ModuleEditPanel({ module, onCancel, onSaved, onDelete, f
                 );
               })}
             </div>
+
+            {selectedCaps.includes('operational-experiences') && allExperiences.length > 0 && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <h5 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-3">
+                  Experiencias Operacionales Disponibles
+                </h5>
+                <div className="space-y-2">
+                  {allExperiences.map((exp) => {
+                    const isEnabled = enabledExperiences.includes(exp.experienceKey);
+                    const ExpIcon = resolveIcon(exp.icon);
+                    return (
+                      <button
+                        key={exp.experienceKey}
+                        type="button"
+                        onClick={() => toggleExperience(exp.experienceKey)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                          isEnabled
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-200 hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${
+                          isEnabled ? 'border-green-500 bg-green-500' : 'border-gray-300'
+                        }`}>
+                          {isEnabled && <Check className="w-2.5 h-2.5 text-white" />}
+                        </div>
+                        <ExpIcon className={`w-4 h-4 ${isEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-900">{exp.displayName}</div>
+                          <div className="text-xs text-gray-500">{exp.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
               <button
