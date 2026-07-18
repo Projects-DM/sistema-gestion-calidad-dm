@@ -5,8 +5,6 @@ const ROUTER_BASENAME = '/sistema-gestion-calidad-dm';
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
-import Traceability from './pages/Traceability';
-import Dispatches from './pages/Dispatches';
 import DynamicModuleById from './pages/DynamicModuleById';
 import DynamicModule from './pages/DynamicModule';
 import DynamicForm from './pages/DynamicForm';
@@ -33,8 +31,6 @@ function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="trazabilidad" element={<Traceability />} />
-          <Route path="trazabilidad/despachos" element={<Dispatches />} />
 
           
           <Route 
@@ -55,7 +51,6 @@ function App() {
             } 
           />
           
-        
 
 
           <Route path="runtime-playground" element={<RuntimePlaygroundSandbox />} />

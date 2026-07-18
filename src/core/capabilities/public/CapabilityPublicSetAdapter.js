@@ -25,6 +25,7 @@ import { documentRepositoriesService } from '../../../services/documentRepositor
 import { getSupabaseClient } from '../../../lib/supabase';
 
 import { CapabilityPackageRegistry } from '../CapabilityPackageRegistry';
+import { OperationalExperienceRegistry } from '../experiences/OperationalExperienceRegistry';
 
 
 // ---------------------------------------------------------------------------
@@ -111,7 +112,25 @@ export class CapabilityPublicSetAdapter {
       : null;
 
     if (dbCapabilities) {
-      return dbCapabilities;
+      // For operational-experiences, enrich with available experiences from registry
+      return dbCapabilities.map((cap) => {
+        const pkgId = typeof cap === 'string' ? cap : (cap.packageId || '');
+        const normalizedKey = String(pkgId).replace('pkg:standard:', '');
+        if (normalizedKey === 'operational-experiences') {
+          const availableExperiences = OperationalExperienceRegistry.listExperiences().map((exp) => ({
+            experienceKey: exp.experienceKey,
+            displayName: exp.displayName,
+            description: exp.description,
+            icon: exp.icon,
+          }));
+          return {
+            ...cap,
+            enabledExperiences: cap.enabledExperiences || availableExperiences.map((e) => e.experienceKey),
+            availableExperiences,
+          };
+        }
+        return cap;
+      });
     }
 
     // --- Fallback: legacy modules (no capabilities assigned yet) ---

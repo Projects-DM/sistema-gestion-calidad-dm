@@ -27,7 +27,7 @@
  *   DynamicModule renders tabs + content exclusively from capabilityPublicSet
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -38,6 +38,7 @@ import DynamicRecordsView from '../components/DynamicRecordsView';
 import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer';
 import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
 import { useCapabilityPublicSet } from '../core/capabilities/public/useCapabilityPublicSet';
+import { OperationalExperienceRegistry } from '../core/capabilities/experiences/OperationalExperienceRegistry';
 
 // Authorization capability — governs form access by role (certified, Sprint 52+)
 const authorization = CapabilityDiscovery.discover('authorization');
@@ -107,6 +108,90 @@ function RepositoryContent({ moduleSlug }) {
   return (
     <div className="space-y-6">
       <ModuleDocumentViewer moduleSlug={moduleSlug} />
+    </div>
+  );
+}
+
+function OperationalExperiencesContent({ enabledExperiences, moduleSlug, moduleName }) {
+  const [activeExperience, setActiveExperience] = useState(null);
+  const [ExperienceComponent, setExperienceComponent] = useState(null);
+  const [loadingExperience, setLoadingExperience] = useState(false);
+
+  useEffect(() => {
+    if (!enabledExperiences || enabledExperiences.length === 0) return;
+    if (!activeExperience) {
+      setActiveExperience(enabledExperiences[0]?.experienceKey);
+    }
+  }, [enabledExperiences, activeExperience]);
+
+  useEffect(() => {
+    if (!activeExperience) return;
+    let cancelled = false;
+
+    async function loadExperience() {
+      setLoadingExperience(true);
+      try {
+        const Component = await OperationalExperienceRegistry.resolveComponent(activeExperience);
+        if (!cancelled && Component) {
+          setExperienceComponent(() => Component);
+        }
+      } catch (err) {
+        console.error('DynamicModule: error loading experience', activeExperience, err);
+      } finally {
+        if (!cancelled) setLoadingExperience(false);
+      }
+    }
+
+    loadExperience();
+    return () => { cancelled = true; };
+  }, [activeExperience]);
+
+  if (!enabledExperiences || enabledExperiences.length === 0) {
+    return (
+      <div className="py-10 text-center text-gray-500">
+        No hay experiencias operacionales configuradas para este módulo.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Experience sub-tabs */}
+      {enabledExperiences.length > 1 && (
+        <div className="flex gap-2 border-b border-gray-200 pb-2">
+          {enabledExperiences.map((exp) => {
+            const ExpIcon = resolveIcon(exp.icon);
+            return (
+              <button
+                key={exp.experienceKey}
+                onClick={() => { setActiveExperience(exp.experienceKey); setExperienceComponent(null); }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
+                  activeExperience === exp.experienceKey
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ExpIcon className="w-4 h-4" />
+                {exp.displayName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Experience content */}
+      {loadingExperience ? (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-2 text-gray-500">Cargando experiencia...</span>
+        </div>
+      ) : ExperienceComponent ? (
+        <ExperienceComponent moduleSlug={moduleSlug} moduleName={moduleName} />
+      ) : (
+        <div className="py-10 text-center text-gray-500">
+          Seleccione una experiencia operacional.
+        </div>
+      )}
     </div>
   );
 }
@@ -228,6 +313,14 @@ export default function DynamicModule() {
         return <RecordsContent moduleId={modInfo.id} />;
       case 'repository':
         return <RepositoryContent moduleSlug={moduleSlug} />;
+      case 'operational-experiences':
+        return (
+          <OperationalExperiencesContent
+            enabledExperiences={capabilityPublicSet?.getEnabledExperiences() ?? []}
+            moduleSlug={moduleSlug}
+            moduleName={modInfo.name}
+          />
+        );
       default:
         return null;
     }

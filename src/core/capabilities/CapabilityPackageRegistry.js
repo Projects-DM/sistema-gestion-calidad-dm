@@ -95,6 +95,18 @@ registerPackage({
   enabledByDefault: true,
 });
 
+registerPackage({
+  packageKey: 'operational-experiences',
+  displayName: 'Experiencias Operacionales',
+  description: 'Funcionalidades operacionales especializadas reutilizables (Despachos, OCR, AI, etc.).',
+  category: 'operational-experiences',
+  icon: 'Zap',
+  defaultOrder: 4,
+  dependencies: [],
+  visibility: 'public',
+  enabledByDefault: false,
+});
+
 export const CapabilityPackageRegistry = {
   registerPackage,
   listPackages,
