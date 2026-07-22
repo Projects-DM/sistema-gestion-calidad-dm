@@ -166,6 +166,109 @@ function isStandaloneNumber(label) {
   return /^\d{2,4}$/.test(label.trim());
 }
 
+function detectLayout(rawHeaders, rows, textContent) {
+  // TYPE_B: Operational Table
+  if (rawHeaders && rawHeaders.length >= 2 && rows && rows.length >= 8) {
+    const firstCol = rows.map(r => r[0]?.trim()).filter(Boolean);
+    const firstColNums = firstCol.map(v => parseInt(v, 10)).filter(n => !isNaN(n));
+    if (firstColNums.length >= 5) {
+      const sorted = [...new Set(firstColNums)].sort((a, b) => a - b);
+      let sequentialCount = 1;
+      for (let i = 1; i < sorted.length; i++) {
+        if (sorted[i] === sorted[i - 1] + 1) sequentialCount++;
+        else sequentialCount = 1;
+        if (sequentialCount >= 5) return 'TYPE_B';
+      }
+    }
+    const dayMonthPattern = /^(1?[0-9]|2[0-9]|3[01])$/;
+    const dayMonthCount = firstCol.slice(0, 15).filter(v => dayMonthPattern.test(v.trim())).length;
+    if (dayMonthCount >= 5) return 'TYPE_B';
+  }
+
+  // TYPE_C: Inspection Checklist (single column with many short items)
+  if (!rawHeaders || rawHeaders.length <= 1) {
+    if (rawHeaders && rawHeaders.length === 1 && rows && rows.length >= 5) {
+      const firstColValues = rows.map(r => r[0]?.trim()).filter(Boolean);
+      const shortValues = firstColValues.filter(v => v.length < 35 && v.length >= 3);
+      if (shortValues.length >= 5 && shortValues.length >= firstColValues.length * 0.6) return 'TYPE_C';
+    }
+    const lines = (textContent || '').split(/\r?\n/).filter(l => l.trim().length > 0);
+    const shortLines = lines.filter(l => l.trim().length < 35 && l.trim().length >= 3);
+    if (shortLines.length >= 8 && shortLines.length >= lines.length * 0.5) return 'TYPE_C';
+  }
+
+  return 'TYPE_A';
+}
+
+function mergeMultiLevelHeaders(rawHeaders, rows) {
+  if (rows.length < 1) return { headers: rawHeaders, dataRows: rows };
+  const firstRow = rows[0];
+  if (!firstRow || firstRow.length === 0 || firstRow.length < rawHeaders.length) return { headers: rawHeaders, dataRows: rows };
+  const nonEmpty = firstRow.filter(v => String(v).trim().length > 0);
+  if (nonEmpty.length < 2) return { headers: rawHeaders, dataRows: rows };
+  const hasNumeric = nonEmpty.some(v => !isNaN(Number(v)) && String(v).trim() !== '');
+  const longTextCount = nonEmpty.filter(v => String(v).trim().length > 10).length;
+  const mostlyLong = longTextCount >= nonEmpty.length * 0.5;
+  if (!hasNumeric && mostlyLong) {
+    const merged = rawHeaders.map((h, i) => {
+      const sub = String(firstRow[i] || '').trim();
+      if (!sub) return h;
+      if (!h || h.trim() === '') return sub;
+      const hNorm = normalize(h);
+      const subNorm = normalize(sub);
+      if (hNorm === subNorm) return h;
+      if (hNorm && subNorm.includes(hNorm)) return h;
+      if (subNorm && hNorm.includes(subNorm)) return h;
+      return h + ' - ' + sub;
+    });
+    return { headers: merged, dataRows: rows.slice(1) };
+  }
+  return { headers: rawHeaders, dataRows: rows };
+}
+
+function skipTitleRow(rawHeaders, rows) {
+  if (!rawHeaders || !rows || rows.length === 0) return { headers: rawHeaders, rows: rows };
+  const nonEmptyHeaders = rawHeaders.filter(h => String(h).trim().length > 0).length;
+  if (nonEmptyHeaders > 1) return { headers: rawHeaders, rows: rows };
+  const firstRow = rows[0];
+  if (!firstRow) return { headers: rawHeaders, rows: rows };
+  const nonEmptyFirstRow = firstRow.filter(v => String(v).trim().length > 0).length;
+  if (nonEmptyFirstRow >= 3) {
+    const sample = firstRow.filter(v => String(v).trim().length > 0).slice(0, 3);
+    const looksLikeData = sample.every(v => /^\d+$/.test(v.trim()) || /^[✓✗✔✘xX\-\s]*$/.test(v.trim()));
+    if (!looksLikeData) {
+      return { headers: firstRow.map(String), rows: rows.slice(1) };
+    }
+  }
+  return { headers: rawHeaders, rows: rows };
+}
+
+function markOperationalColumns(columnDefs, rows) {
+  for (const colDef of columnDefs) {
+    if (colDef.forceType) continue;
+    const label = colDef.label;
+    const labelNorm = normalize(label);
+    if (isRuntimeMetadata(labelNorm)) continue;
+    if (isBusinessRole(labelNorm)) continue;
+    if (isDocumentMetadata(labelNorm)) continue;
+    if (isStandaloneNumber(labelNorm)) continue;
+    const ruleMatch = detectFieldTypeByRules(label.toLowerCase());
+    if (ruleMatch && ruleMatch !== 'text') continue;
+    const sampleValues = getSampleValues(colDef.sourceIndices, rows);
+    if (sampleValues.length > 0) {
+      const nonEmpty = sampleValues.filter(v => v != null && v !== '');
+      if (nonEmpty.length > 0) {
+        const allNumbers = nonEmpty.every(v => !isNaN(Number(v)) && String(v).trim() !== '');
+        if (allNumbers) continue;
+        const avgLength = nonEmpty.reduce((sum, v) => sum + v.length, 0) / nonEmpty.length;
+        if (avgLength > 80) continue;
+      }
+    }
+    colDef.forceType = 'boolean';
+    colDef.isChecklist = true;
+  }
+}
+
 function buildColumnDefs(rawHeaders) {
   const defs = [];
   let skipNext = false;
@@ -286,11 +389,26 @@ function cleanFormName(name) {
 }
 
 export function detectStructure(rawModel, modules) {
-  const { fileName, title, rows, rawHeaders, textContent } = rawModel;
+  const { fileName, title, rows: rawRows, rawHeaders, textContent } = rawModel;
   let name = title || fileName.replace(/\.\w+$/, '');
   name = cleanFormName(name) || fileName.replace(/\.\w+$/, '');
   const nameLower = name.toLowerCase();
   const textLower = (textContent || '').toLowerCase();
+
+  const layoutType = detectLayout(rawHeaders, rawRows, textContent);
+
+  let effectiveHeaders = rawHeaders;
+  let effectiveRows = rawRows;
+  if (layoutType === 'TYPE_B') {
+    const skipped = skipTitleRow(effectiveHeaders, effectiveRows);
+    effectiveHeaders = skipped.headers;
+    effectiveRows = skipped.rows;
+  }
+  if (layoutType === 'TYPE_B' && effectiveHeaders && effectiveHeaders.length > 0) {
+    const merged = mergeMultiLevelHeaders(effectiveHeaders, effectiveRows);
+    effectiveHeaders = merged.headers;
+    effectiveRows = merged.dataRows;
+  }
 
   let suggestedModuleId = null;
   let suggestedModuleName = null;
@@ -308,9 +426,13 @@ export function detectStructure(rawModel, modules) {
   let fields = [];
   const seenLabels = new Set();
 
-  if (rawHeaders && rawHeaders.length > 0) {
-    const columnDefs = buildColumnDefs(rawHeaders);
+  if (effectiveHeaders && effectiveHeaders.length > 0) {
+    const columnDefs = buildColumnDefs(effectiveHeaders);
     detectInspectionBlocks(columnDefs);
+
+    if (layoutType === 'TYPE_B') {
+      markOperationalColumns(columnDefs, effectiveRows);
+    }
 
     for (const colDef of columnDefs) {
       const label = colDef.label;
@@ -324,7 +446,7 @@ export function detectStructure(rawModel, modules) {
       if (seenLabels.has(labelNorm)) continue;
       seenLabels.add(labelNorm);
 
-      const sampleValues = getSampleValues(colDef.sourceIndices, rows);
+      const sampleValues = getSampleValues(colDef.sourceIndices, effectiveRows);
       const fieldType = colDef.forceType || detectFieldType(label, sampleValues);
 
       const options = {};
@@ -337,7 +459,7 @@ export function detectStructure(rawModel, modules) {
     }
   }
 
-  if (fields.length === 0) {
+  if (fields.length === 0 && layoutType !== 'TYPE_B') {
     const lines = textContent.split(/\r?\n/).filter(l => l.trim().length > 0);
     if (lines.length > 1) {
       lines.forEach(line => {
@@ -359,21 +481,33 @@ export function detectStructure(rawModel, modules) {
     }
   }
 
-  let maxConsecBool = 0;
-  let currConsecBool = 0;
-  let lastBoolIdx = -1;
-  for (let i = 0; i < fields.length; i++) {
-    if (fields[i].fieldType === 'boolean') {
-      currConsecBool++;
-      maxConsecBool = Math.max(maxConsecBool, currConsecBool);
-      lastBoolIdx = i;
-    } else {
-      currConsecBool = 0;
+  if (layoutType === 'TYPE_B') {
+    const hasActions = fields.some(f => /acciones?\s+correctivas?/i.test(f.label));
+    const hasObs = fields.some(f => /observaciones?/i.test(f.label));
+    if (!hasActions) {
+      fields.push({ label: 'Acciones Correctivas', fieldType: 'textarea', required: false, orderIndex: 0, options: {} });
+    }
+    if (!hasObs) {
+      fields.push({ label: 'Observaciones', fieldType: 'textarea', required: false, orderIndex: 0, options: {} });
     }
   }
 
-  if (maxConsecBool >= 3 && lastBoolIdx >= 0 && !seenLabels.has(normalize('observaciones'))) {
-    fields.splice(lastBoolIdx + 1, 0, { label: 'Observaciones', fieldType: 'textarea', required: false, orderIndex: 0, options: {} });
+  if (layoutType !== 'TYPE_B') {
+    let maxConsecBool = 0;
+    let currConsecBool = 0;
+    let lastBoolIdx = -1;
+    for (let i = 0; i < fields.length; i++) {
+      if (fields[i].fieldType === 'boolean') {
+        currConsecBool++;
+        maxConsecBool = Math.max(maxConsecBool, currConsecBool);
+        lastBoolIdx = i;
+      } else {
+        currConsecBool = 0;
+      }
+    }
+    if (maxConsecBool >= 3 && lastBoolIdx >= 0 && !seenLabels.has(normalize('observaciones'))) {
+      fields.splice(lastBoolIdx + 1, 0, { label: 'Observaciones', fieldType: 'textarea', required: false, orderIndex: 0, options: {} });
+    }
   }
 
   const hasSignature = fields.some(f => f.fieldType === 'signature');
@@ -392,5 +526,5 @@ export function detectStructure(rawModel, modules) {
     fields.push({ label: 'Campo 1', fieldType: 'text', required: true, orderIndex: 1, options: {} });
   }
 
-  return { suggestedName: name, suggestedModuleId, suggestedModuleName, fields };
+  return { suggestedName: name, suggestedModuleId, suggestedModuleName, fields, layoutType };
 }
