@@ -6,7 +6,12 @@ export function adaptDetectedStructure(detectedStructure, selectedModuleId, sele
       .replace(/^_|_$/g, '');
 
     const allowedTypes = ['text', 'textarea', 'number', 'boolean', 'select', 'signature'];
-    const fieldType = allowedTypes.includes(f.fieldType) ? f.fieldType : 'text';
+
+    // Boolean with compliance options stays as boolean — the unified Checklist workflow
+    let fieldType = f.fieldType;
+    if (!allowedTypes.includes(fieldType)) {
+      fieldType = 'text';
+    }
 
     return {
       name: slugName || `campo_${idx + 1}`,

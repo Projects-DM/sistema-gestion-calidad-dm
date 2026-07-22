@@ -49,10 +49,10 @@ const BUSINESS_ROLES = [
 
 const CHECKLIST_PAIRS = [
   { left: /^c$/i, right: /^nc$/i, outputLabel: 'Cumple / No Cumple' },
-  { left: /^si$/i, right: /^no$/i, outputLabel: 'Sí / No' },
-  { left: /^sí$/i, right: /^no$/i, outputLabel: 'Sí / No' },
+  { left: /^si$/i, right: /^no$/i, outputLabel: 'Cumple / No Cumple' },
+  { left: /^sí$/i, right: /^no$/i, outputLabel: 'Cumple / No Cumple' },
   { left: /^cumple$/i, right: /^(no cumple|nocumple|no_cumple)$/i, outputLabel: 'Cumple / No Cumple' },
-  { left: /^conforme$/i, right: /^(no conforme|no_conforme)$/i, outputLabel: 'Conforme / No Conforme' },
+  { left: /^conforme$/i, right: /^(no conforme|no_conforme)$/i, outputLabel: 'Cumple / No Cumple' },
 ];
 
 const TYPE_RULES = [
@@ -388,6 +388,72 @@ function cleanFormName(name) {
   return cleaned || name;
 }
 
+function applyChecklistFirst(fields) {
+  for (const field of fields) {
+    if (field.fieldType !== 'text') continue;
+    if (field.label.length > 40) continue;
+    const labelNorm = normalize(field.label);
+    const textPatterns = /^(nombre|apellido|direccion|telefono|correo|email|identificacion|cedula|ruc|rif|nit|lote|referencia|partida|nota|notas)$/i;
+    if (textPatterns.test(labelNorm)) continue;
+    field.fieldType = 'boolean';
+  }
+}
+
+function detectOperationalPattern(fields, layoutType) {
+  if (layoutType === 'TYPE_B') return 'PATTERN_B';
+  if (layoutType === 'TYPE_C') return 'PATTERN_A';
+  const boolCount = fields.filter(f => f.fieldType === 'boolean').length;
+  const numCount = fields.filter(f => f.fieldType === 'number').length;
+  const textareaCount = fields.filter(f => f.fieldType === 'textarea').length;
+  const total = fields.length;
+  if (total === 0) return 'PATTERN_D';
+  const numRatio = numCount / total;
+  const boolRatio = boolCount / total;
+  const textareaRatio = textareaCount / total;
+  if (numRatio >= 0.5) return 'PATTERN_C';
+  if (boolRatio >= 0.5) return 'PATTERN_A';
+  if (textareaRatio >= 0.5) return 'PATTERN_D';
+  return 'PATTERN_E';
+}
+
+function classifyFieldSection(field) {
+  if (field.fieldType === 'boolean') return 'checklist';
+  if (field.fieldType === 'number') return 'measurement';
+  if (field.fieldType === 'signature') return 'signature';
+  return 'operational';
+}
+
+function detectSectionsFromFields(fields) {
+  const sections = [];
+  let idx = 0;
+  while (idx < fields.length) {
+    const secType = classifyFieldSection(fields[idx]);
+    const start = idx;
+    while (idx < fields.length && classifyFieldSection(fields[idx]) === secType) {
+      fields[idx].section = secType;
+      idx++;
+    }
+    sections.push({
+      type: secType,
+      startIndex: start,
+      endIndex: idx - 1,
+      fieldCount: idx - start,
+    });
+  }
+  return sections;
+}
+
+function standardizeChecklistFields(fields) {
+  for (const field of fields) {
+    if (field.fieldType === 'boolean') {
+      field.options = field.options || {};
+      field.options.choices = ['Cumple', 'No cumple'];
+      field.options.requiresCommentOnFailure = true;
+      field.options.commentPrompt = 'Explique la no conformidad';
+    }
+  }
+}
+
 export function detectStructure(rawModel, modules) {
   const { fileName, title, rows: rawRows, rawHeaders, textContent } = rawModel;
   let name = title || fileName.replace(/\.\w+$/, '');
@@ -481,6 +547,8 @@ export function detectStructure(rawModel, modules) {
     }
   }
 
+  applyChecklistFirst(fields);
+
   if (layoutType === 'TYPE_B') {
     const hasActions = fields.some(f => /acciones?\s+correctivas?/i.test(f.label));
     const hasObs = fields.some(f => /observaciones?/i.test(f.label));
@@ -526,5 +594,9 @@ export function detectStructure(rawModel, modules) {
     fields.push({ label: 'Campo 1', fieldType: 'text', required: true, orderIndex: 1, options: {} });
   }
 
-  return { suggestedName: name, suggestedModuleId, suggestedModuleName, fields, layoutType };
+  const sections = detectSectionsFromFields(fields);
+  standardizeChecklistFields(fields);
+  const pattern = detectOperationalPattern(fields, layoutType);
+
+  return { suggestedName: name, suggestedModuleId, suggestedModuleName, fields, layoutType, sections, pattern };
 }

@@ -24,6 +24,7 @@ export default function DynamicForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [values, setValues] = useState({});
+  const [comments, setComments] = useState({});
   const [evidences, setEvidences] = useState([]);
   const [success, setSuccess] = useState(false);
 
@@ -50,7 +51,8 @@ export default function DynamicForm() {
 
           const initial = {};
           formFields.forEach(f => {
-             if (f.field_type === 'boolean') initial[f.id] = false;
+             if (f.field_type === 'boolean' && f.options?.choices?.length > 0) initial[f.id] = '';
+             else if (f.field_type === 'boolean') initial[f.id] = false;
              else initial[f.id] = '';
           });
           setValues(initial);
@@ -69,8 +71,8 @@ export default function DynamicForm() {
     if (!fields.length) return;
     let hasCriticals = false;
     fields.forEach(f => {
-      // Rule 1: boolean field is false (No Cumple)
-      if (f.field_type === 'boolean' && values[f.id] === false) {
+      // Rule 1: boolean field is false (No Cumple) or compliance boolean is 'No cumple'
+      if (f.field_type === 'boolean' && (values[f.id] === false || values[f.id] === 'No cumple')) {
         hasCriticals = true;
       }
       // Rule 2: numeric field out of bounds
@@ -89,8 +91,27 @@ export default function DynamicForm() {
     setValues(prev => ({ ...prev, [fieldId]: val }));
   };
 
+  const handleCommentChange = (fieldId, text) => {
+    setComments(prev => ({ ...prev, [fieldId]: text }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validar campos boolean con workflow de compliance
+    for (const field of fields) {
+      if (field.field_type === 'boolean' && field.options?.choices?.length > 0) {
+        const val = values[field.id];
+        if (!val) {
+          alert(`El campo "${field.label}" es obligatorio. Seleccione Cumple o No cumple.`);
+          return;
+        }
+        if (val === 'No cumple' && (!comments[field.id] || !comments[field.id].trim())) {
+          alert(`"${field.label}" marcó No cumple. Debe explicar la no conformidad.`);
+          return;
+        }
+      }
+    }
 
     // Validar manualmente campos requeridos (especialmente componentes custom como firmas)
     for (const field of fields) {
@@ -119,13 +140,19 @@ export default function DynamicForm() {
     try {
       setSaving(true);
       
-      // Parse numbers properly
+      // Parse numbers properly and format boolean compliance
       const processedValues = {};
       Object.keys(values).forEach(key => {
         const fieldDef = fields.find(f => f.id === key);
         let val = values[key];
         if (fieldDef?.field_type === 'number' && val !== '' && val !== null) {
           val = parseFloat(val);
+        }
+        if (fieldDef?.field_type === 'boolean' && fieldDef?.options?.choices?.length > 0 && val) {
+          val = { value: val };
+          if (val.value === 'No cumple' && comments[key]) {
+            val.comment = comments[key];
+          }
         }
         processedValues[key] = val;
       });
@@ -169,7 +196,7 @@ export default function DynamicForm() {
   }
 
   const renderEngine = () => {
-    const props = { fields, values, onChange: handleChange };
+    const props = { fields, values, onChange: handleChange, comments, onCommentChange: handleCommentChange };
     const EngineComponent = engine.resolveEngineComponent(formDef.engine_type);
     return <EngineComponent {...props} />;
   };

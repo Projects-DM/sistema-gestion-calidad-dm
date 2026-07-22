@@ -58,9 +58,13 @@ export default function DynamicRecordsView({ moduleId }) {
           const field = val.sgc_form_fields;
           if (!field) return;
 
-          if (field.field_type === 'boolean' && val.value_boolean === false) {
-            status = status === 'critico' ? 'critico' : 'advertencia';
-            criticalIssues.push(`${field.label} (No Cumple)`);
+          if (field.field_type === 'boolean') {
+            const nonCompliant = val.value_boolean === false ||
+              (val.value_json?.value === 'No cumple');
+            if (nonCompliant) {
+              status = status === 'critico' ? 'critico' : 'advertencia';
+              criticalIssues.push(`${field.label} (No Cumple)`);
+            }
           }
 
           if (field.field_type === 'number' && val.value_number !== null) {
@@ -488,7 +492,14 @@ export default function DynamicRecordsView({ moduleId }) {
                         const field = val.sgc_form_fields;
                         let displayValue = val.value_text || val.value_number || '';
                         if (field.field_type === 'boolean') {
-                          displayValue = val.value_boolean ? 'Sí / Cumple' : 'No / No Cumple';
+                          if (val.value_json) {
+                            displayValue = val.value_json.value || '';
+                            if (val.value_json.comment) {
+                              displayValue += ` — ${val.value_json.comment}`;
+                            }
+                          } else {
+                            displayValue = val.value_boolean ? 'Cumple' : 'No cumple';
+                          }
                         }
                         if (field.field_type === 'number' && field.options?.unit) {
                           displayValue = `${val.value_number} ${field.options.unit}`;
@@ -506,7 +517,7 @@ export default function DynamicRecordsView({ moduleId }) {
                                 <span className="text-sm text-gray-400 italic">Sin firma</span>
                               )
                             ) : (
-                              <span className={`text-sm font-bold ${field.field_type === 'boolean' && !val.value_boolean ? 'text-red-600' : 'text-gray-900'}`}>
+                              <span className={`text-sm font-bold ${field.field_type === 'boolean' && (val.value_boolean === false || val.value_json?.value === 'No cumple') ? 'text-red-600' : 'text-gray-900'}`}>
                                 {displayValue}
                               </span>
                             )}
