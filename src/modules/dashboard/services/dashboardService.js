@@ -48,6 +48,7 @@ export const dashboardService = {
         sgc_response_values (
           value_number,
           value_boolean,
+          value_json,
           sgc_form_fields (
             field_type,
             options
