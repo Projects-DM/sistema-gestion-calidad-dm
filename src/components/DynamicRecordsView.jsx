@@ -53,12 +53,24 @@ export default function DynamicRecordsView({ moduleId }) {
       const processed = data.map(record => {
         let status = 'cumple'; 
         let criticalIssues = [];
+        const complianceCounts = { total: 0, cumple: 0, noCumple: 0 };
 
         record.sgc_response_values?.forEach(val => {
           const field = val.sgc_form_fields;
           if (!field) return;
 
           if (field.field_type === 'boolean') {
+            // Count compliance booleans
+            if (val.value_json?.value) {
+              complianceCounts.total++;
+              if (val.value_json.value === 'Cumple') complianceCounts.cumple++;
+              else if (val.value_json.value === 'No cumple') complianceCounts.noCumple++;
+            } else if (val.value_boolean !== null) {
+              complianceCounts.total++;
+              if (val.value_boolean === true) complianceCounts.cumple++;
+              else complianceCounts.noCumple++;
+            }
+
             const nonCompliant = val.value_boolean === false ||
               (val.value_json?.value === 'No cumple');
             if (nonCompliant) {
@@ -78,7 +90,11 @@ export default function DynamicRecordsView({ moduleId }) {
           }
         });
 
-        return { ...record, computedStatus: status, criticalIssues };
+        const formComplianceStatus = complianceCounts.total > 0
+          ? (complianceCounts.noCumple > 0 ? 'NO CONFORME' : 'CONFORME')
+          : null;
+
+        return { ...record, computedStatus: status, criticalIssues, complianceCounts, formComplianceStatus };
       });
 
       setRecords(processed);
@@ -483,6 +499,26 @@ export default function DynamicRecordsView({ moduleId }) {
                     </div>
                   )}
 
+                  {selectedRecord.complianceCounts?.total > 0 && (
+                    <div className={`rounded-xl p-4 border ${selectedRecord.formComplianceStatus === 'NO CONFORME' ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className={`font-bold flex items-center gap-2 ${selectedRecord.formComplianceStatus === 'NO CONFORME' ? 'text-amber-800' : 'text-green-800'}`}>
+                          {selectedRecord.formComplianceStatus === 'NO CONFORME' ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                          Estado: {selectedRecord.formComplianceStatus}
+                        </h4>
+                        <span className="text-xs font-bold text-gray-500 bg-white px-2 py-1 rounded-full border">
+                          {selectedRecord.complianceCounts.total} checklist
+                        </span>
+                      </div>
+                      <div className="flex gap-4 text-sm">
+                        <span className="font-medium text-green-700">{selectedRecord.complianceCounts.cumple} cumplen</span>
+                        {selectedRecord.complianceCounts.noCumple > 0 && (
+                          <span className="font-medium text-red-700">{selectedRecord.complianceCounts.noCumple} no cumplen</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
                       Respuestas Registradas
@@ -497,7 +533,7 @@ export default function DynamicRecordsView({ moduleId }) {
                             if (val.value_json.comment) {
                               displayValue += ` — ${val.value_json.comment}`;
                             }
-                          } else {
+                          } else if (val.value_boolean !== null) {
                             displayValue = val.value_boolean ? 'Cumple' : 'No cumple';
                           }
                         }

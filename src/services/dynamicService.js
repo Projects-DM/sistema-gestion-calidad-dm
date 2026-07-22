@@ -291,10 +291,22 @@ export const dynamicService = {
       .from('sgc_form_responses')
       .select('*', { count: 'exact', head: true });
 
+    // Count non-compliant boolean responses (simple booleans + compliance booleans)
+    const { count: boolNonCompliantCount } = await supabase
+      .from('sgc_response_values')
+      .select('*', { count: 'exact', head: true })
+      .eq('value_boolean', false);
+
+    const { count: jsonNonCompliantCount } = await supabase
+      .from('sgc_response_values')
+      .select('*', { count: 'exact', head: true })
+      .not('value_json', 'is', null)
+      .filter('value_json->>value', 'eq', 'No cumple');
+
     return {
       todayResponses: todayCount || 0,
       totalResponses: allCount || 0,
-      incumplimientos: 0, // Mock for now until we parse response values for fails
+      incumplimientos: (boolNonCompliantCount || 0) + (jsonNonCompliantCount || 0),
       alertasActivas: 0
     };
   },
@@ -313,7 +325,7 @@ export const dynamicService = {
         sgc_forms!inner ( id, name, module_id ),
         profiles:created_by ( nombre, rol ),
         verifier:verified_by ( nombre, rol ),
-        sgc_response_values ( field_id, value_text, value_number, value_boolean, sgc_form_fields ( label, field_type, options ) ),
+        sgc_response_values ( field_id, value_text, value_number, value_boolean, value_json, sgc_form_fields ( label, field_type, options ) ),
         sgc_evidences ( id, file_url, file_type )
       `)
       .eq('sgc_forms.module_id', moduleId)
