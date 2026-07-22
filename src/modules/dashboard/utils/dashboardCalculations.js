@@ -36,9 +36,15 @@ export function isResponseCritical(response) {
     const field = val.sgc_form_fields;
     if (!field) return false;
     
-    // Sólo consideramos alertas críticas los valores numéricos fuera de rango
+    // Valores numéricos fuera de rango
     if (field.field_type === 'number' && val.value_number !== null) {
       return isMeasurementCritical(val.value_number, field.options);
+    }
+    
+    // Boolean compliance: 'No cumple' es crítico
+    if (field.field_type === 'boolean') {
+      if (val.value_boolean === false) return true;
+      if (val.value_json?.value === 'No cumple') return true;
     }
     
     return false;

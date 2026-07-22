@@ -49,8 +49,15 @@ function normalizeValue({ field, value }) {
 
   const fieldType = field.field_type;
   if (fieldType === 'boolean') {
-    if (value === false) return 'No / No Cumple';
-    if (value === true) return 'Sí / Cumple';
+    if (value && typeof value === 'object' && value.value) {
+      const complianceValue = value.value;
+      if (complianceValue === 'No cumple' && value.comment) {
+        return `${complianceValue} - ${value.comment}`;
+      }
+      return complianceValue;
+    }
+    if (value === false) return 'No cumple';
+    if (value === true) return 'Cumple';
     return '';
   }
 
@@ -182,9 +189,11 @@ export function exportDataNormalizer({ registros }) {
       }
 
       const raw =
-        field.field_type === 'boolean'
-          ? val?.value_boolean
-          : field.field_type === 'number'
+        field.field_type === 'boolean' && field?.options?.choices?.length > 0
+          ? val?.value_json
+          : field.field_type === 'boolean'
+            ? val?.value_boolean
+            : field.field_type === 'number'
             ? val?.value_number
             : val?.value_text;
 

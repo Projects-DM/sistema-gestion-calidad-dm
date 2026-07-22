@@ -20,11 +20,15 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
 
   const [optUnit, setOptUnit] = useState('');
   const [optChoices, setOptChoices] = useState('');
+  const [optComplianceEnabled, setOptComplianceEnabled] = useState(false);
+  const [optCommentPrompt, setOptCommentPrompt] = useState('');
 
   const [editingFieldId, setEditingFieldId] = useState(null);
   const [editField, setEditField] = useState(null);
   const [editOptUnit, setEditOptUnit] = useState('');
   const [editOptChoices, setEditOptChoices] = useState('');
+  const [editOptComplianceEnabled, setEditOptComplianceEnabled] = useState(false);
+  const [editOptCommentPrompt, setEditOptCommentPrompt] = useState('');
 
   const editFormRef = useRef(null);
 
@@ -79,6 +83,11 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
       if (newField.field_type === 'select' && optChoices) {
         optionsJson.choices = optChoices.split(',').map(s => s.trim());
       }
+      if (newField.field_type === 'boolean' && optComplianceEnabled) {
+        optionsJson.choices = ['Cumple', 'No cumple'];
+        optionsJson.requiresCommentOnFailure = true;
+        optionsJson.commentPrompt = optCommentPrompt || 'Explique la no conformidad';
+      }
 
       if (importMode) {
         const orderIndex = fields.length > 0 ? Math.max(...fields.map(f => f.order_index)) + 1 : 1;
@@ -112,6 +121,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
       setNewField({ name: '', label: '', field_type: 'text', required: true, options: {} });
       setOptUnit('');
       setOptChoices('');
+      setOptComplianceEnabled(false);
+      setOptCommentPrompt('');
     } catch (error) {
       alert('Error guardando campo: ' + error.message);
     } finally {
@@ -145,6 +156,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
     });
     setEditOptUnit(field.options?.unit || '');
     setEditOptChoices(field.options?.choices ? field.options.choices.join(', ') : '');
+    setEditOptComplianceEnabled(field.options?.requiresCommentOnFailure === true);
+    setEditOptCommentPrompt(field.options?.commentPrompt || 'Explique la no conformidad');
   };
 
   const handleCancelEdit = () => {
@@ -152,6 +165,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
     setEditField(null);
     setEditOptUnit('');
     setEditOptChoices('');
+    setEditOptComplianceEnabled(false);
+    setEditOptCommentPrompt('');
   };
 
   const handleUpdateField = async (e) => {
@@ -164,6 +179,11 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
       }
       if (editField.field_type === 'select' && editOptChoices) {
         optionsJson.choices = editOptChoices.split(',').map(s => s.trim());
+      }
+      if (editField.field_type === 'boolean' && editOptComplianceEnabled) {
+        optionsJson.choices = ['Cumple', 'No cumple'];
+        optionsJson.requiresCommentOnFailure = true;
+        optionsJson.commentPrompt = editOptCommentPrompt || 'Explique la no conformidad';
       }
 
       if (importMode) {
@@ -288,7 +308,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
                   <span className="font-bold text-gray-900">{field.label}</span>
                   {field.required && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">Requerido</span>}
                 </div>
-                <div className="text-xs text-gray-500 font-mono mt-1">ID: {field.name} | Tipo: {field.field_type}</div>
+                <div className="text-xs text-gray-500 font-mono mt-1">ID: {field.name} | Tipo: {field.field_type === 'boolean' && field.options?.requiresCommentOnFailure ? 'Checklist Compliance' : field.field_type}</div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -382,7 +402,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
                   <option value="text">Texto corto</option>
                   <option value="textarea">Texto largo (Observaciones)</option>
                   <option value="number">Número</option>
-                  <option value="boolean">Casilla (Sí/No - Cumple/No Cumple)</option>
+                  <option value="boolean">Checklist (Cumple/No Cumple)</option>
                   <option value="select">Lista desplegable</option>
                   <option value="signature">Firma digital</option>
                 </select>
@@ -412,6 +432,32 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
                   placeholder="Ej. Bueno, Regular, Malo"
                 />
+              </div>
+            )}
+
+            {editField.field_type === 'boolean' && (
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editOptComplianceEnabled}
+                    onChange={e => setEditOptComplianceEnabled(e.target.checked)}
+                    className="w-4 h-4 text-primary focus:ring-primary rounded"
+                  />
+                  <span className="text-sm font-bold text-gray-700">Habilitar workflow de compliance (Cumple/No cumple + comentario obligatorio en incumplimiento)</span>
+                </label>
+                {editOptComplianceEnabled && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Texto del comentario por incumplimiento</label>
+                    <input
+                      type="text"
+                      value={editOptCommentPrompt}
+                      onChange={e => setEditOptCommentPrompt(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="Explique la no conformidad"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -478,7 +524,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
                   <option value="text">Texto corto</option>
                   <option value="textarea">Texto largo (Observaciones)</option>
                   <option value="number">Número</option>
-                  <option value="boolean">Casilla (Sí/No - Cumple/No Cumple)</option>
+                  <option value="boolean">Checklist (Cumple/No Cumple)</option>
                   <option value="select">Lista desplegable</option>
                   <option value="signature">Firma digital</option>
                 </select>
@@ -508,6 +554,32 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
                   placeholder="Ej. Bueno, Regular, Malo"
                 />
+              </div>
+            )}
+
+            {newField.field_type === 'boolean' && (
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={optComplianceEnabled}
+                    onChange={e => setOptComplianceEnabled(e.target.checked)}
+                    className="w-4 h-4 text-primary focus:ring-primary rounded"
+                  />
+                  <span className="text-sm font-bold text-gray-700">Habilitar workflow de compliance (Cumple/No cumple + comentario obligatorio en incumplimiento)</span>
+                </label>
+                {optComplianceEnabled && (
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Texto del comentario por incumplimiento</label>
+                    <input
+                      type="text"
+                      value={optCommentPrompt}
+                      onChange={e => setOptCommentPrompt(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                      placeholder="Explique la no conformidad"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
