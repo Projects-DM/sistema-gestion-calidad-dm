@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Trash2,
   Edit,
+  Settings,
   FileText
 } from 'lucide-react';
 import FormBuilder from '../components/FormBuilder';
@@ -43,6 +44,9 @@ export default function Configuration() {
     engine_type: 'BaseGeneric',
     roles_allowed: ['administrador', 'calidad', 'operativo']
   });
+
+  const [isEditingForm, setIsEditingForm] = useState(false);
+  const [editFormDef, setEditFormDef] = useState(null);
 
   useEffect(() => {
     loadInitialData();
@@ -115,6 +119,49 @@ export default function Configuration() {
     }
   };
 
+  const handleStartEditForm = (form) => {
+    setIsCreatingForm(false);
+    setIsEditingForm(true);
+    setEditFormDef({
+      id: form.id,
+      module_id: form.module_id,
+      name: form.name,
+      slug: form.slug,
+      description: form.description || '',
+      engine_type: form.engine_type,
+      roles_allowed: form.roles_allowed || ['administrador', 'calidad', 'operativo']
+    });
+  };
+
+  const handleCancelEditForm = () => {
+    setIsEditingForm(false);
+    setEditFormDef(null);
+  };
+
+  const handleUpdateFormDef = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const supabase = (await import('../lib/supabase')).getSupabaseClient();
+      const { error } = await supabase.from('sgc_forms').update({
+        module_id: editFormDef.module_id,
+        name: editFormDef.name,
+        slug: editFormDef.slug || editFormDef.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        description: editFormDef.description,
+        engine_type: editFormDef.engine_type,
+        roles_allowed: editFormDef.roles_allowed
+      }).eq('id', editFormDef.id);
+
+      if (error) throw error;
+      handleCancelEditForm();
+      await loadInitialData();
+    } catch (error) {
+      alert('Error actualizando formulario: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (rol !== 'administrador') {
     return <div className="p-8 text-center text-red-500">Acceso denegado. Se requiere rol de administrador.</div>;
   }
@@ -179,7 +226,88 @@ export default function Configuration() {
 
       {activeTab === 'formularios' && !loading && (
         <div className="space-y-6">
-          {!isCreatingForm ? (
+          {isEditingForm ? (
+            <div className="bg-amber-50 p-6 md:p-8 rounded-2xl border border-amber-200 shadow-sm max-w-2xl mx-auto">
+              <h2 className="text-xl font-bold mb-6">Editando Formulario</h2>
+              <form onSubmit={handleUpdateFormDef} className="space-y-5">
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Módulo Destino *</label>
+                  <select
+                    required
+                    value={editFormDef.module_id}
+                    onChange={e => setEditFormDef({...editFormDef, module_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Selecciona un módulo...</option>
+                    {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nombre del Formulario *</label>
+                  <input
+                    type="text" required
+                    value={editFormDef.name}
+                    onChange={e => setEditFormDef({...editFormDef, name: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                    placeholder="Ej. Checklist Diario de Vehículos"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Identificador (slug)</label>
+                  <input
+                    type="text"
+                    value={editFormDef.slug}
+                    onChange={e => setEditFormDef({...editFormDef, slug: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                    placeholder="Se genera automáticamente desde el nombre"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Motor Dinámico *</label>
+                  <select
+                    required
+                    value={editFormDef.engine_type}
+                    onChange={e => setEditFormDef({...editFormDef, engine_type: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="BaseGeneric">CRUD Genérico (Textos, Opciones)</option>
+                    <option value="BaseChecklist">Checklist (Cumple / No Cumple)</option>
+                    <option value="BaseMediciones">Mediciones (Números, Tolerancias)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">El motor define cómo se visualizará y validará el formulario para el operario.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Descripción breve</label>
+                  <input
+                    type="text"
+                    value={editFormDef.description}
+                    onChange={e => setEditFormDef({...editFormDef, description: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    type="button" onClick={handleCancelEditForm}
+                    className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 bg-primary text-white font-bold hover:bg-primary-light rounded-xl transition-colors flex items-center gap-2"
+                  >
+                    <Save className="w-4 h-4" /> Guardar Cambios
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : !isCreatingForm ? (
             <>
               <div className="flex justify-end">
                 <button 
@@ -221,6 +349,13 @@ export default function Configuration() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleStartEditForm(form)}
+                              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Editar metadatos del formulario"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </button>
                             <button 
                               onClick={() => setSelectedForm(form)}
                               className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
