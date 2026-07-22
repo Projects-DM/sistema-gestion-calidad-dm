@@ -15,48 +15,64 @@ const RUNTIME_METADATA = [
   'usuario', 'creado por', 'creado_por', 'created by', 'creado',
   'actualizado por', 'actualizado_por', 'modificado por',
   'id', 'identificador', 'identificacion',
-  'codigo', 'código',
+  'codigo', 'código', 'cod.',
   'folio',
   'version', 'versión',
   'nº', 'no.', 'numero de', 'número de', 'nro',
+  'registro',
 ];
 
-const TABLE_PATTERNS = [
-  { columns: ['item', 'cumple', 'no cumple'], types: ['text', 'boolean', 'boolean'] },
-  { columns: ['item', 'si', 'no'], types: ['text', 'boolean', 'boolean'] },
-  { columns: ['item', 'conforme', 'no conforme'], types: ['text', 'boolean', 'boolean'] },
-  { columns: ['parametro', 'resultado'], types: ['text', 'number'] },
-  { columns: ['parametro', 'valor'], types: ['text', 'number'] },
-  { columns: ['parametro', 'medicion'], types: ['text', 'number'] },
-  { columns: ['parámetro', 'resultado'], types: ['text', 'number'] },
-  { columns: ['producto', 'cantidad'], types: ['text', 'number'] },
-  { columns: ['producto', 'precio'], types: ['text', 'number'] },
-  { columns: ['nombre', 'valor'], types: ['text', 'number'] },
-  { columns: ['nombre', 'descripcion'], types: ['text', 'textarea'] },
-  { columns: ['item', 'descripcion', 'cantidad'], types: ['text', 'textarea', 'number'] },
-  { columns: ['concepto', 'importe'], types: ['text', 'number'] },
-  { columns: ['concepto', 'monto'], types: ['text', 'number'] },
+const DOCUMENT_METADATA = [
+  'pagina', 'página', 'pag.',
+  'vigencia',
+  'manual',
+  'procedimiento',
+  'nombre del formato', 'nombre formato',
+  'encabezado', 'encabezados',
+  'tipo de documento',
+  'area responsable',
+  'proceso responsable',
+  'documento',
+];
+
+const BUSINESS_ROLES = [
+  'cargo', 'cargo responsable',
+  'responsable',
+  'elaboro', 'elaboró',
+  'preparo', 'preparó',
+  'aprobo', 'aprobó',
+  'recibio', 'recibió',
+  'reviso', 'revisó',
+  'revision', 'revisión',
+  'autorizo', 'autorizó',
+];
+
+const CHECKLIST_PAIRS = [
+  { left: /^c$/i, right: /^nc$/i, outputLabel: 'Cumple / No Cumple' },
+  { left: /^si$/i, right: /^no$/i, outputLabel: 'Sí / No' },
+  { left: /^sí$/i, right: /^no$/i, outputLabel: 'Sí / No' },
+  { left: /^cumple$/i, right: /^(no cumple|nocumple|no_cumple)$/i, outputLabel: 'Cumple / No Cumple' },
+  { left: /^conforme$/i, right: /^(no conforme|no_conforme)$/i, outputLabel: 'Conforme / No Conforme' },
 ];
 
 const TYPE_RULES = [
-  { type: 'boolean', priority: 90, keywords: ['si', 'no', 'sí', 'no'], label: /^(sí|si|no)\s*(\/|\||-)\s*(no|sí|si)$/i },
+  // -- BOOLEAN / CHECKLIST --
+  { type: 'boolean', priority: 95, keywords: ['c', 'nc'], label: /^[cn]c$/i },
+  { type: 'boolean', priority: 90, keywords: ['si', 'no', 'sí'], label: /^(sí|si|no)\s*(\/|\||-)\s*(no|sí|si)$/i },
   { type: 'boolean', priority: 90, keywords: ['cumple', 'no cumple', 'no_cumple', 'nocumple'], label: /^(cumple|no cumple|no_cumple)\s*(\/|\||-)\s*(no cumple|cumple)$/i },
   { type: 'boolean', priority: 90, keywords: ['conforme', 'no conforme', 'no_conforme'], label: /^(conforme|no conforme)\s*(\/|\||-)\s*(no conforme|conforme)$/i },
   { type: 'boolean', priority: 85, keywords: ['aprobado', 'rechazado'], label: /^aprobado\s*(\/|\||-)\s*rechazado$/i },
   { type: 'boolean', priority: 85, keywords: ['verdadero', 'falso'], label: /^verdadero\s*(\/|\||-)\s*falso$/i },
   { type: 'boolean', priority: 80, keywords: ['autorizado', 'no autorizado', 'no_autorizado'], label: /^autorizado\s*(\/|\||-)\s*(no autorizado|no_autorizado)$/i },
   { type: 'boolean', priority: 75, keywords: ['aplica', 'no aplica', 'no_aplica'], label: /^aplica\s*(\/|\||-)\s*(no aplica|no_aplica)$/i },
-  { type: 'boolean', priority: 70, keywords: ['check', 'casilla', 'ok', 'booleano'], label: /\b(booleano|check|casilla)\b/i },
-  { type: 'boolean', priority: 60, keywords: ['cumple', 'nocumple'], label: /\b(cumple|no cumple|nocumple)\b/i },
+  { type: 'boolean', priority: 70, keywords: ['cu'], label: /^cu$/i },
+  { type: 'boolean', priority: 70, keywords: ['nc'], label: /^nc$/i },
 
+  // -- SIGNATURE (only Verifica + Firma) --
   { type: 'signature', priority: 90, keywords: ['firma', 'firmar', 'firma digital'], label: /\b(firma|firmar|rúbrica|rubrica)\b/i },
-  { type: 'signature', priority: 85, keywords: ['cargo', 'cargo responsable'], label: /^cargo$/i },
   { type: 'signature', priority: 85, keywords: ['verifica', 'verificacion'], label: /\b(verifica|verificación)\b/i },
-  { type: 'signature', priority: 80, keywords: ['reviso', 'revisó', 'revisa'], label: /\b(reviso|revisó|revisa|revisión|revision)\b/i },
-  { type: 'signature', priority: 80, keywords: ['aprobo', 'aprobó', 'aprueba'], label: /\b(aprobo|aprobó|aprueba|aprobación|aprobacion)\b/i },
-  { type: 'signature', priority: 75, keywords: ['autoriza'], label: /\b(autoriza|autorización|autorizacion)\b/i },
-  { type: 'signature', priority: 70, keywords: ['responsable', 'elaboro', 'elaboró'], label: /\b(elaboro|elaboró|responsable)\b/i },
 
+  // -- NUMBER --
   { type: 'number', priority: 90, keywords: ['temperatura', '°c', '°f', 'c°'], label: /\b(temperatura|°c|°f)\b/i },
   { type: 'number', priority: 90, keywords: ['hipoclorito'], label: /\bhipoclorito\b/i },
   { type: 'number', priority: 90, keywords: ['ppm'], label: /\bppm\b/i },
@@ -68,7 +84,7 @@ const TYPE_RULES = [
   { type: 'number', priority: 85, keywords: ['litro', 'ml', 'm3', 'volumen'], label: /\b(litro|ml|m3|volumen|capacidad)\b/i },
   { type: 'number', priority: 85, keywords: ['ph'], label: /\bph\b/i },
   { type: 'number', priority: 85, keywords: ['porcentaje', '%'], label: /\b(porcentaje|%|humedad)\b/i },
-  { type: 'number', priority: 80, keywords: ['medida', 'medicion'], label: /\b(medida|medición|medicion)\b/i },
+  { type: 'number', priority: 80, keywords: ['medida', 'medicion', 'medición'], label: /\b(medida|medición|medicion)\b/i },
   { type: 'number', priority: 80, keywords: ['dimension'], label: /\bdimensión|dimension\b/i },
   { type: 'number', priority: 80, keywords: ['tolerancia'], label: /\btolerancia\b/i },
   { type: 'number', priority: 80, keywords: ['limite'], label: /\blímite|limite\b/i },
@@ -77,14 +93,18 @@ const TYPE_RULES = [
   { type: 'number', priority: 75, keywords: ['valor'], label: /^valor$/i },
   { type: 'number', priority: 70, keywords: ['importe', 'monto', 'precio', 'costo'], label: /\b(importe|monto|precio|costo)\b/i },
 
+  // -- TEXTAREA --
+  { type: 'textarea', priority: 85, keywords: ['accion correctiva', 'acción correctiva'], label: /\b(accion correctiva|acción correctiva)\b/i },
+  { type: 'textarea', priority: 85, keywords: ['hallazgos', 'hallazgo'], label: /\bhallazgos?\b/i },
+  { type: 'textarea', priority: 85, keywords: ['recomendaciones', 'recomendacion'], label: /\brecomendacion(es)?\b/i },
   { type: 'textarea', priority: 80, keywords: ['observaciones', 'observacion'], label: /\b(observaciones|observacion)\b/i },
   { type: 'textarea', priority: 80, keywords: ['comentarios', 'comentario'], label: /\b(comentarios|comentario)\b/i },
   { type: 'textarea', priority: 80, keywords: ['descripcion'], label: /\bdescripción|descripcion\b/i },
   { type: 'textarea', priority: 75, keywords: ['detalle'], label: /\bdetalle\b/i },
   { type: 'textarea', priority: 75, keywords: ['nota', 'notas'], label: /^notas?\b/i },
   { type: 'textarea', priority: 70, keywords: ['texto largo', 'texto_largo'], label: /\b(texto largo|texto_largo)\b/i },
-  { type: 'textarea', priority: 60, keywords: ['rarea'], label: /\brarea\b/i },
 
+  // -- SELECT --
   { type: 'select', priority: 80, keywords: ['tipo'], label: /^tipo\b/i },
   { type: 'select', priority: 80, keywords: ['categoria'], label: /\bcategoría|categoria\b/i },
   { type: 'select', priority: 80, keywords: ['opcion'], label: /\bopción|opcion\b/i },
@@ -104,28 +124,24 @@ const TYPE_RULES = [
   { type: 'select', priority: 60, keywords: ['color'], label: /\bcolor\b/i },
   { type: 'select', priority: 60, keywords: ['modelo'], label: /\bmodelo\b/i },
   { type: 'select', priority: 60, keywords: ['marca'], label: /\bmarca\b/i },
-  { type: 'select', priority: 60, keywords: ['responsable'], label: /^responsable$/i },
 ];
+
+const OPERATIONAL_VERBS = /\b(limpiar|lavar|enjuagar|secar|desinfectar|ordenar|organizar|llenar|vaciar|encender|apagar|abrir|cerrar|pesar|calibrar|ajustar|configurar|registrar|marcar|sellar|cortar|mezclar|batir|hornear|cocinar|enfriar|calentar|hervir|descongelar|congelar|filtrar|separar|tamizar|empaquetar|etiquetar|rotular|transportar|almacenar|seleccionar)\b/i;
 
 function normalize(str) {
   return str.toLowerCase().trim().replace(/[áäàâ]/g, 'a').replace(/[éëèê]/g, 'e').replace(/[íïìî]/g, 'i').replace(/[óöòô]/g, 'o').replace(/[úüùû]/g, 'u').replace(/ñ/g, 'n');
 }
 
-function detectTablePattern(headers) {
-  const normal = headers.map(h => normalize(h));
-  outer: for (const pattern of TABLE_PATTERNS) {
-    const patternNorm = pattern.columns.map(c => normalize(c));
-    let pi = 0;
-    const overrides = {};
-    for (let i = 0; i < normal.length && pi < patternNorm.length; i++) {
-      if (normal[i] === patternNorm[pi] || normal[i].includes(patternNorm[pi]) || patternNorm[pi].includes(normal[i])) {
-        overrides[i] = pattern.types[pi];
-        pi++;
-      }
-    }
-    if (pi === patternNorm.length) return overrides;
+function isDocumentMetadata(label) {
+  if (label.length <= 1) return false;
+  const norm = normalize(label);
+  for (const meta of DOCUMENT_METADATA) {
+    if (norm === meta || norm.startsWith(meta) || meta.startsWith(norm)) return true;
+    if (norm.includes(meta)) return true;
   }
-  return null;
+  if (/^(fo|pr|po|it|in|mc|an|pl|re|di|pe|ca|rg|fr|doc)[-\s]?\d+$/i.test(norm)) return true;
+  if (/^[a-z]{2,4}-[a-z]{2,4}-\d+$/i.test(norm)) return true;
+  return false;
 }
 
 function isRuntimeMetadata(label) {
@@ -136,6 +152,77 @@ function isRuntimeMetadata(label) {
     if (norm.includes(metaNorm)) return true;
   }
   return false;
+}
+
+function isBusinessRole(label) {
+  const norm = normalize(label);
+  return BUSINESS_ROLES.some(role => {
+    const roleNorm = normalize(role);
+    return norm === roleNorm || norm.includes(roleNorm) || roleNorm.includes(norm);
+  });
+}
+
+function isStandaloneNumber(label) {
+  return /^\d{2,4}$/.test(label.trim());
+}
+
+function buildColumnDefs(rawHeaders) {
+  const defs = [];
+  let skipNext = false;
+  for (let i = 0; i < rawHeaders.length; i++) {
+    if (skipNext) { skipNext = false; continue; }
+    const curr = rawHeaders[i].trim();
+    if (!curr) continue;
+    const currNorm = normalize(curr);
+    const next = i + 1 < rawHeaders.length ? rawHeaders[i + 1].trim() : '';
+    const nextNorm = normalize(next);
+
+    let merged = false;
+    for (const pair of CHECKLIST_PAIRS) {
+      if (pair.left.test(currNorm) && pair.right.test(nextNorm)) {
+        defs.push({ label: pair.outputLabel, sourceIndices: [i, i + 1], forceType: 'boolean', isChecklist: true });
+        skipNext = true;
+        merged = true;
+        break;
+      }
+    }
+    if (!merged) {
+      defs.push({ label: curr, sourceIndices: [i], forceType: null, isChecklist: false });
+    }
+  }
+  return defs;
+}
+
+function detectInspectionBlocks(columnDefs) {
+  const MIN_BLOCK = 5;
+  const MAX_LABEL_LEN = 35;
+  const MEASUREMENT_UNITS = /\b(°c|°f|kg|g|mg|ml|l|m|cm|mm|ppm|ph|%|unidad|unidades|metros|litros|grados)\b/i;
+
+  let i = 0;
+  while (i < columnDefs.length) {
+    if (columnDefs[i].forceType || columnDefs[i].label.length < 3 || columnDefs[i].label.length > MAX_LABEL_LEN) {
+      i++;
+      continue;
+    }
+
+    let j = i;
+    while (j < columnDefs.length) {
+      const lbl = columnDefs[j].label;
+      if (columnDefs[j].forceType) break;
+      if (lbl.length < 3 || lbl.length > MAX_LABEL_LEN) break;
+      if (OPERATIONAL_VERBS.test(lbl)) break;
+      if (MEASUREMENT_UNITS.test(lbl)) break;
+      j++;
+    }
+
+    if (j - i >= MIN_BLOCK) {
+      for (let k = i; k < j; k++) {
+        columnDefs[k].forceType = 'boolean';
+        columnDefs[k].isChecklist = true;
+      }
+    }
+    i = j + 1;
+  }
 }
 
 function detectFieldTypeByRules(labelLower) {
@@ -158,7 +245,6 @@ function detectFieldTypeByRules(labelLower) {
 
 function detectFieldType(label, sampleValues) {
   const labelLower = label.toLowerCase();
-
   const ruleMatch = detectFieldTypeByRules(labelLower);
   if (ruleMatch) return ruleMatch;
 
@@ -177,14 +263,32 @@ function detectFieldType(label, sampleValues) {
   return 'text';
 }
 
-function detectRequired(labelLower) {
-  return /\b(obligatorio|requerido|necesario|imprescindible|requisito|\*)\b/.test(labelLower) ||
-         /\b(imprescindible|indispensable)\b/.test(labelLower);
+function getSampleValues(sourceIndices, rows) {
+  const values = [];
+  for (const idx of sourceIndices) {
+    rows.forEach(r => {
+      if (r[idx] != null && String(r[idx]).trim() !== '') {
+        values.push(String(r[idx]));
+      }
+    });
+  }
+  return values;
+}
+
+function cleanFormName(name) {
+  let cleaned = name;
+  if (/^(fo|pr|in|rg|fr|doc|po|it|mc|an|pl|re|di|pe|ca)[-\s]?\d+/i.test(cleaned)) return '';
+  cleaned = cleaned.replace(/^(pagina|página)\s+\d+\s+(de|del|of)\s+\d+/i, '').trim();
+  cleaned = cleaned.replace(/^(versión|version)\s+\d+/i, '').trim();
+  cleaned = cleaned.replace(/^código\s+fo/i, '').trim();
+  cleaned = cleaned.replace(/^codigo\s+fo/i, '').trim();
+  return cleaned || name;
 }
 
 export function detectStructure(rawModel, modules) {
   const { fileName, title, rows, rawHeaders, textContent } = rawModel;
-  const name = title || fileName.replace(/\.\w+$/, '');
+  let name = title || fileName.replace(/\.\w+$/, '');
+  name = cleanFormName(name) || fileName.replace(/\.\w+$/, '');
   const nameLower = name.toLowerCase();
   const textLower = (textContent || '').toLowerCase();
 
@@ -201,41 +305,36 @@ export function detectStructure(rawModel, modules) {
     }
   }
 
-  const fields = [];
+  let fields = [];
   const seenLabels = new Set();
 
-  const tableOverrides = rawHeaders && rawHeaders.length > 0 ? detectTablePattern(rawHeaders) : null;
-
   if (rawHeaders && rawHeaders.length > 0) {
-    rawHeaders.forEach((header, idx) => {
-      const label = header.trim();
-      if (!label) return;
+    const columnDefs = buildColumnDefs(rawHeaders);
+    detectInspectionBlocks(columnDefs);
+
+    for (const colDef of columnDefs) {
+      const label = colDef.label;
       const labelNorm = normalize(label);
 
-      if (isRuntimeMetadata(labelNorm)) return;
-      if (seenLabels.has(labelNorm)) return;
+      if (label.length <= 1) continue;
+      if (isStandaloneNumber(labelNorm)) continue;
+      if (isDocumentMetadata(labelNorm)) continue;
+      if (isRuntimeMetadata(labelNorm)) continue;
+      if (isBusinessRole(labelNorm)) continue;
+      if (seenLabels.has(labelNorm)) continue;
       seenLabels.add(labelNorm);
 
-      const sampleValues = rows
-        .filter(r => r[idx] != null && String(r[idx]).trim() !== '')
-        .map(r => String(r[idx]));
+      const sampleValues = getSampleValues(colDef.sourceIndices, rows);
+      const fieldType = colDef.forceType || detectFieldType(label, sampleValues);
 
-      let fieldType;
-      if (tableOverrides && tableOverrides[idx] !== undefined) {
-        fieldType = tableOverrides[idx];
-      } else {
-        fieldType = detectFieldType(label, sampleValues);
-      }
-
-      const required = detectRequired(label.toLowerCase());
       const options = {};
       if (fieldType === 'select' && sampleValues.length > 0) {
         const choices = [...new Set(sampleValues)].filter(Boolean).slice(0, 50);
         if (choices.length > 1) options.choices = choices;
       }
 
-      fields.push({ label, fieldType, required, orderIndex: idx + 1, options });
-    });
+      fields.push({ label, fieldType, required: true, orderIndex: 0, options });
+    }
   }
 
   if (fields.length === 0) {
@@ -247,18 +346,50 @@ export function detectStructure(rawModel, modules) {
           const label = part;
           if (!label || label.length < 3) return;
           const labelNorm = normalize(label);
-          if (isRuntimeMetadata(labelNorm) || seenLabels.has(labelNorm)) return;
+          if (isStandaloneNumber(labelNorm)) return;
+          if (isDocumentMetadata(labelNorm)) return;
+          if (isRuntimeMetadata(labelNorm)) return;
+          if (isBusinessRole(labelNorm)) return;
+          if (seenLabels.has(labelNorm)) return;
           seenLabels.add(labelNorm);
           const fieldType = detectFieldType(label, []);
-          const required = detectRequired(label.toLowerCase());
-          fields.push({ label, fieldType, required, orderIndex: fields.length + 1, options: {} });
+          fields.push({ label, fieldType, required: true, orderIndex: fields.length + 1, options: {} });
         });
       });
     }
   }
 
+  let maxConsecBool = 0;
+  let currConsecBool = 0;
+  let lastBoolIdx = -1;
+  for (let i = 0; i < fields.length; i++) {
+    if (fields[i].fieldType === 'boolean') {
+      currConsecBool++;
+      maxConsecBool = Math.max(maxConsecBool, currConsecBool);
+      lastBoolIdx = i;
+    } else {
+      currConsecBool = 0;
+    }
+  }
+
+  if (maxConsecBool >= 3 && lastBoolIdx >= 0 && !seenLabels.has(normalize('observaciones'))) {
+    fields.splice(lastBoolIdx + 1, 0, { label: 'Observaciones', fieldType: 'textarea', required: false, orderIndex: 0, options: {} });
+  }
+
+  const hasSignature = fields.some(f => f.fieldType === 'signature');
+  fields = fields.filter(f => f.fieldType !== 'signature');
+  if (hasSignature) {
+    fields.push({ label: 'Verifica', fieldType: 'signature', required: true, orderIndex: 0, options: {} });
+  }
+
+  for (const field of fields) {
+    field.required = field.fieldType !== 'textarea';
+  }
+
+  fields.forEach((f, i) => { f.orderIndex = i + 1; });
+
   if (fields.length === 0) {
-    fields.push({ label: 'Campo 1', fieldType: 'text', required: false, orderIndex: 1, options: {} });
+    fields.push({ label: 'Campo 1', fieldType: 'text', required: true, orderIndex: 1, options: {} });
   }
 
   return { suggestedName: name, suggestedModuleId, suggestedModuleName, fields };
