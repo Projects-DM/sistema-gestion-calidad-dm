@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Save, GripVertical, Settings, MoveUp, MoveDown, Download, Loader2 } from 'lucide-react';
 import { dynamicService } from '../services/dynamicService';
 import { moveUp as motorMoveUp, moveDown as motorMoveDown, toOrderedIds } from '../order-motor/UniversalOrderMotor';
@@ -25,6 +25,19 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
   const [editField, setEditField] = useState(null);
   const [editOptUnit, setEditOptUnit] = useState('');
   const [editOptChoices, setEditOptChoices] = useState('');
+
+  const editFormRef = useRef(null);
+
+  useEffect(() => {
+    if (editingFieldId && editFormRef.current) {
+      const timer = setTimeout(() => {
+        editFormRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const firstInput = editFormRef.current.querySelector('input, select, textarea');
+        if (firstInput) firstInput.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [editingFieldId]);
 
   const loadFields = async () => {
     try {
@@ -341,7 +354,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
       {/* Edit / Add New Field Form */}
       <div className="p-6">
         {editingFieldId ? (
-          <form onSubmit={handleUpdateField} className="bg-amber-50 p-6 rounded-xl border border-amber-200 space-y-4">
+          <form ref={editFormRef} onSubmit={handleUpdateField} className="bg-amber-50 p-6 rounded-xl border border-amber-200 space-y-4">
             <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
               <Settings className="w-4 h-4 text-amber-500" /> Editando Campo
             </h4>
