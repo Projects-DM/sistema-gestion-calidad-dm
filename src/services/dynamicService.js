@@ -326,6 +326,30 @@ export const dynamicService = {
     return data;
   },
 
+  async updateForm(formId, updates) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_forms')
+      .update(updates)
+      .eq('id', formId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updateField(fieldId, updates) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_form_fields')
+      .update(updates)
+      .eq('id', fieldId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
   async updateModule({ id, name, slug }) {
     try {
       // Validation

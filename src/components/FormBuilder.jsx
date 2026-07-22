@@ -22,6 +22,11 @@ export default function FormBuilder({ formDef }) {
   const [optUnit, setOptUnit] = useState('');
   const [optChoices, setOptChoices] = useState('');
 
+  const [editingFieldId, setEditingFieldId] = useState(null);
+  const [editField, setEditField] = useState(null);
+  const [editOptUnit, setEditOptUnit] = useState('');
+  const [editOptChoices, setEditOptChoices] = useState('');
+
   const loadFields = async () => {
     try {
       setLoading(true);
@@ -89,6 +94,52 @@ export default function FormBuilder({ formDef }) {
       await loadFields();
     } catch (error) {
       alert('Error eliminando campo: ' + error.message);
+    }
+  };
+
+  const handleStartEdit = (field) => {
+    setIsAdding(false);
+    setEditingFieldId(field.id);
+    setEditField({
+      label: field.label,
+      field_type: field.field_type,
+      required: field.required,
+      options: field.options || {}
+    });
+    setEditOptUnit(field.options?.unit || '');
+    setEditOptChoices(field.options?.choices ? field.options.choices.join(', ') : '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingFieldId(null);
+    setEditField(null);
+    setEditOptUnit('');
+    setEditOptChoices('');
+  };
+
+  const handleUpdateField = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      let optionsJson = {};
+      if (editField.field_type === 'number' && editOptUnit) {
+        optionsJson.unit = editOptUnit;
+      }
+      if (editField.field_type === 'select' && editOptChoices) {
+        optionsJson.choices = editOptChoices.split(',').map(s => s.trim());
+      }
+      await dynamicService.updateField(editingFieldId, {
+        label: editField.label,
+        field_type: editField.field_type,
+        required: editField.required,
+        options: optionsJson
+      });
+      handleCancelEdit();
+      await loadFields();
+    } catch (error) {
+      alert('Error actualizando campo: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -176,6 +227,14 @@ export default function FormBuilder({ formDef }) {
                 </button>
 
                 <button
+                  onClick={() => handleStartEdit(field)}
+                  className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Editar campo"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+
+                <button
                   onClick={() => handleDeleteField(field.id)}
                   className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                 >
@@ -194,11 +253,100 @@ export default function FormBuilder({ formDef }) {
         </div>
       </div>
 
-      {/* Add New Field Form */}
+      {/* Edit / Add New Field Form */}
       <div className="p-6">
-        {!isAdding ? (
+        {editingFieldId ? (
+          <form onSubmit={handleUpdateField} className="bg-amber-50 p-6 rounded-xl border border-amber-200 space-y-4">
+            <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <Settings className="w-4 h-4 text-amber-500" /> Editando Campo
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Etiqueta / Pregunta *</label>
+                <input
+                  type="text" required
+                  value={editField.label}
+                  onChange={e => setEditField({...editField, label: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  placeholder="Ej. Nivel de pH"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Dato *</label>
+                <select
+                  required
+                  value={editField.field_type}
+                  onChange={e => setEditField({...editField, field_type: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                >
+                  <option value="text">Texto corto</option>
+                  <option value="textarea">Texto largo (Observaciones)</option>
+                  <option value="number">Número</option>
+                  <option value="boolean">Casilla (Sí/No - Cumple/No Cumple)</option>
+                  <option value="select">Lista desplegable</option>
+                  <option value="signature">Firma digital</option>
+                </select>
+              </div>
+            </div>
+
+            {editField.field_type === 'number' && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Unidad de Medida (Opcional)</label>
+                <input
+                  type="text"
+                  value={editOptUnit}
+                  onChange={e => setEditOptUnit(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  placeholder="Ej. °C, ppm, kg"
+                />
+              </div>
+            )}
+
+            {editField.field_type === 'select' && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Opciones (separadas por coma) *</label>
+                <input
+                  type="text" required
+                  value={editOptChoices}
+                  onChange={e => setEditOptChoices(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                  placeholder="Ej. Bueno, Regular, Malo"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox" id="edit-req"
+                checked={editField.required}
+                onChange={e => setEditField({...editField, required: e.target.checked})}
+                className="w-4 h-4 text-primary focus:ring-primary rounded"
+              />
+              <label htmlFor="edit-req" className="text-sm font-bold text-gray-700 cursor-pointer">
+                Este campo es obligatorio
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <button
+                type="button" onClick={handleCancelEdit}
+                className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit" disabled={loading}
+                className="px-6 py-2 bg-primary text-white font-bold hover:bg-primary-light rounded-xl transition-colors flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" /> Actualizar Campo
+              </button>
+            </div>
+          </form>
+        ) : !isAdding ? (
           <button 
-            onClick={() => setIsAdding(true)}
+            onClick={() => { setIsAdding(true); handleCancelEdit(); }}
             className="w-full flex justify-center items-center gap-2 py-4 border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 rounded-xl font-bold transition-colors"
           >
             <Plus className="w-5 h-5" /> Agregar Nuevo Campo
