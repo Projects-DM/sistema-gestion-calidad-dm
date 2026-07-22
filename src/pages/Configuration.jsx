@@ -15,9 +15,11 @@ import {
   Trash2,
   Edit,
   Settings,
+  Upload,
   FileText
 } from 'lucide-react';
 import FormBuilder from '../components/FormBuilder';
+import ImportAssistant from '../components/ImportAssistant';
 import DocumentRepositoriesAdmin from '../components/documentRepositories/DocumentRepositoriesAdmin';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
@@ -47,6 +49,9 @@ export default function Configuration() {
 
   const [isEditingForm, setIsEditingForm] = useState(false);
   const [editFormDef, setEditFormDef] = useState(null);
+
+  const [showImport, setShowImport] = useState(false);
+  const [importBuilderData, setImportBuilderData] = useState(null);
 
   useEffect(() => {
     loadInitialData();
@@ -138,6 +143,23 @@ export default function Configuration() {
     setEditFormDef(null);
   };
 
+  const handleImportReady = (builderData) => {
+    setShowImport(false);
+    setImportBuilderData(builderData);
+  };
+
+  const handleImportComplete = (form) => {
+    setImportBuilderData(null);
+    if (form) {
+      loadInitialData();
+      setSelectedForm(form);
+    }
+  };
+
+  const handleCancelImport = () => {
+    setShowImport(false);
+  };
+
   const handleUpdateFormDef = async (e) => {
     e.preventDefault();
     try {
@@ -164,6 +186,29 @@ export default function Configuration() {
 
   if (rol !== 'administrador') {
     return <div className="p-8 text-center text-red-500">Acceso denegado. Se requiere rol de administrador.</div>;
+  }
+
+  // Render the Field Builder in import mode
+  if (importBuilderData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <button onClick={() => setImportBuilderData(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-500" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Constructor Visual: {importBuilderData.name}</h1>
+            <p className="text-sm text-gray-500">Revisa y modifica los campos detectados antes de guardar.</p>
+          </div>
+        </div>
+        <FormBuilder
+          formDef={{ id: 'import' }}
+          importMode={true}
+          importFormDef={importBuilderData}
+          onImportComplete={handleImportComplete}
+        />
+      </div>
+    );
   }
 
   // Render the Field Builder view if a form is selected
@@ -226,7 +271,13 @@ export default function Configuration() {
 
       {activeTab === 'formularios' && !loading && (
         <div className="space-y-6">
-          {isEditingForm ? (
+          {showImport ? (
+            <ImportAssistant
+              modules={modules}
+              onReady={handleImportReady}
+              onCancel={handleCancelImport}
+            />
+          ) : isEditingForm ? (
             <div className="bg-amber-50 p-6 md:p-8 rounded-2xl border border-amber-200 shadow-sm max-w-2xl mx-auto">
               <h2 className="text-xl font-bold mb-6">Editando Formulario</h2>
               <form onSubmit={handleUpdateFormDef} className="space-y-5">
@@ -309,7 +360,13 @@ export default function Configuration() {
             </div>
           ) : !isCreatingForm ? (
             <>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowImport(true)}
+                  className="flex items-center gap-2 bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                >
+                  <Upload className="w-4 h-4" /> Importar Formulario
+                </button>
                 <button 
                   onClick={() => setIsCreatingForm(true)}
                   className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-bold hover:bg-primary-light transition-colors"

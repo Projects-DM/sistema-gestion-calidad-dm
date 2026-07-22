@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, GripVertical, Settings, MoveUp, MoveDown } from 'lucide-react';
+import { Plus, Trash2, Save, GripVertical, Settings, MoveUp, MoveDown, Download, Loader2 } from 'lucide-react';
 import { dynamicService } from '../services/dynamicService';
 import { moveUp as motorMoveUp, moveDown as motorMoveDown, toOrderedIds } from '../order-motor/UniversalOrderMotor';
 import { reorderFormFieldsOrder } from '../order-motor/adapters/FormBuilderOrderAdapter';
 
-
-export default function FormBuilder({ formDef }) {
+export default function FormBuilder({ formDef, importMode, importFormDef, onImportComplete }) {
   const [fields, setFields] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+  const [saving, setSaving] = useState(false);
+
   const [isAdding, setIsAdding] = useState(false);
   const [newField, setNewField] = useState({
     name: '',
@@ -18,7 +18,6 @@ export default function FormBuilder({ formDef }) {
     options: {}
   });
 
-  // Additional states for specific field options
   const [optUnit, setOptUnit] = useState('');
   const [optChoices, setOptChoices] = useState('');
 
@@ -30,8 +29,17 @@ export default function FormBuilder({ formDef }) {
   const loadFields = async () => {
     try {
       setLoading(true);
-      const data = await dynamicService.getFormFields(formDef.id);
-      setFields(data);
+      if (importMode && importFormDef?.fields) {
+        const withIds = importFormDef.fields.map((f, i) => ({
+          ...f,
+          id: `_local_${Date.now()}_${i}`,
+          order_index: f.order_index || i + 1,
+        }));
+        setFields(withIds);
+      } else {
+        const data = await dynamicService.getFormFields(formDef.id);
+        setFields(data);
+      }
     } catch (error) {
       console.error('Error loading fields:', error);
     } finally {
@@ -41,15 +49,16 @@ export default function FormBuilder({ formDef }) {
 
   useEffect(() => {
     loadFields();
-  }, [formDef.id]);
+  }, [formDef?.id, importMode]);
+
+  const genId = () => `_l_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   const handleAddField = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      
+
       const slugName = newField.name || newField.label.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-      
       let optionsJson = {};
       if (newField.field_type === 'number' && optUnit) {
         optionsJson.unit = optUnit;
@@ -58,27 +67,38 @@ export default function FormBuilder({ formDef }) {
         optionsJson.choices = optChoices.split(',').map(s => s.trim());
       }
 
-      const supabase = (await import('../lib/supabase')).getSupabaseClient();
-      
-      const order_index = fields.length > 0 ? Math.max(...fields.map(f => f.order_index)) + 1 : 1;
+      if (importMode) {
+        const orderIndex = fields.length > 0 ? Math.max(...fields.map(f => f.order_index)) + 1 : 1;
+        const newFieldEntry = {
+          id: genId(),
+          name: slugName,
+          label: newField.label,
+          field_type: newField.field_type,
+          required: newField.required,
+          options: optionsJson,
+          order_index: orderIndex,
+        };
+        setFields(prev => [...prev, newFieldEntry]);
+      } else {
+        const supabase = (await import('../lib/supabase')).getSupabaseClient();
+        const order_index = fields.length > 0 ? Math.max(...fields.map(f => f.order_index)) + 1 : 1;
+        const { error } = await supabase.from('sgc_form_fields').insert({
+          form_id: formDef.id,
+          name: slugName,
+          label: newField.label,
+          field_type: newField.field_type,
+          required: newField.required,
+          options: optionsJson,
+          order_index: order_index
+        });
+        if (error) throw error;
+        await loadFields();
+      }
 
-      const { error } = await supabase.from('sgc_form_fields').insert({
-        form_id: formDef.id,
-        name: slugName,
-        label: newField.label,
-        field_type: newField.field_type,
-        required: newField.required,
-        options: optionsJson,
-        order_index: order_index
-      });
-
-      if (error) throw error;
-      
       setIsAdding(false);
       setNewField({ name: '', label: '', field_type: 'text', required: true, options: {} });
       setOptUnit('');
       setOptChoices('');
-      await loadFields();
     } catch (error) {
       alert('Error guardando campo: ' + error.message);
     } finally {
@@ -89,9 +109,13 @@ export default function FormBuilder({ formDef }) {
   const handleDeleteField = async (id) => {
     if (!window.confirm('¿Eliminar este campo?')) return;
     try {
-      const supabase = (await import('../lib/supabase')).getSupabaseClient();
-      await supabase.from('sgc_form_fields').delete().eq('id', id);
-      await loadFields();
+      if (importMode) {
+        setFields(prev => prev.filter(f => f.id !== id));
+      } else {
+        const supabase = (await import('../lib/supabase')).getSupabaseClient();
+        await supabase.from('sgc_form_fields').delete().eq('id', id);
+        await loadFields();
+      }
     } catch (error) {
       alert('Error eliminando campo: ' + error.message);
     }
@@ -128,14 +152,24 @@ export default function FormBuilder({ formDef }) {
       if (editField.field_type === 'select' && editOptChoices) {
         optionsJson.choices = editOptChoices.split(',').map(s => s.trim());
       }
-      await dynamicService.updateField(editingFieldId, {
-        label: editField.label,
-        field_type: editField.field_type,
-        required: editField.required,
-        options: optionsJson
-      });
+
+      if (importMode) {
+        setFields(prev => prev.map(f =>
+          f.id === editingFieldId
+            ? { ...f, label: editField.label, field_type: editField.field_type, required: editField.required, options: optionsJson }
+            : f
+        ));
+      } else {
+        await dynamicService.updateField(editingFieldId, {
+          label: editField.label,
+          field_type: editField.field_type,
+          required: editField.required,
+          options: optionsJson
+        });
+        await loadFields();
+      }
+
       handleCancelEdit();
-      await loadFields();
     } catch (error) {
       alert('Error actualizando campo: ' + error.message);
     } finally {
@@ -143,15 +177,90 @@ export default function FormBuilder({ formDef }) {
     }
   };
 
+  const handleMoveField = (index, direction) => {
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === fields.length - 1)) return;
+    const newFields = [...fields];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
+    setFields(newFields.map((f, i) => ({ ...f, order_index: i + 1 })));
+  };
+
+  const handleMoveToDb = async (field, index, direction) => {
+    const sequenceOrdered = fields;
+    const targetId = field.id;
+    const nextSequence = direction === 'up' ? motorMoveUp(sequenceOrdered, targetId) : motorMoveDown(sequenceOrdered, targetId);
+    const nextOrderedIds = toOrderedIds(nextSequence);
+    const res = await reorderFormFieldsOrder({
+      formId: formDef.id,
+      orderedIds: nextOrderedIds,
+    });
+    if (res?.ok) {
+      setFields(res.refreshedFields || []);
+    } else {
+      alert(res?.errorMessage || 'Error reordenando');
+    }
+  };
+
+  const handleSaveImport = async () => {
+    if (!importFormDef) return;
+    try {
+      setSaving(true);
+      const supabase = (await import('../lib/supabase')).getSupabaseClient();
+
+      const formName = importFormDef.name || 'Formulario Importado';
+      const formSlug = formName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const formModuleId = importFormDef.moduleId || null;
+
+      const { data: form, error: formError } = await supabase.from('sgc_forms').insert({
+        module_id: formModuleId,
+        name: formName,
+        slug: formSlug,
+        description: '',
+        engine_type: 'BaseGeneric',
+        roles_allowed: ['administrador', 'calidad', 'operativo'],
+      }).select().single();
+
+      if (formError) throw formError;
+
+      const fieldsToInsert = fields.map((f, i) => ({
+        form_id: form.id,
+        name: f.name || f.label.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+        label: f.label,
+        field_type: f.field_type,
+        required: f.required,
+        options: f.options || {},
+        order_index: i + 1,
+      }));
+
+      const { error: fieldsError } = await supabase.from('sgc_form_fields').insert(fieldsToInsert);
+      if (fieldsError) throw fieldsError;
+
+      onImportComplete?.(form);
+    } catch (error) {
+      alert('Error guardando formulario: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const displayName = importMode ? (importFormDef?.name || 'Nuevo Formulario Importado') : formDef?.name;
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-      
+
       {/* List of existing fields */}
       <div className="p-6 border-b border-gray-200 bg-gray-50/50">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Campos Configurados</h3>
-        
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-900">Campos Configurados</h3>
+          {importMode && (
+            <span className="text-xs bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+              <Download className="w-3 h-3" /> Vista Previa - Sin Guardar
+            </span>
+          )}
+        </div>
+
         {loading && !isAdding && <div className="text-gray-500">Cargando campos...</div>}
-        
+
         <div className="space-y-3">
           {fields.map((field, index) => (
             <div key={field.id} className="flex items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
@@ -168,29 +277,16 @@ export default function FormBuilder({ formDef }) {
                 </div>
                 <div className="text-xs text-gray-500 font-mono mt-1">ID: {field.name} | Tipo: {field.field_type}</div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   disabled={index === 0 || loading}
-                  onClick={async () => {
-                    // Piloto: calcular nuevo orden con Motor Universal y persistir con Adapter.
-                    const sequenceOrdered = fields;
-                    const targetId = field.id;
-
-                    // Motor recibe la secuencia completa (objetos con propiedad `id`).
-                    const nextSequence = motorMoveUp(sequenceOrdered, targetId);
-                    const nextOrderedIds = toOrderedIds(nextSequence);
-
-                    const res = await reorderFormFieldsOrder({
-                      formId: formDef.id,
-                      orderedIds: nextOrderedIds,
-                    });
-
-                    if (res?.ok) {
-                      setFields(res.refreshedFields || []);
+                  onClick={() => {
+                    if (importMode) {
+                      handleMoveField(index, 'up');
                     } else {
-                      alert(res?.errorMessage || 'Error reordenando');
+                      handleMoveToDb(field, index, 'up');
                     }
                   }}
                   className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -202,22 +298,11 @@ export default function FormBuilder({ formDef }) {
                 <button
                   type="button"
                   disabled={index === fields.length - 1 || loading}
-                  onClick={async () => {
-                    const sequenceOrdered = fields;
-                    const targetId = field.id;
-
-                    const nextSequence = motorMoveDown(sequenceOrdered, targetId);
-                    const nextOrderedIds = toOrderedIds(nextSequence);
-
-                    const res = await reorderFormFieldsOrder({
-                      formId: formDef.id,
-                      orderedIds: nextOrderedIds,
-                    });
-
-                    if (res?.ok) {
-                      setFields(res.refreshedFields || []);
+                  onClick={() => {
+                    if (importMode) {
+                      handleMoveField(index, 'down');
                     } else {
-                      alert(res?.errorMessage || 'Error reordenando');
+                      handleMoveToDb(field, index, 'down');
                     }
                   }}
                   className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
@@ -345,7 +430,7 @@ export default function FormBuilder({ formDef }) {
             </div>
           </form>
         ) : !isAdding ? (
-          <button 
+          <button
             onClick={() => { setIsAdding(true); handleCancelEdit(); }}
             className="w-full flex justify-center items-center gap-2 py-4 border-2 border-dashed border-primary/30 text-primary hover:bg-primary/5 rounded-xl font-bold transition-colors"
           >
@@ -356,11 +441,11 @@ export default function FormBuilder({ formDef }) {
             <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
               <Settings className="w-4 h-4 text-primary" /> Configuración del Nuevo Campo
             </h4>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Etiqueta / Pregunta *</label>
-                <input 
+                <input
                   type="text" required
                   value={newField.label}
                   onChange={e => setNewField({...newField, label: e.target.value})}
@@ -368,10 +453,10 @@ export default function FormBuilder({ formDef }) {
                   placeholder="Ej. Nivel de pH"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Tipo de Dato *</label>
-                <select 
+                <select
                   required
                   value={newField.field_type}
                   onChange={e => setNewField({...newField, field_type: e.target.value})}
@@ -387,12 +472,11 @@ export default function FormBuilder({ formDef }) {
               </div>
             </div>
 
-            {/* Dynamic Options based on type */}
             {newField.field_type === 'number' && (
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Unidad de Medida (Opcional)</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={optUnit}
                   onChange={e => setOptUnit(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
@@ -404,7 +488,7 @@ export default function FormBuilder({ formDef }) {
             {newField.field_type === 'select' && (
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Opciones (separadas por coma) *</label>
-                <input 
+                <input
                   type="text" required
                   value={optChoices}
                   onChange={e => setOptChoices(e.target.value)}
@@ -415,7 +499,7 @@ export default function FormBuilder({ formDef }) {
             )}
 
             <div className="flex items-center gap-2 pt-2">
-              <input 
+              <input
                 type="checkbox" id="req"
                 checked={newField.required}
                 onChange={e => setNewField({...newField, required: e.target.checked})}
@@ -427,13 +511,13 @@ export default function FormBuilder({ formDef }) {
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <button 
+              <button
                 type="button" onClick={() => setIsAdding(false)}
                 className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="submit" disabled={loading}
                 className="px-6 py-2 bg-primary text-white font-bold hover:bg-primary-light rounded-xl transition-colors flex items-center gap-2"
               >
@@ -443,6 +527,43 @@ export default function FormBuilder({ formDef }) {
           </form>
         )}
       </div>
+
+      {/* Import Save Button */}
+      {importMode && (
+        <div className="px-6 pb-6">
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <Download className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-purple-900 text-sm">Formulario en vista previa</p>
+                <p className="text-xs text-purple-700">
+                  Los cambios solo están en memoria. Al guardar se creará el formulario y todos sus campos en la base de datos.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => onImportComplete?.(null)}
+                className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors"
+              >
+                Descartar
+              </button>
+              <button
+                onClick={handleSaveImport}
+                disabled={saving || fields.length === 0}
+                className="px-6 py-2.5 bg-purple-600 text-white font-bold hover:bg-purple-700 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Guardar Formulario con Campos Importados
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
