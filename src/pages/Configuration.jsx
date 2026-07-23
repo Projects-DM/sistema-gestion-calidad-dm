@@ -114,9 +114,23 @@ export default function Configuration() {
   };
 
   const handleDeleteForm = async (formId) => {
-    if (!window.confirm('¿Eliminar este formulario y todas sus respuestas?')) return;
     try {
       const supabase = (await import('../lib/supabase')).getSupabaseClient();
+      const { count, error: countError } = await supabase
+        .from('sgc_form_fields')
+        .select('id', { count: 'exact', head: true })
+        .eq('form_id', formId);
+      if (countError) throw countError;
+      if (count > 0) {
+        alert(
+          'No es posible eliminar este formulario.\n\n' +
+          'Este formulario posee campos configurados.\n\n' +
+          'Por políticas de integridad del sistema debe eliminar previamente ' +
+          'todos los campos asociados antes de eliminar el formulario.'
+        );
+        return;
+      }
+      if (!window.confirm('¿Eliminar este formulario y todas sus respuestas?')) return;
       await supabase.from('sgc_forms').delete().eq('id', formId);
       await loadInitialData();
     } catch (error) {
