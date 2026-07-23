@@ -138,7 +138,8 @@ function getOriginalRow(aoa, rowIndex) {
   return (aoa[rowIndex] || []).map((v) => v !== undefined && v !== null ? String(v).trim() : '');
 }
 
-export function normalizeOperationalData({ parsedDocument, canonicalFields, synonyms, fieldNormalizers = {} }) {
+export function normalizeOperationalData({ parsedDocument, contract }) {
+  const { canonicalFields, synonyms, fieldNormalizers = {} } = contract.documentContract || contract;
   const { rawHeaders, rawRows } = parsedDocument;
 
   const aoa = [rawHeaders || [], ...(rawRows || [])];
