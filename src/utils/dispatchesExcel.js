@@ -1,6 +1,10 @@
 import { parseDocument } from '../services/import/index.js';
-import { normalizeDispatches, CANONICAL_FIELDS, toYmd, toHm, toNumber, normalizeHeader, buildHeaderMap, pickValue } from '../services/import/operationalDataExtractionLayer.js';
+import { normalizeOperationalData, toYmd, toHm, toNumber, normalizeHeader, buildHeaderMap, pickValue } from '../services/import/operationalDataExtractionLayer.js';
+import { OperationalExperienceRegistry } from '../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import * as XLSX from 'xlsx';
+
+const dispatchContract = OperationalExperienceRegistry.getExperienceNormalizationContract('dispatches');
+const { canonicalFields: CANONICAL_FIELDS, synonyms: FIELD_SYNONYMS, fieldNormalizers: FIELD_NORMALIZERS } = dispatchContract;
 
 function parseOperationsReport(aoa) {
   // Compatible con `reports/Report.xlsx` incluido en el proyecto:
@@ -49,7 +53,7 @@ function parseOperationsReport(aoa) {
       }
 
       const detailHeaders = (aoa[detailHeaderIndex] || []).map((v) => String(v ?? '').trim());
-      const detailMap = buildHeaderMap(detailHeaders);
+      const detailMap = buildHeaderMap(detailHeaders, CANONICAL_FIELDS, FIELD_SYNONYMS);
       const descKey = detailMap.producto || detailHeaders.find((h) => normalizeHeader(h) === 'descripcion') || null;
       const qtyKey = detailMap.cantidad || detailHeaders.find((h) => normalizeHeader(h) === 'cantidad') || null;
 
@@ -133,8 +137,13 @@ export async function parseDispatchesExcelFile(file) {
     }
   }
 
-  // Normalización vía Operational Data Extraction Layer
-  const result = normalizeDispatches(parsedDoc);
+  // Normalización vía Universal Operational Data Normalizer
+  const result = normalizeOperationalData({
+    parsedDocument: parsedDoc,
+    canonicalFields: CANONICAL_FIELDS,
+    synonyms: FIELD_SYNONYMS,
+    fieldNormalizers: FIELD_NORMALIZERS,
+  });
 
   return {
     ...result,
