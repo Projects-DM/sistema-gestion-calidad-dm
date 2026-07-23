@@ -598,13 +598,13 @@ export default function Dispatches() {
                       <div className="text-sm font-semibold text-gray-900">{record.fecha}</div>
                       <div className="text-xs text-gray-500">{record.hora}</div>
                     </td>
-                    <td className="p-4">
-                      <div className="text-sm font-bold text-gray-900">{record.cliente}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-[200px]">{record.destino}</div>
+                    <td className="p-4 max-w-[200px]">
+                      <div className="text-sm font-bold text-gray-900 truncate">{record.cliente}</div>
+                      <div className="text-xs text-gray-500 truncate">{record.destino}</div>
                     </td>
-                    <td className="p-4">
-                      <div className="text-sm font-medium text-gray-900">{record.producto}</div>
-                      <div className="text-xs text-gray-500">Lote: <span className="font-mono text-gray-700">{record.lote}</span></div>
+                    <td className="p-4 max-w-[180px]">
+                      <div className="text-sm font-medium text-gray-900 truncate">{record.producto}</div>
+                      <div className="text-xs text-gray-500 truncate">Lote: <span className="font-mono text-gray-700">{record.lote}</span></div>
                     </td>
                     <td className="p-4 text-sm font-medium text-gray-900">
                       {record.cantidad}
@@ -615,7 +615,7 @@ export default function Dispatches() {
                         {record.estado}
                       </span>
                     </td>
-                    <td className="p-4 pr-6 text-right">
+                    <td className="p-4 pr-6 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <RoleGate allowedRoles={['administrador']}>
                           <button 

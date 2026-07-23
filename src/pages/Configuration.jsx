@@ -390,21 +390,21 @@ export default function Configuration() {
                   <tbody className="divide-y divide-gray-100">
                     {forms.map(form => (
                       <tr key={form.id} className="hover:bg-gray-50/50">
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-gray-900">{form.name}</p>
-                          <p className="text-xs text-gray-500">{form.slug}</p>
+                        <td className="px-6 py-4 max-w-[260px]">
+                          <p className="font-bold text-gray-900 truncate">{form.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{form.slug}</p>
                         </td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <td className="px-6 py-4 max-w-[160px]">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 truncate max-w-full">
                             {form.module_name}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                          <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded whitespace-nowrap">
                             {form.engine_type}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => handleStartEditForm(form)}

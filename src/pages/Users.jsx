@@ -122,18 +122,18 @@ export default function Users() {
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-primary/[0.02] transition-colors group">
-                    <td className="p-4 pl-6">
+                    <td className="p-4 pl-6 max-w-[220px]">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200 shrink-0">
                           {user.nombre?.charAt(0) || 'U'}
                         </div>
-                        <span className="text-sm font-semibold text-gray-900">{user.nombre}</span>
+                        <span className="text-sm font-semibold text-gray-900 truncate">{user.nombre}</span>
                       </div>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 max-w-[200px]">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="w-3.5 h-3.5 text-gray-400" />
-                        {user.email}
+                        <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                        <span className="truncate">{user.email}</span>
                       </div>
                     </td>
                     <td className="p-4">
