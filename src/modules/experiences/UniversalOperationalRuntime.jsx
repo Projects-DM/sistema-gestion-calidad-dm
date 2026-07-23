@@ -1,44 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus, Download, FileText, Search, Filter, Save, X, CheckCircle, AlertTriangle, ShieldAlert, Edit2, Trash2, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 import RoleGate from '../../components/RoleGate';
 import UniversalImportWorkflow from './UniversalImportWorkflow';
 import UniversalOperationalDashboard from './UniversalOperationalDashboard';
-import { createOperationalRecordsService } from '../../services/operationalRecordsService.js';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
-import { isSupabaseConfigured } from '../../lib/supabase';
-import {
-  evaluateRecord,
-  applyFormAutomations,
-  getFormVisibility,
-} from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
-import {
-  OperationalAuditService,
-} from '../../services/operationalAuditService.js';
-
-function detectInputType(field, contract) {
-  const normalizer = contract.documentContract.fieldNormalizers?.[field];
-  if (normalizer?.name === 'toYmd') return 'date';
-  if (normalizer?.name === 'toHm') return 'time';
-  if (normalizer?.name === 'toNumber') return 'number';
-  return 'text';
-}
-
-function buildEmptyForm(canonicalFields, contract) {
-  const form = {};
-  for (const f of canonicalFields) {
-    const type = detectInputType(f, contract);
-    if (type === 'date') {
-      form[f] = format(new Date(), 'yyyy-MM-dd');
-    } else if (type === 'time') {
-      form[f] = format(new Date(), 'HH:mm');
-    } else {
-      form[f] = '';
-    }
-  }
-  return form;
-}
+import { OperationalExperienceLifecycleOrchestrator } from '../../core/capabilities/experiences/OperationalExperienceLifecycleOrchestrator.js';
 
 function getFieldLabel(field, contract) {
   return contract.ui?.fieldDisplay?.[field]?.label
@@ -58,15 +26,21 @@ function getTableFields(contract) {
   return contract.ui?.tableFields || contract.documentContract.canonicalFields || [];
 }
 
+function detectInputType(field, contract) {
+  const normalizer = contract.documentContract.fieldNormalizers?.[field];
+  if (normalizer?.name === 'toYmd') return 'date';
+  if (normalizer?.name === 'toHm') return 'time';
+  if (normalizer?.name === 'toNumber') return 'number';
+  return 'text';
+}
+
 export default function UniversalOperationalRuntime({ experienceKey, moduleSlug, moduleName }) {
   const contract = OperationalExperienceRegistry.getExperienceContract(experienceKey);
-  const { canonicalFields, synonyms, fieldNormalizers } = contract.documentContract;
+  const { canonicalFields } = contract.documentContract;
   const tableFields = getTableFields(contract);
-  const persistenceConfig = contract.persistence || { tableName: experienceKey, prefix: experienceKey.slice(0, 3).toUpperCase() };
-  const service = createOperationalRecordsService(persistenceConfig.tableName, {
-    prefix: persistenceConfig.prefix,
-    fieldMapping: contract.ui?.fieldMapping,
-  });
+
+  const orchestratorRef = useRef(null);
+  const [ready, setReady] = useState(false);
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExcelOpen, setIsExcelOpen] = useState(false);
@@ -87,16 +61,20 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const auditUser = { id: authUser?.id, nombre: profile?.nombre, email: authUser?.email };
 
   useEffect(() => {
+    const orch = new OperationalExperienceLifecycleOrchestrator(experienceKey);
+    orch.initialize();
+    orchestratorRef.current = orch;
+    setReady(true);
+    return () => { orch.destroy(); };
+  }, [experienceKey]);
+
+  useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     async function load() {
-      if (!isSupabaseConfigured()) {
-        setLoading(false);
-        setBanner({ type: 'error', message: 'Supabase no configurado.' });
-        return;
-      }
       setLoading(true);
       try {
-        const data = await service.fetch();
+        const data = await orchestratorRef.current.loadRecords();
         if (!cancelled) setRecords(data);
       } catch (err) {
         if (!cancelled) setBanner({ type: 'error', message: err?.message || 'Error al cargar registros.' });
@@ -106,79 +84,55 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [ready]);
 
   useEffect(() => {
-    if (isFormOpen) {
-      let initial;
-      if (editingRecord) {
-        initial = {};
-        for (const f of canonicalFields) initial[f] = editingRecord[f] ?? '';
-      } else {
-        initial = buildEmptyForm(canonicalFields, contract);
-      }
-      const automated = applyFormAutomations(initial, contract);
-      const vis = getFormVisibility(automated, contract);
-      setFormData(automated);
-      setVisibility(vis);
-      setFormErrors([]);
-      setComplianceWarnings([]);
-    }
-  }, [isFormOpen, editingRecord]);
+    if (!ready || !isFormOpen) return;
+    const result = orchestratorRef.current.buildInitialForm(editingRecord);
+    setFormData(result.formData);
+    setVisibility(result.visibility);
+    setFormErrors(result.errors);
+    setComplianceWarnings(result.compliance);
+  }, [ready, isFormOpen, editingRecord]);
 
   const handleChange = (field, value) => {
     setFormData(prev => {
       const next = { ...prev, [field]: value };
-      setVisibility(getFormVisibility(next, contract));
+      if (orchestratorRef.current) {
+        setVisibility(orchestratorRef.current.recalcVisibility(next));
+      }
       return next;
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { isValid, allErrors, complianceIssues } = evaluateRecord(formData, contract);
-    setFormErrors(allErrors);
-    setComplianceWarnings(complianceIssues);
-    if (!isValid) {
-      setBanner({ type: 'error', message: `${allErrors.length} error(es) de validación. Revise el formulario.` });
+    const result = editingRecord
+      ? await orchestratorRef.current.updateRecord(editingRecord.id, formData, auditUser)
+      : await orchestratorRef.current.createRecord(formData, auditUser);
+    if (!result.success) {
+      setFormErrors(result.errors);
+      setComplianceWarnings(result.compliance);
+      setBanner({ type: 'error', message: `${result.errors.length} error(es) de validación.` });
       return;
     }
-    if (!isSupabaseConfigured()) {
-      setBanner({ type: 'error', message: 'Configure Supabase para guardar.' });
-      return;
+    if (result.action === 'created') {
+      setRecords(prev => [result.record, ...prev]);
+      setBanner({ type: 'success', message: 'Registro guardado.' });
+    } else {
+      setRecords(prev => prev.map(r => r.id === result.record.id ? result.record : r));
+      setBanner({ type: 'success', message: 'Registro actualizado.' });
     }
-    setSaving(true);
-    try {
-      if (editingRecord) {
-        const updated = await service.update(editingRecord.id, formData);
-        setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
-        setBanner({ type: 'success', message: 'Registro actualizado.' });
-        OperationalAuditService.auditUpdate({ experienceKey, recordId: updated.id, eventData: { fieldCount: Object.keys(formData).length }, user: auditUser });
-      } else {
-        const inserted = await service.insert(formData);
-        setRecords(prev => [inserted, ...prev]);
-        setBanner({ type: 'success', message: 'Registro guardado.' });
-        OperationalAuditService.auditCreate({ experienceKey, recordId: inserted.id, eventData: { fieldCount: Object.keys(formData).length }, user: auditUser });
-      }
-      if (complianceWarnings.length) {
-        OperationalAuditService.auditCompliance({ experienceKey, recordId: editingRecord?.id || null, eventData: { warnings: complianceWarnings }, user: auditUser });
-      }
-      setIsFormOpen(false);
-      setEditingRecord(null);
-    } catch (err) {
-      setBanner({ type: 'error', message: err?.message || 'Error al guardar.' });
-    } finally {
-      setSaving(false);
-    }
+    setIsFormOpen(false);
+    setEditingRecord(null);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('¿Eliminar este registro?')) return;
     try {
-      await service.delete(id);
+      await orchestratorRef.current.deleteRecord(id, auditUser);
       setRecords(prev => prev.filter(r => r.id !== id));
       setBanner({ type: 'success', message: 'Registro eliminado.' });
-      OperationalAuditService.auditDelete({ experienceKey, recordId: id, user: auditUser });
     } catch (err) {
       setBanner({ type: 'error', message: 'Error al eliminar: ' + err.message });
     }
@@ -190,21 +144,12 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   };
 
   const handleExcelImported = async (rows) => {
-    if (!isSupabaseConfigured()) {
-      setBanner({ type: 'error', message: 'Configure Supabase para importar.' });
-      return;
-    }
-    if (!rows?.length) {
-      setBanner({ type: 'error', message: 'No se importaron filas.' });
-      return;
-    }
     setSaving(true);
     try {
-      const inserted = await service.insertBatch(rows);
-      setRecords(prev => [...inserted, ...prev]);
+      const result = await orchestratorRef.current.importRecords(rows, auditUser);
+      setRecords(prev => [...result.records, ...prev]);
       setIsExcelOpen(false);
-      setBanner({ type: 'success', message: `Importación exitosa: ${inserted.length} registros.` });
-      OperationalAuditService.auditImport({ experienceKey, recordId: null, eventData: { count: inserted.length }, user: auditUser });
+      setBanner({ type: 'success', message: `Importación exitosa: ${result.count} registros.` });
     } catch (err) {
       setBanner({ type: 'error', message: err?.message || 'Error al importar.' });
     } finally {
@@ -218,20 +163,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       return;
     }
     try {
-      const { default: jsPDF } = await import('jspdf');
-      import('jspdf-autotable').then(() => {
-        const doc = new jsPDF();
-        doc.setFontSize(16);
-        doc.text(contract.metadata.name || 'Registros', 14, 22);
-        doc.setFontSize(10);
-        doc.text(`Exportado: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 30);
-        const cols = tableFields.map(f => getFieldLabel(f, contract));
-        const data = records.map(r => tableFields.map(f => String(r[f] ?? '')));
-        doc.autoTable({ head: [cols], body: data, startY: 36 });
-        doc.save(`${experienceKey}-${format(new Date(), 'yyyyMMdd')}.pdf`);
-      });
+      await orchestratorRef.current.exportRecords(records, auditUser);
       setBanner({ type: 'success', message: 'PDF generado.' });
-      OperationalAuditService.auditExport({ experienceKey, recordId: null, eventData: { count: records.length, format: 'pdf' }, user: auditUser });
     } catch {
       setBanner({ type: 'error', message: 'No se pudo generar el PDF.' });
     }
@@ -307,7 +240,6 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       )}
 
       {isFormOpen ? (
-        /* Generic Form */
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xl overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
           <div className="bg-primary px-8 py-5 flex items-center justify-between text-white">
             <div>
@@ -373,13 +305,12 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
               </button>
               <button type="submit" disabled={saving}
                 className="flex items-center gap-2 px-8 py-3 bg-primary hover:bg-primary-light text-white text-sm font-bold rounded-xl shadow-lg shadow-primary/20 disabled:opacity-50">
-                <Save className="w-4 h-4" /> {saving ? 'Guardando…' : (editingRecord ? 'Actualizar' : 'Guardar')}
+                <Save className="w-4 h-4" /> {saving ? 'Guardando…' : editingRecord ? 'Actualizar' : 'Guardar'}
               </button>
             </div>
           </form>
         </div>
       ) : (
-        /* Data Table */
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
             <div className="relative w-full sm:w-96">
