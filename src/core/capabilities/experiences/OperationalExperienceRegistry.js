@@ -35,7 +35,11 @@ const registry = new Map();
  * @property {object} ui               — { tableFields, fieldDisplay, fieldMapping }
  * @property {object} persistence      — { tableName, prefix, fieldMapping }
  * @property {object} documentContract — { canonicalFields, synonyms, fieldNormalizers }
- * @property {object} validationRules  — future
+ * @property {object} validationRules  — { field: { required, min, max, format, pattern } }
+ * @property {object} businessRules    — [{ field, requires: [] }]
+ * @property {object} complianceRules  — [{ field, operator, value, severity }]
+ * @property {object} automationRules  — [{ field, action, value }]
+ * @property {object} visibilityRules  — [{ field, showWhen }]
  * @property {object} auditRules       — future
  * @property {object} exportRules      — future
  * @property {number} defaultOrder     — default display order within the tab
@@ -54,6 +58,10 @@ function registerExperience(descriptor) {
     persistence: descriptor.persistence ?? {},
     documentContract: descriptor.documentContract ?? { canonicalFields: [], synonyms: {}, fieldNormalizers: {} },
     validationRules: descriptor.validationRules ?? {},
+    businessRules: descriptor.businessRules ?? [],
+    complianceRules: descriptor.complianceRules ?? [],
+    automationRules: descriptor.automationRules ?? [],
+    visibilityRules: descriptor.visibilityRules ?? [],
     auditRules: descriptor.auditRules ?? {},
     exportRules: descriptor.exportRules ?? {},
     defaultOrder: descriptor.defaultOrder ?? 99,
@@ -79,6 +87,10 @@ function getExperienceContract(experienceKey) {
     persistence: exp.persistence,
     documentContract: exp.documentContract,
     validationRules: exp.validationRules,
+    businessRules: exp.businessRules,
+    complianceRules: exp.complianceRules,
+    automationRules: exp.automationRules,
+    visibilityRules: exp.visibilityRules,
     auditRules: exp.auditRules,
     exportRules: exp.exportRules,
   };
@@ -157,6 +169,25 @@ registerExperience({
       peso: toNumber,
     },
   },
+  validationRules: {
+    cliente: { required: true },
+    producto: { required: true },
+    cantidad: { min: 1 },
+  },
+  businessRules: [
+    { field: 'producto', requires: ['lote'] },
+    { field: 'cliente', requires: ['producto'] },
+  ],
+  complianceRules: [
+    { field: 'cantidad', operator: 'greaterThan', value: 200, severity: 'info', message: 'Despacho mayor a 200 bolsas — verificar capacidad' },
+  ],
+  automationRules: [
+    { field: 'fecha', action: 'setCurrentDate' },
+    { field: 'hora', action: 'setCurrentTime' },
+  ],
+  visibilityRules: [
+    { field: 'observaciones', showWhen: { producto: 'notEmpty' } },
+  ],
   defaultOrder: 1,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
