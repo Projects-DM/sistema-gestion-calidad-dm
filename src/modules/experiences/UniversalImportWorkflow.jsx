@@ -1,7 +1,8 @@
 import { useState, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert } from 'lucide-react';
 import { parseDocument } from '../../services/import/index.js';
 import { normalizeOperationalData } from '../../services/import/operationalDataExtractionLayer.js';
+import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function getFieldLabel(contract, field) {
   return contract.ui?.fieldDisplay?.[field]?.label
@@ -67,12 +68,16 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
-      const rows = result.rows.map((r, i) => ({
-        ...r,
-        _rowIndex: i,
-        _included: true,
-        _errors: [],
-      }));
+      const rows = result.rows.map((r, i) => {
+        const { allErrors, complianceIssues } = evaluateRecord(r, contract);
+        return {
+          ...r,
+          _rowIndex: i,
+          _included: allErrors.length === 0,
+          _errors: allErrors,
+          _compliance: complianceIssues,
+        };
+      });
       setMatchedHeaders(result.matchedHeaders);
       setMissingHeaders(result.missingHeaders);
       setUnknownHeaders(unknown);
@@ -301,6 +306,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                               className="w-4 h-4 rounded border-gray-300 text-primary" />
                           </th>
                           <th className="p-2 sm:p-3 w-16">#</th>
+                          <th className="p-2 sm:p-3 w-20 text-center">Validación</th>
                           {displayFields.map(f => (
                             <th key={f} className="p-2 sm:p-3">{getFieldLabel(contract, f)}</th>
                           ))}
@@ -318,6 +324,21 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                                 className="w-4 h-4 rounded border-gray-300 text-primary" />
                             </td>
                             <td className="p-2 sm:p-3 text-xs text-gray-500 font-mono">{idx + 1}</td>
+                            <td className="p-2 sm:p-3 text-center">
+                              {row._errors?.length > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-red-500" title={row._errors.map(e => e.message).join('; ')}>
+                                  <AlertTriangle className="w-4 h-4" />
+                                </span>
+                              ) : row._compliance?.length > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-accent" title={row._compliance.map(c => c.message).join('; ')}>
+                                  <ShieldAlert className="w-4 h-4" />
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-green-500">
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </span>
+                              )}
+                            </td>
                             {displayFields.map(f => {
                               const type = detectInputType(contract, f);
                               const val = row[f] ?? '';
@@ -354,6 +375,28 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                   </div>
                 </div>
               </div>
+
+              {/* Compliance warnings */}
+              {rows.some(r => r._compliance?.length > 0) && (
+                <div className="rounded-2xl border border-yellow-200 bg-yellow-50 px-4 sm:px-5 py-3">
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="w-5 h-5 text-accent mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-yellow-800">Alertas de compliance</p>
+                      <div className="mt-2 space-y-1">
+                        {rows.filter(r => r._compliance?.length > 0).map(row => (
+                          <div key={row._rowIndex} className="text-xs text-yellow-700">
+                            <span className="font-semibold">Fila #{row._rowIndex + 1}:</span>
+                            {row._compliance.map((c, ci) => (
+                              <span key={ci} className="ml-1">{c.message}{ci < row._compliance.length - 1 ? ';' : ''}</span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Human validation notice */}
               <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 sm:px-5 py-3">

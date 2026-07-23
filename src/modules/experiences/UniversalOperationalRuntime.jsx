@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, FileText, Search, Filter, Save, X, CheckCircle, AlertTriangle, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Download, FileText, Search, Filter, Save, X, CheckCircle, AlertTriangle, ShieldAlert, Edit2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 import RoleGate from '../../components/RoleGate';
@@ -7,6 +7,11 @@ import UniversalImportWorkflow from './UniversalImportWorkflow';
 import { createOperationalRecordsService } from '../../services/operationalRecordsService.js';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import {
+  evaluateRecord,
+  applyFormAutomations,
+  getFormVisibility,
+} from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function detectInputType(field, contract) {
   const normalizer = contract.documentContract.fieldNormalizers?.[field];
@@ -68,6 +73,9 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRecord, setEditingRecord] = useState(null);
   const [formData, setFormData] = useState({});
+  const [formErrors, setFormErrors] = useState([]);
+  const [complianceWarnings, setComplianceWarnings] = useState([]);
+  const [visibility, setVisibility] = useState({});
 
   const { isAdmin } = useAuth();
 
@@ -95,22 +103,39 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
   useEffect(() => {
     if (isFormOpen) {
+      let initial;
       if (editingRecord) {
-        const editForm = {};
-        for (const f of canonicalFields) editForm[f] = editingRecord[f] ?? '';
-        setFormData(editForm);
+        initial = {};
+        for (const f of canonicalFields) initial[f] = editingRecord[f] ?? '';
       } else {
-        setFormData(buildEmptyForm(canonicalFields, contract));
+        initial = buildEmptyForm(canonicalFields, contract);
       }
+      const automated = applyFormAutomations(initial, contract);
+      const vis = getFormVisibility(automated, contract);
+      setFormData(automated);
+      setVisibility(vis);
+      setFormErrors([]);
+      setComplianceWarnings([]);
     }
   }, [isFormOpen, editingRecord]);
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      setVisibility(getFormVisibility(next, contract));
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const { isValid, allErrors, complianceIssues } = evaluateRecord(formData, contract);
+    setFormErrors(allErrors);
+    setComplianceWarnings(complianceIssues);
+    if (!isValid) {
+      setBanner({ type: 'error', message: `${allErrors.length} error(es) de validación. Revise el formulario.` });
+      return;
+    }
     if (!isSupabaseConfigured()) {
       setBanner({ type: 'error', message: 'Configure Supabase para guardar.' });
       return;
@@ -274,41 +299,45 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
           <form onSubmit={handleSubmit} className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              {canonicalFields.map((field) => {
+              {canonicalFields.filter(f => visibility[f] !== false).map((field) => {
                 const type = detectInputType(field, contract);
                 const label = getFieldLabel(field, contract);
                 const options = getFieldOptions(field, contract);
                 const autocomplete = getAutocompleteSource(field, contract);
                 const inputId = `ufield-${field}-${moduleSlug}`;
+                const err = formErrors.find(e => e.field === field);
+                const warn = complianceWarnings.find(c => c.field === field);
                 return (
                   <div key={field} className="space-y-1.5">
                     <label className="text-xs font-semibold text-gray-600 uppercase">{label}</label>
                     {options ? (
                       <select value={formData[field] ?? ''} onChange={e => handleChange(field, e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900">
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium text-gray-900 ${err ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}>
                         {options.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : autocomplete ? (
                       <>
                         <input list={inputId} value={formData[field] ?? ''} onChange={e => handleChange(field, e.target.value)}
-                          className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900" />
+                          className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium text-gray-900 ${err ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                         <datalist id={inputId}>
                           {autocomplete.map(opt => <option key={opt} value={opt} />)}
                         </datalist>
                       </>
                     ) : type === 'date' ? (
                       <input type="date" value={formData[field] ?? ''} onChange={e => handleChange(field, e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900" />
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium text-gray-900 ${err ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                     ) : type === 'time' ? (
                       <input type="time" value={formData[field] ?? ''} onChange={e => handleChange(field, e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900" />
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium text-gray-900 ${err ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                     ) : type === 'number' ? (
                       <input type="number" step="any" value={formData[field] ?? ''} onChange={e => handleChange(field, e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900" />
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium text-gray-900 ${err ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                     ) : (
                       <input type="text" value={formData[field] ?? ''} onChange={e => handleChange(field, e.target.value)}
-                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900" />
+                        className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium text-gray-900 ${err ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                     )}
+                    {err && <p className="text-xs text-red-600 mt-0.5">{err.message}</p>}
+                    {warn && <p className="text-xs text-accent mt-0.5">{warn.message}</p>}
                   </div>
                 );
               })}
