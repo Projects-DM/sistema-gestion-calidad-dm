@@ -61,10 +61,10 @@ export default function ModuleManager() {
   const columns = useMemo(
     () => [
       { key: 'name', label: 'Nombre' },
-      { key: 'slug', label: 'Slug' },
-      { key: 'state', label: 'Estado' },
-      { key: 'created_at', label: 'Fecha creación' },
-      { key: 'forms_count', label: 'Formularios' },
+      { key: 'slug', label: 'Slug', thClass: 'hidden md:table-cell' },
+      { key: 'state', label: 'Estado', thClass: 'hidden sm:table-cell' },
+      { key: 'created_at', label: 'Fecha creación', thClass: 'hidden sm:table-cell' },
+      { key: 'forms_count', label: 'Formularios', thClass: 'hidden sm:table-cell' },
       { key: 'actions', label: 'Acción' },
     ],
     []
@@ -242,7 +242,7 @@ export default function ModuleManager() {
                   <thead className="bg-gray-50 border-b border-gray-200 text-gray-500">
                     <tr>
                       {columns.map((c) => (
-                        <th key={c.key} className="px-6 py-4 font-semibold">
+                        <th key={c.key} className={`px-6 py-4 font-semibold ${c.thClass || ''}`}>
                           {c.label}
                         </th>
                       ))}
@@ -268,18 +268,18 @@ export default function ModuleManager() {
                             <td className="px-6 py-4 max-w-[220px]">
                               <p className="font-bold text-gray-900 truncate">{name || '—'}</p>
                             </td>
-                            <td className="px-6 py-4 max-w-[160px]">
+                            <td className="px-6 py-4 max-w-[160px] hidden md:table-cell">
                               <p className="text-xs text-gray-500 truncate">{slug || '—'}</p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 hidden sm:table-cell">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATE_COLORS[state] || STATE_COLORS.draft}`}>
                                 {STATE_LABELS[state] || state}
                               </span>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 hidden sm:table-cell">
                               <p className="text-xs text-gray-500">{createdAt ? String(createdAt).slice(0, 10) : '—'}</p>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 hidden sm:table-cell">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 {formsCount}
                               </span>

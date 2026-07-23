@@ -100,9 +100,9 @@ export default function Users() {
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
                 <th className="p-4 pl-6">Nombre Completo</th>
-                <th className="p-4">Email</th>
+                <th className="p-4 hidden sm:table-cell">Email</th>
                 <th className="p-4">Rol / Permisos</th>
-                <th className="p-4">Última Conexión</th>
+                <th className="p-4 hidden md:table-cell">Última Conexión</th>
                 <th className="p-4 pr-6 text-right">Acciones</th>
               </tr>
             </thead>
@@ -130,7 +130,7 @@ export default function Users() {
                         <span className="text-sm font-semibold text-gray-900 truncate">{user.nombre}</span>
                       </div>
                     </td>
-                    <td className="p-4 max-w-[200px]">
+                    <td className="p-4 max-w-[200px] hidden sm:table-cell">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <Mail className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                         <span className="truncate">{user.email}</span>
@@ -142,7 +142,7 @@ export default function Users() {
                         <span className="capitalize">{user.rol}</span>
                       </span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 hidden md:table-cell">
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         {user.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'N/A'}

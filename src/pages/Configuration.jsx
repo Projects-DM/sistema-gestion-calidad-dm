@@ -382,8 +382,8 @@ export default function Configuration() {
                   <thead className="bg-gray-50 border-b border-gray-200 text-gray-500">
                     <tr>
                       <th className="px-6 py-4 font-semibold">Formulario</th>
-                      <th className="px-6 py-4 font-semibold">Módulo Asignado</th>
-                      <th className="px-6 py-4 font-semibold">Motor Dinámico</th>
+                      <th className="px-6 py-4 font-semibold hidden md:table-cell">Módulo Asignado</th>
+                      <th className="px-6 py-4 font-semibold hidden lg:table-cell">Motor Dinámico</th>
                       <th className="px-6 py-4 font-semibold text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -394,12 +394,12 @@ export default function Configuration() {
                           <p className="font-bold text-gray-900 truncate">{form.name}</p>
                           <p className="text-xs text-gray-500 truncate">{form.slug}</p>
                         </td>
-                        <td className="px-6 py-4 max-w-[160px]">
+                        <td className="px-6 py-4 max-w-[160px] hidden md:table-cell">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 truncate max-w-full">
                             {form.module_name}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 hidden lg:table-cell">
                           <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded whitespace-nowrap">
                             {form.engine_type}
                           </span>
