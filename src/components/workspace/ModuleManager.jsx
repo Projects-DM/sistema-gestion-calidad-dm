@@ -265,11 +265,11 @@ export default function ModuleManager() {
 
                         return (
                           <tr key={m.id} className="hover:bg-gray-50/50">
-                            <td className="px-6 py-4">
-                              <p className="font-bold text-gray-900">{name || '—'}</p>
+                            <td className="px-6 py-4 max-w-[220px]">
+                              <p className="font-bold text-gray-900 truncate">{name || '—'}</p>
                             </td>
-                            <td className="px-6 py-4">
-                              <p className="text-xs text-gray-500">{slug || '—'}</p>
+                            <td className="px-6 py-4 max-w-[160px]">
+                              <p className="text-xs text-gray-500 truncate">{slug || '—'}</p>
                             </td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATE_COLORS[state] || STATE_COLORS.draft}`}>

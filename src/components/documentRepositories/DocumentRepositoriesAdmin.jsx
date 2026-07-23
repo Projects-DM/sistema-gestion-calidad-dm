@@ -444,9 +444,9 @@ export default function DocumentRepositoriesAdmin() {
                         onClick={() => setActiveRepositoryId(r.id)}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-bold text-gray-900 text-sm">{r.name}</div>
-                            <div className="text-[11px] text-gray-500 mt-1">{r.slug} · {r.module_slug}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-gray-900 text-sm truncate">{r.name}</div>
+                            <div className="text-[11px] text-gray-500 mt-1 truncate">{r.slug} · {r.module_slug}</div>
                             <div className={`mt-2 text-[11px] inline-flex px-2 py-0.5 rounded-full font-bold border ${r.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                               {r.is_active ? 'Activo' : 'Inactivo'}
                             </div>
@@ -479,17 +479,17 @@ export default function DocumentRepositoriesAdmin() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-primary" />
-                    <div className="font-bold text-gray-900">{repo ? repo.name : 'Selecciona un repositorio'}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary shrink-0" />
+                      <div className="font-bold text-gray-900 truncate">{repo ? repo.name : 'Selecciona un repositorio'}</div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 truncate">
+                      {repo ? `module_slug: ${repo.module_slug} · slug: ${repo.slug}` : ''}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {repo ? `module_slug: ${repo.module_slug} · slug: ${repo.slug}` : ''}
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                   <button
                     disabled={!activeRepositoryId || saving}
                     onClick={openCreateCategory}

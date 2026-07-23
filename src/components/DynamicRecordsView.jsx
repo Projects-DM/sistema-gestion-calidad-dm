@@ -356,37 +356,37 @@ export default function DynamicRecordsView({ moduleId }) {
                     )}
                     <td className="px-6 py-4" onClick={() => !isVerificador && handleOpenModal(rec)}>
                       <div className="flex items-center gap-2 text-gray-900 font-medium">
-                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
                         {new Date(rec.created_at).toLocaleDateString()}
                       </div>
                       <div className="text-xs text-gray-500 ml-6">
                         {new Date(rec.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 max-w-[200px]">
                       <div className="flex items-center gap-2 font-bold text-gray-900">
-                        <FileText className="w-4 h-4 text-primary" />
-                        {rec.sgc_forms?.name}
+                        <FileText className="w-4 h-4 text-primary shrink-0" />
+                        <span className="truncate">{rec.sgc_forms?.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 max-w-[160px]">
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2 text-gray-600">
-                          <User className="w-4 h-4 text-gray-400" />
-                          {rec.profiles?.nombre || 'Usuario Desconocido'}
+                          <User className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="truncate">{rec.profiles?.nombre || 'Usuario Desconocido'}</span>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-6">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-6 truncate">
                           {rec.profiles?.rol || 'Rol Desconocido'}
                         </span>
                       </div>
                     </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={rec.computedStatus} />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <ValidationBadge status={rec.status} />
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {rec.sgc_evidences?.length > 0 ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                         <Paperclip className="w-3.5 h-3.5" /> {rec.sgc_evidences.length} Adjuntos
@@ -395,10 +395,10 @@ export default function DynamicRecordsView({ moduleId }) {
                       <span className="text-gray-400 text-xs">Sin evidencias</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right whitespace-nowrap">
                     <button 
                       onClick={() => handleOpenModal(rec)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors inline-flex items-center justify-center"
+                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors inline-flex items-center justify-center shrink-0"
                       title="Ver Detalles"
                     >
                       <Eye className="w-5 h-5" />
