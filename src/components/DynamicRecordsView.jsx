@@ -331,7 +331,7 @@ export default function DynamicRecordsView({ moduleId }) {
                 <th className="px-6 py-4">Usuario</th>
                 <th className="px-6 py-4">Estado</th>
                 <th className="px-6 py-4">Verificación</th>
-                <th className="px-6 py-4">Evidencias</th>
+                <th className="px-6 py-4 hidden sm:table-cell">Evidencias</th>
                 <th className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
@@ -359,7 +359,7 @@ export default function DynamicRecordsView({ moduleId }) {
                         <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
                         {new Date(rec.created_at).toLocaleDateString()}
                       </div>
-                      <div className="text-xs text-gray-500 ml-6">
+                      <div className="text-xs text-gray-500 ml-6 hidden sm:block">
                         {new Date(rec.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </div>
                     </td>
@@ -375,7 +375,7 @@ export default function DynamicRecordsView({ moduleId }) {
                           <User className="w-4 h-4 text-gray-400 shrink-0" />
                           <span className="truncate">{rec.profiles?.nombre || 'Usuario Desconocido'}</span>
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-6 truncate">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 ml-6 truncate hidden md:block">
                           {rec.profiles?.rol || 'Rol Desconocido'}
                         </span>
                       </div>
@@ -386,7 +386,7 @@ export default function DynamicRecordsView({ moduleId }) {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <ValidationBadge status={rec.status} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                     {rec.sgc_evidences?.length > 0 ? (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                         <Paperclip className="w-3.5 h-3.5" /> {rec.sgc_evidences.length} Adjuntos

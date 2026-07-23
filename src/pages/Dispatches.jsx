@@ -568,7 +568,7 @@ export default function Dispatches() {
                   <th className="p-4">Fecha / Hora</th>
                   <th className="p-4">Cliente / Destino</th>
                   <th className="p-4">Producto / Lote</th>
-                  <th className="p-4">Cant.</th>
+                  <th className="p-4 hidden sm:table-cell">Cant.</th>
                   <th className="p-4">Estado</th>
                   <th className="p-4 pr-6 text-right">Acciones</th>
                 </tr>
@@ -596,7 +596,7 @@ export default function Dispatches() {
                     </td>
                     <td className="p-4">
                       <div className="text-sm font-semibold text-gray-900">{record.fecha}</div>
-                      <div className="text-xs text-gray-500">{record.hora}</div>
+                      <div className="text-xs text-gray-500 hidden md:block">{record.hora}</div>
                     </td>
                     <td className="p-4 max-w-[200px]">
                       <div className="text-sm font-bold text-gray-900 truncate">{record.cliente}</div>

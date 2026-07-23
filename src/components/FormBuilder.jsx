@@ -300,15 +300,15 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
               <div className="text-gray-300 cursor-move shrink-0">
                 <GripVertical className="w-5 h-5" />
               </div>
-              <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center font-bold text-gray-500 text-sm shrink-0">
+              <div className="w-8 h-8 rounded bg-gray-100 items-center justify-center font-bold text-gray-500 text-sm shrink-0 hidden sm:flex">
                 {index + 1}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-gray-900 truncate">{field.label}</span>
-                  {field.required && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold shrink-0">Requerido</span>}
+                  {field.required && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold shrink-0 hidden sm:inline-flex">Requerido</span>}
                 </div>
-                <div className="text-xs text-gray-500 font-mono mt-1 truncate">ID: {field.name} | Tipo: {field.field_type === 'boolean' && field.options?.requiresCommentOnFailure ? 'Checklist Compliance' : field.field_type}</div>
+                <div className="text-xs text-gray-500 font-mono mt-1 truncate hidden sm:block">ID: {field.name} | Tipo: {field.field_type === 'boolean' && field.options?.requiresCommentOnFailure ? 'Checklist Compliance' : field.field_type}</div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">

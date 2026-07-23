@@ -446,7 +446,7 @@ export default function DocumentRepositoriesAdmin() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <div className="font-bold text-gray-900 text-sm truncate">{r.name}</div>
-                            <div className="text-[11px] text-gray-500 mt-1 truncate">{r.slug} · {r.module_slug}</div>
+                            <div className="text-[11px] text-gray-500 mt-1 truncate hidden md:block">{r.slug} · {r.module_slug}</div>
                             <div className={`mt-2 text-[11px] inline-flex px-2 py-0.5 rounded-full font-bold border ${r.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                               {r.is_active ? 'Activo' : 'Inactivo'}
                             </div>
