@@ -44,9 +44,10 @@ async function parseXLSX(file) {
   const sheet = workbook.Sheets[sheetName];
   const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
   const rawHeaders = jsonData[0] ? jsonData[0].map(String) : [];
-  const rows = jsonData.slice(1).map(row => row.map(String));
+  const rawRows = jsonData.slice(1);
+  const rows = rawRows.map(row => row.map(String));
   const allText = jsonData.map(row => row.join(' ')).join('\n');
-  return { headers: rawHeaders, rows, textContent: allText };
+  return { headers: rawHeaders, rows, rawRows, textContent: allText };
 }
 
 async function parseDOCX(file) {
@@ -109,6 +110,7 @@ export async function parseDocument(file) {
     fileType: fileTypeMap[ext],
     title: title || fileName.replace(/\.\w+$/, ''),
     rows: parsed.rows,
+    rawRows: parsed.rawRows || parsed.rows,
     textContent: parsed.textContent || '',
     rawHeaders: parsed.headers || [],
   };
