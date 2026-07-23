@@ -32,6 +32,8 @@ const registry = new Map();
  * @property {string} experienceKey    — unique identifier (e.g., 'dispatches')
  * @property {object} metadata         — { name, description, icon, version }
  * @property {object} capabilities     — { supportsImport, supportsExport, supportsAudit, supportsDashboard }
+ * @property {object} ui               — { tableFields, fieldDisplay, fieldMapping }
+ * @property {object} persistence      — { tableName, prefix, fieldMapping }
  * @property {object} documentContract — { canonicalFields, synonyms, fieldNormalizers }
  * @property {object} validationRules  — future
  * @property {object} auditRules       — future
@@ -48,6 +50,8 @@ function registerExperience(descriptor) {
     experienceKey: descriptor.experienceKey,
     metadata: descriptor.metadata ?? {},
     capabilities: descriptor.capabilities ?? {},
+    ui: descriptor.ui ?? {},
+    persistence: descriptor.persistence ?? {},
     documentContract: descriptor.documentContract ?? { canonicalFields: [], synonyms: {}, fieldNormalizers: {} },
     validationRules: descriptor.validationRules ?? {},
     auditRules: descriptor.auditRules ?? {},
@@ -71,6 +75,8 @@ function getExperienceContract(experienceKey) {
   return {
     metadata: exp.metadata,
     capabilities: exp.capabilities,
+    ui: exp.ui,
+    persistence: exp.persistence,
     documentContract: exp.documentContract,
     validationRules: exp.validationRules,
     auditRules: exp.auditRules,
@@ -103,6 +109,29 @@ registerExperience({
     supportsAudit: true,
     supportsDashboard: true,
   },
+  ui: {
+    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad'],
+    fieldDisplay: {
+      fecha: { label: 'Fecha Despacho' },
+      hora: { label: 'Hora' },
+      cliente: { label: 'Cliente / Razón Social' },
+      producto: { label: 'Producto' },
+      lote: { label: 'Lote' },
+      cantidad: { label: 'Cant. Bolsas' },
+      peso: { label: 'Peso (Kg)' },
+      destino: { label: 'Destino' },
+      placa: { label: 'Placa' },
+      conductor: { label: 'Conductor' },
+      observaciones: { label: 'Observaciones' },
+    },
+  },
+  persistence: {
+    tableName: 'despachos',
+    prefix: 'DESP',
+    fieldMapping: {
+      cantidad: 'cantidad_bolsas',
+    },
+  },
   documentContract: {
     canonicalFields: [
       'fecha', 'hora', 'cliente', 'producto', 'lote',
@@ -129,7 +158,7 @@ registerExperience({
     },
   },
   defaultOrder: 1,
-  resolveComponent: () => import('../../../modules/experiences/dispatches/DispatchesExperience.jsx'),
+  resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
 
 export const OperationalExperienceRegistry = {
