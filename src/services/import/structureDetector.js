@@ -578,11 +578,8 @@ export function detectStructure(rawModel, modules) {
     }
   }
 
-  const hasSignature = fields.some(f => f.fieldType === 'signature');
   fields = fields.filter(f => f.fieldType !== 'signature');
-  if (hasSignature) {
-    fields.push({ label: 'Verifica', fieldType: 'signature', required: true, orderIndex: 0, options: {} });
-  }
+  fields.push({ label: 'Responsable', fieldType: 'signature', required: true, orderIndex: 0, options: {} });
 
   for (const field of fields) {
     field.required = field.fieldType !== 'textarea';
