@@ -12,6 +12,9 @@ import {
   applyFormAutomations,
   getFormVisibility,
 } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
+import {
+  OperationalAuditService,
+} from '../../services/operationalAuditService.js';
 
 function detectInputType(field, contract) {
   const normalizer = contract.documentContract.fieldNormalizers?.[field];
@@ -77,7 +80,9 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const [complianceWarnings, setComplianceWarnings] = useState([]);
   const [visibility, setVisibility] = useState({});
 
-  const { isAdmin } = useAuth();
+  const { user: authUser, profile } = useAuth();
+  const isAdmin = profile?.rol === 'administrador';
+  const auditUser = { id: authUser?.id, nombre: profile?.nombre, email: authUser?.email };
 
   useEffect(() => {
     let cancelled = false;
@@ -146,10 +151,15 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
         const updated = await service.update(editingRecord.id, formData);
         setRecords(prev => prev.map(r => r.id === updated.id ? updated : r));
         setBanner({ type: 'success', message: 'Registro actualizado.' });
+        OperationalAuditService.auditUpdate({ experienceKey, recordId: updated.id, eventData: { fieldCount: Object.keys(formData).length }, user: auditUser });
       } else {
         const inserted = await service.insert(formData);
         setRecords(prev => [inserted, ...prev]);
         setBanner({ type: 'success', message: 'Registro guardado.' });
+        OperationalAuditService.auditCreate({ experienceKey, recordId: inserted.id, eventData: { fieldCount: Object.keys(formData).length }, user: auditUser });
+      }
+      if (complianceWarnings.length) {
+        OperationalAuditService.auditCompliance({ experienceKey, recordId: editingRecord?.id || null, eventData: { warnings: complianceWarnings }, user: auditUser });
       }
       setIsFormOpen(false);
       setEditingRecord(null);
@@ -166,6 +176,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       await service.delete(id);
       setRecords(prev => prev.filter(r => r.id !== id));
       setBanner({ type: 'success', message: 'Registro eliminado.' });
+      OperationalAuditService.auditDelete({ experienceKey, recordId: id, user: auditUser });
     } catch (err) {
       setBanner({ type: 'error', message: 'Error al eliminar: ' + err.message });
     }
@@ -191,6 +202,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       setRecords(prev => [...inserted, ...prev]);
       setIsExcelOpen(false);
       setBanner({ type: 'success', message: `Importación exitosa: ${inserted.length} registros.` });
+      OperationalAuditService.auditImport({ experienceKey, recordId: null, eventData: { count: inserted.length }, user: auditUser });
     } catch (err) {
       setBanner({ type: 'error', message: err?.message || 'Error al importar.' });
     } finally {
@@ -217,6 +229,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
         doc.save(`${experienceKey}-${format(new Date(), 'yyyyMMdd')}.pdf`);
       });
       setBanner({ type: 'success', message: 'PDF generado.' });
+      OperationalAuditService.auditExport({ experienceKey, recordId: null, eventData: { count: records.length, format: 'pdf' }, user: auditUser });
     } catch {
       setBanner({ type: 'error', message: 'No se pudo generar el PDF.' });
     }

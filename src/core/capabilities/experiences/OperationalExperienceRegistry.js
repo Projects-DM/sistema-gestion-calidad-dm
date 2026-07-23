@@ -41,6 +41,7 @@ const registry = new Map();
  * @property {object} automationRules  — [{ field, action, value }]
  * @property {object} visibilityRules  — [{ field, showWhen }]
  * @property {object} auditRules       — future
+ * @property {object} auditRules       — { trackCompliance, trackImports, trackExports, trackRuleExecutions, trackVisibilityChanges }
  * @property {object} exportRules      — future
  * @property {number} defaultOrder     — default display order within the tab
  * @property {Function} resolveComponent — lazy component resolver () => Promise<{ default: React.Component }>
@@ -62,7 +63,13 @@ function registerExperience(descriptor) {
     complianceRules: descriptor.complianceRules ?? [],
     automationRules: descriptor.automationRules ?? [],
     visibilityRules: descriptor.visibilityRules ?? [],
-    auditRules: descriptor.auditRules ?? {},
+    auditRules: descriptor.auditRules ?? {
+      trackCompliance: true,
+      trackImports: true,
+      trackExports: true,
+      trackRuleExecutions: true,
+      trackVisibilityChanges: false,
+    },
     exportRules: descriptor.exportRules ?? {},
     defaultOrder: descriptor.defaultOrder ?? 99,
     resolveComponent: descriptor.resolveComponent,
@@ -93,6 +100,7 @@ function getExperienceContract(experienceKey) {
     visibilityRules: exp.visibilityRules,
     auditRules: exp.auditRules,
     exportRules: exp.exportRules,
+    experienceKey: exp.experienceKey,
   };
 }
 
