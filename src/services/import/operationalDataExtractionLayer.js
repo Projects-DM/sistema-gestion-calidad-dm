@@ -4,7 +4,7 @@ function pad2(n) {
   return String(n).padStart(2, '0');
 }
 
-function toYmd(value) {
+export function toYmd(value) {
   if (!value && value !== 0) return '';
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
@@ -28,7 +28,7 @@ function toYmd(value) {
   return '';
 }
 
-function toHm(value) {
+export function toHm(value) {
   if (!value && value !== 0) return '';
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return `${pad2(value.getHours())}:${pad2(value.getMinutes())}`;
@@ -52,7 +52,7 @@ function toHm(value) {
   return '';
 }
 
-function toNumber(value) {
+export function toNumber(value) {
   if (value === null || value === undefined || value === '') return '';
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
@@ -62,7 +62,7 @@ function toNumber(value) {
   return '';
 }
 
-function normalizeHeader(h) {
+export function normalizeHeader(h) {
   return String(h ?? '')
     .trim()
     .toLowerCase()
@@ -134,67 +134,40 @@ export function detectHeaderRow(headers, rows, canonicalFields, fieldSynonyms, m
   return best;
 }
 
-const CANONICAL_FIELDS = [
-  'fecha', 'hora', 'cliente', 'producto', 'lote',
-  'cantidad', 'peso', 'destino', 'placa', 'conductor', 'observaciones',
-];
-
-const FIELD_SYNONYMS = {
-  fecha: ['fecha', 'fec', 'fecha despacho', 'fecha de despacho', 'f despacho', 'f'],
-  hora: ['hora', 'hr', 'time', 'hora despacho'],
-  cliente: ['cliente', 'clientes', 'razon social', 'razon', 'cliente nombre', 'nombre cliente', 'tercero', 'nit', 'comprador'],
-  producto: ['producto', 'descripcion', 'desc', 'articulo', 'item', 'referencia', 'material'],
-  lote: ['lote', 'lote prod', 'numero lote', 'batch'],
-  cantidad: ['cantidad', 'cant', 'cant bolsas', 'cantidad bolsas', 'unidades', 'uds', 'qty', 'cant bultos', 'bolsas'],
-  peso: ['peso', 'kilos', 'kilo', 'kg', 'kilogramos', 'peso total'],
-  destino: ['destino', 'direccion', 'dir', 'ciudad', 'bodega', 'punto entrega', 'punto de entrega', 'sede'],
-  placa: ['placa', 'vehiculo', 'vehiculo placa', 'camion', 'tracto', 'placa vehiculo'],
-  conductor: ['conductor', 'chofer', 'driver', 'transportista', 'nombre conductor'],
-  observaciones: ['observaciones', 'obs', 'nota', 'notas', 'comentarios', 'observacion'],
-};
-
-export { CANONICAL_FIELDS, FIELD_SYNONYMS };
-export { toYmd, toHm, toNumber, normalizeHeader };
-
 function getOriginalRow(aoa, rowIndex) {
   return (aoa[rowIndex] || []).map((v) => v !== undefined && v !== null ? String(v).trim() : '');
 }
 
-export function normalizeDispatches(parsedDocument) {
-  const { rawHeaders, rawRows, fileName } = parsedDocument;
+export function normalizeOperationalData({ parsedDocument, canonicalFields, synonyms, fieldNormalizers = {} }) {
+  const { rawHeaders, rawRows } = parsedDocument;
 
   const aoa = [rawHeaders || [], ...(rawRows || [])];
-  const best = detectHeaderRow(rawHeaders || [], rawRows || [], CANONICAL_FIELDS, FIELD_SYNONYMS);
+  const best = detectHeaderRow(rawHeaders || [], rawRows || [], canonicalFields, synonyms);
   const headerRowIndex = best.rowIndex >= 0 ? best.rowIndex : 0;
 
-  const actualRows = rawRows.slice(headerRowIndex);
-  if (!actualRows.length) return { rows: [], missingHeaders: CANONICAL_FIELDS, matchedHeaders: {} };
+  const actualRows = rawRows ? rawRows.slice(headerRowIndex) : [];
+  if (!actualRows.length) return { rows: [], matchedHeaders: {}, missingHeaders: canonicalFields };
 
   const actualHeaders = getOriginalRow(aoa, headerRowIndex).filter(Boolean);
 
-  const matchedHeaders = buildHeaderMap(actualHeaders, CANONICAL_FIELDS, FIELD_SYNONYMS);
-  const missingHeaders = CANONICAL_FIELDS.filter((f) => !matchedHeaders[f]);
+  const matchedHeaders = buildHeaderMap(actualHeaders, canonicalFields, synonyms);
+  const missingHeaders = canonicalFields.filter((f) => !matchedHeaders[f]);
+  const defaultNormalizer = (v) => String(v ?? '').trim();
 
   const rows = actualRows.map((r) => {
     const rowObj = {};
     for (let col = 0; col < actualHeaders.length; col++) {
       rowObj[actualHeaders[col]] = r[col] !== undefined ? r[col] : '';
     }
-    return {
-      fechaDespacho: toYmd(pickValue(rowObj, matchedHeaders.fecha)),
-      hora: toHm(pickValue(rowObj, matchedHeaders.hora)),
-      cliente: String(pickValue(rowObj, matchedHeaders.cliente) ?? '').trim(),
-      producto: String(pickValue(rowObj, matchedHeaders.producto) ?? '').trim(),
-      lote: String(pickValue(rowObj, matchedHeaders.lote) ?? '').trim(),
-      cantidadBolsas: toNumber(pickValue(rowObj, matchedHeaders.cantidad)),
-      peso: toNumber(pickValue(rowObj, matchedHeaders.peso)),
-      destino: String(pickValue(rowObj, matchedHeaders.destino) ?? '').trim(),
-      placa: String(pickValue(rowObj, matchedHeaders.placa) ?? '').trim(),
-      conductor: String(pickValue(rowObj, matchedHeaders.conductor) ?? '').trim(),
-      observaciones: String(pickValue(rowObj, matchedHeaders.observaciones) ?? '').trim(),
-    };
+    const record = {};
+    for (const field of canonicalFields) {
+      const rawValue = pickValue(rowObj, matchedHeaders[field]);
+      const normalizer = fieldNormalizers[field] || defaultNormalizer;
+      record[field] = normalizer(rawValue);
+    }
+    return record;
   });
 
   const filtered = rows.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
-  return { rows: filtered, missingHeaders, matchedHeaders };
+  return { rows: filtered, matchedHeaders, missingHeaders };
 }
