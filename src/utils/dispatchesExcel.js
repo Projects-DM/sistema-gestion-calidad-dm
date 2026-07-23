@@ -3,8 +3,8 @@ import { normalizeOperationalData, toYmd, toHm, toNumber, normalizeHeader, build
 import { OperationalExperienceRegistry } from '../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import * as XLSX from 'xlsx';
 
-const dispatchContract = OperationalExperienceRegistry.getExperienceNormalizationContract('dispatches');
-const { canonicalFields: CANONICAL_FIELDS, synonyms: FIELD_SYNONYMS, fieldNormalizers: FIELD_NORMALIZERS } = dispatchContract;
+const dispatchContract = OperationalExperienceRegistry.getExperienceContract('dispatches');
+const { canonicalFields: CANONICAL_FIELDS, synonyms: FIELD_SYNONYMS, fieldNormalizers: FIELD_NORMALIZERS } = dispatchContract.documentContract;
 
 function parseOperationsReport(aoa) {
   // Compatible con `reports/Report.xlsx` incluido en el proyecto:
@@ -137,12 +137,10 @@ export async function parseDispatchesExcelFile(file) {
     }
   }
 
-  // Normalización vía Universal Operational Data Normalizer
+  // Normalización vía Universal Pipeline — consume contrato SSOT del Registry
   const result = normalizeOperationalData({
     parsedDocument: parsedDoc,
-    canonicalFields: CANONICAL_FIELDS,
-    synonyms: FIELD_SYNONYMS,
-    fieldNormalizers: FIELD_NORMALIZERS,
+    contract: dispatchContract,
   });
 
   return {
