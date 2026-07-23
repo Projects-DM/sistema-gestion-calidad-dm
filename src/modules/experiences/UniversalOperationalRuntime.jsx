@@ -3,9 +3,7 @@ import { Plus, Download, FileText, Search, Filter, Save, X, CheckCircle, AlertTr
 import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 import RoleGate from '../../components/RoleGate';
-import ExcelUploadModal from '../../components/ExcelUploadModal';
-import { parseDocument } from '../../services/import/index.js';
-import { normalizeOperationalData } from '../../services/import/operationalDataExtractionLayer.js';
+import UniversalImportWorkflow from './UniversalImportWorkflow';
 import { createOperationalRecordsService } from '../../services/operationalRecordsService.js';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -400,7 +398,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       )}
 
       {contract.capabilities?.supportsImport && (
-        <ExcelUploadModal open={isExcelOpen} onClose={() => setIsExcelOpen(false)} onImported={handleExcelImported} />
+        <UniversalImportWorkflow open={isExcelOpen} onClose={() => setIsExcelOpen(false)} onImported={handleExcelImported} contract={contract} />
       )}
     </div>
   );
