@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Download, FileText, Search, Filter, Save, X, CheckCircle, AlertTriangle, ShieldAlert, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Download, FileText, Search, Filter, Save, X, CheckCircle, AlertTriangle, ShieldAlert, Edit2, Trash2, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '../../hooks/useAuth';
 import RoleGate from '../../components/RoleGate';
 import UniversalImportWorkflow from './UniversalImportWorkflow';
+import UniversalOperationalDashboard from './UniversalOperationalDashboard';
 import { createOperationalRecordsService } from '../../services/operationalRecordsService.js';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -69,6 +70,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isExcelOpen, setIsExcelOpen] = useState(false);
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [banner, setBanner] = useState(null);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -263,6 +265,14 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                   </button>
                 </RoleGate>
               )}
+              {contract.capabilities?.supportsDashboard && (
+                <RoleGate allowedRoles={['administrador', 'calidad']}>
+                  <button onClick={() => setIsDashboardOpen(true)} disabled={loading || saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
+                    <BarChart3 className="w-4 h-4" /> Dashboard
+                  </button>
+                </RoleGate>
+              )}
               {contract.capabilities?.supportsImport && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
                   <button onClick={() => setIsExcelOpen(true)} disabled={loading || saving}
@@ -441,6 +451,9 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
       {contract.capabilities?.supportsImport && (
         <UniversalImportWorkflow open={isExcelOpen} onClose={() => setIsExcelOpen(false)} onImported={handleExcelImported} contract={contract} />
+      )}
+      {contract.capabilities?.supportsDashboard && (
+        <UniversalOperationalDashboard open={isDashboardOpen} onClose={() => setIsDashboardOpen(false)} experienceKey={experienceKey} />
       )}
     </div>
   );

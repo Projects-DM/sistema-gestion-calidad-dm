@@ -40,8 +40,8 @@ const registry = new Map();
  * @property {object} complianceRules  — [{ field, operator, value, severity }]
  * @property {object} automationRules  — [{ field, action, value }]
  * @property {object} visibilityRules  — [{ field, showWhen }]
- * @property {object} auditRules       — future
  * @property {object} auditRules       — { trackCompliance, trackImports, trackExports, trackRuleExecutions, trackVisibilityChanges }
+ * @property {object} dashboardRules   — { enabled, trackTotals, trackCompliance, trackAuditMetrics, groupBy, trendBy, highlight }
  * @property {object} exportRules      — future
  * @property {number} defaultOrder     — default display order within the tab
  * @property {Function} resolveComponent — lazy component resolver () => Promise<{ default: React.Component }>
@@ -69,6 +69,15 @@ function registerExperience(descriptor) {
       trackExports: true,
       trackRuleExecutions: true,
       trackVisibilityChanges: false,
+    },
+    dashboardRules: descriptor.dashboardRules ?? {
+      enabled: true,
+      trackTotals: true,
+      trackCompliance: true,
+      trackAuditMetrics: true,
+      groupBy: [],
+      trendBy: [],
+      highlight: [],
     },
     exportRules: descriptor.exportRules ?? {},
     defaultOrder: descriptor.defaultOrder ?? 99,
@@ -99,6 +108,7 @@ function getExperienceContract(experienceKey) {
     automationRules: exp.automationRules,
     visibilityRules: exp.visibilityRules,
     auditRules: exp.auditRules,
+    dashboardRules: exp.dashboardRules,
     exportRules: exp.exportRules,
     experienceKey: exp.experienceKey,
   };
@@ -196,6 +206,15 @@ registerExperience({
   visibilityRules: [
     { field: 'observaciones', showWhen: { producto: 'notEmpty' } },
   ],
+  dashboardRules: {
+    enabled: true,
+    trackTotals: true,
+    trackCompliance: true,
+    trackAuditMetrics: true,
+    groupBy: ['cliente', 'producto'],
+    trendBy: ['fecha'],
+    highlight: ['cliente', 'producto', 'cantidad'],
+  },
   defaultOrder: 1,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
