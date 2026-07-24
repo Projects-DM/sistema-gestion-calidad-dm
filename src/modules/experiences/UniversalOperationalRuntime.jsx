@@ -473,13 +473,13 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
           </div>
         )}
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap justify-start sm:justify-end">
           {!isFormOpen && (
             <>
               {contract.capabilities?.supportsExport && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
                   <button onClick={() => handleExportPdf()} disabled={loading || saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50 whitespace-nowrap">
                     <FileText className="w-4 h-4" /> PDF
                   </button>
                 </RoleGate>
@@ -487,7 +487,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
               {contract.capabilities?.supportsExport && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
                   <button onClick={() => handleExportCsv()} disabled={loading || saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50 whitespace-nowrap">
                     <Download className="w-4 h-4" /> CSV
                   </button>
                 </RoleGate>
@@ -495,7 +495,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
               {contract.capabilities?.supportsDashboard && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
                   <button onClick={() => setIsDashboardOpen(true)} disabled={loading || saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50 whitespace-nowrap">
                     <BarChart3 className="w-4 h-4" /> Dashboard
                   </button>
                 </RoleGate>
@@ -503,14 +503,14 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
               {contract.capabilities?.supportsImport && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
                   <button onClick={() => setIsExcelOpen(true)} disabled={loading || saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50 whitespace-nowrap">
                     <Download className="w-4 h-4" /> Importar
                   </button>
                 </RoleGate>
               )}
               <RoleGate allowedRoles={['administrador', 'operativo', 'calidad']}>
                 <button onClick={() => setIsFormOpen(true)} disabled={loading || saving}
-                  className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-light text-white rounded-xl font-bold shadow-md shadow-primary/20 text-sm disabled:opacity-50">
+                  className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-light text-white rounded-xl font-bold shadow-md shadow-primary/20 text-sm disabled:opacity-50 whitespace-nowrap">
                   <Plus className="w-4 h-4" /> Nuevo
                 </button>
               </RoleGate>
@@ -705,7 +705,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
           {selectedIds.size > 0 && (
             <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
               <span className="text-xs font-bold text-primary"><strong>{selectedIds.size}</strong> registro(s) seleccionados</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <select onChange={e => { const v = e.target.value; if (v) { handleBulkStatus(v); e.target.value = ''; } }}
                   className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700">
                   <option value="">Cambiar estado...</option>

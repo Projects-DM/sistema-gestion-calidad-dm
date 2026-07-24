@@ -108,6 +108,7 @@ export function useCapabilityPublicSet({ moduleSlug, moduleId } = {}) {
         const publicSet = new CapabilityPublicSet({
           resolvedSet,
           definitions: definitions.filter(Boolean),
+          experiencesConfig: provider.getExperiencesConfig(),
         });
 
         setCapabilityPublicSet(publicSet);

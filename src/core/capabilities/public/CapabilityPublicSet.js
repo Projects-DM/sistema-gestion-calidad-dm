@@ -25,9 +25,13 @@ export class CapabilityPublicSet {
    * @param {object}        params.resolvedSet   — structural output of ModuleCapabilityResolver.resolveCapabilitySet
    * @param {Array<object>} params.definitions   — full package definitions (from getPackageById),
    *                                               including UI metadata (capabilityKey, label, icon, order, uiRole)
+   * @param {object}        [params.experiencesConfig] — optional experiences config from the adapter
+   * @param {string[]}      params.experiencesConfig.enabledExperiences
+   * @param {Array<object>} params.experiencesConfig.availableExperiences
    */
-  constructor({ resolvedSet, definitions } = {}) {
+  constructor({ resolvedSet, definitions, experiencesConfig } = {}) {
     this._resolvedSet = resolvedSet ?? null;
+    this._experiencesConfig = experiencesConfig ?? null;
 
     const validDefs = (definitions ?? []).filter(Boolean);
 
@@ -136,18 +140,12 @@ export class CapabilityPublicSet {
    * @returns {Array<{experienceKey: string, displayName: string, description: string, icon: string}>}
    */
   getEnabledExperiences() {
-    const oeDef = this._byKey.get('operational-experiences');
-    if (!oeDef) return [];
+    if (!this._experiencesConfig) return [];
 
-    // Read from the assignment metadata (enriched by adapter)
-    const oeAssignment = (this._resolvedSet?.assignments || []).find(
-      (a) => String(a.packageId || '').replace('pkg:standard:', '') === 'operational-experiences'
-    );
+    const { enabledExperiences, availableExperiences } = this._experiencesConfig;
+    if (!Array.isArray(enabledExperiences) || !Array.isArray(availableExperiences)) return [];
 
-    const enabledKeys = oeAssignment?.enabledExperiences || oeDef.enabledExperiences || [];
-    const available = oeAssignment?.availableExperiences || oeDef.availableExperiences || [];
-
-    return available.filter((exp) => enabledKeys.includes(exp.experienceKey));
+    return availableExperiences.filter((exp) => enabledExperiences.includes(exp.experienceKey));
   }
 
   // ---------------------------------------------------------------------------
