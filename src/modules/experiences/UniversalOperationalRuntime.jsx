@@ -625,26 +625,23 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
             </div>
           )}
 
-          {/* Operational Views Tabs */}
-          <div className="flex flex-wrap gap-1 px-4 pt-4 pb-2 border-b border-gray-200 bg-gray-50/30">
-            {views.map(v => {
-              const Icon = v.icon;
-              const count = viewCounts[v.key];
-              return (
-                <button key={v.key} onClick={() => { setActiveView(v.key); setFilters({}); setSelectedIds(new Set()); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                    activeView === v.key
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-200/50'
-                  }`}>
-                  <Icon className="w-3.5 h-3.5" />
-                  {v.label}
-                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    activeView === v.key ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-600'
-                  }`}>{count}</span>
-                </button>
-              );
-            })}
+          {/* Operational Views Selector */}
+          <div className="px-4 pt-4 pb-3 border-b border-gray-200 bg-gray-50/30">
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">Vista operacional</label>
+            <div className="relative">
+              <select value={activeView} onChange={e => { setActiveView(e.target.value); setFilters({}); setSelectedIds(new Set()); }}
+                className="w-full sm:w-72 appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-gray-900 shadow-sm cursor-pointer">
+                {views.map(v => {
+                  const count = viewCounts[v.key];
+                  return (
+                    <option key={v.key} value={v.key}>{v.label} ({count})</option>
+                  );
+                })}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
           </div>
 
           {/* Search + Filters bar */}
