@@ -156,7 +156,7 @@ registerExperience({
       destino: { label: 'Destino' },
       placa: { label: 'Placa' },
       conductor: { label: 'Conductor' },
-      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado'] },
+      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado', 'draft', 'validated', 'ready', 'cerrado'] },
       observaciones: { label: 'Observaciones' },
     },
   },
