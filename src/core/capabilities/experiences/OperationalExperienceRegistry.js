@@ -138,6 +138,7 @@ registerExperience({
     supportsExport: true,
     supportsAudit: true,
     supportsDashboard: true,
+    supportsHumanValidation: true,
   },
   ui: {
     tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad'],

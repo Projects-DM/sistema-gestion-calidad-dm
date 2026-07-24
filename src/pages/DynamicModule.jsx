@@ -172,7 +172,7 @@ function OperationalExperiencesContent({ enabledExperiences, moduleSlug, moduleN
                 }`}
               >
                 <ExpIcon className="w-4 h-4" />
-                {exp.displayName}
+                {exp.metadata?.name || exp.experienceKey}
               </button>
             );
           })}
@@ -186,7 +186,7 @@ function OperationalExperiencesContent({ enabledExperiences, moduleSlug, moduleN
           <span className="ml-2 text-gray-500">Cargando experiencia...</span>
         </div>
       ) : ExperienceComponent ? (
-        <ExperienceComponent moduleSlug={moduleSlug} moduleName={moduleName} />
+        <ExperienceComponent experienceKey={activeExperience} moduleSlug={moduleSlug} moduleName={moduleName} />
       ) : (
         <div className="py-10 text-center text-gray-500">
           Seleccione una experiencia operacional.
