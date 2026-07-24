@@ -47,6 +47,7 @@ getFlowOrchestrator();
  * @property {object} dashboardRules   — { enabled, trackTotals, trackCompliance, trackAuditMetrics, groupBy, trendBy, highlight }
  * @property {object} documentMappingHints — { preferMetadata, preferTables, minimumTableColumns }
  * @property {object} recordBuilderHints — { allowMetadataInheritance, allowPartialRecords, minimumCompletenessScore }
+ * @property {object} documentSegmentationHints — { allowCommercialInformation, allowFinancialInformation, allowAdministrativeInformation, preferOperationalInformation }
  * @property {object} exportRules      — future
  * @property {number} defaultOrder     — default display order within the tab
  * @property {Function} resolveComponent — lazy component resolver () => Promise<{ default: React.Component }>
@@ -77,6 +78,12 @@ function registerExperience(descriptor) {
       allowMetadataInheritance: true,
       allowPartialRecords: true,
       minimumCompletenessScore: 60,
+    },
+    documentSegmentationHints: descriptor.documentSegmentationHints ?? {
+      allowCommercialInformation: false,
+      allowFinancialInformation: false,
+      allowAdministrativeInformation: false,
+      preferOperationalInformation: true,
     },
     auditRules: descriptor.auditRules ?? {
       trackCompliance: true,
@@ -127,6 +134,7 @@ function getExperienceContract(experienceKey) {
     exportRules: exp.exportRules,
     documentMappingHints: exp.documentMappingHints,
     recordBuilderHints: exp.recordBuilderHints,
+    documentSegmentationHints: exp.documentSegmentationHints,
     experienceKey: exp.experienceKey,
   };
 }
@@ -261,6 +269,12 @@ registerExperience({
     allowPartialRecords: true,
     minimumCompletenessScore: 60,
   },
+  documentSegmentationHints: {
+    allowCommercialInformation: false,
+    allowFinancialInformation: false,
+    allowAdministrativeInformation: false,
+    preferOperationalInformation: true,
+  },
   defaultOrder: 1,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
@@ -388,6 +402,12 @@ registerExperience({
     allowMetadataInheritance: true,
     allowPartialRecords: true,
     minimumCompletenessScore: 60,
+  },
+  documentSegmentationHints: {
+    allowCommercialInformation: false,
+    allowFinancialInformation: false,
+    allowAdministrativeInformation: false,
+    preferOperationalInformation: true,
   },
   defaultOrder: 2,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
@@ -526,6 +546,12 @@ registerExperience({
     allowPartialRecords: true,
     minimumCompletenessScore: 60,
   },
+  documentSegmentationHints: {
+    allowCommercialInformation: false,
+    allowFinancialInformation: false,
+    allowAdministrativeInformation: false,
+    preferOperationalInformation: true,
+  },
   defaultOrder: 3,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
@@ -656,6 +682,12 @@ registerExperience({
     allowPartialRecords: true,
     minimumCompletenessScore: 60,
   },
+  documentSegmentationHints: {
+    allowCommercialInformation: false,
+    allowFinancialInformation: false,
+    allowAdministrativeInformation: false,
+    preferOperationalInformation: true,
+  },
   defaultOrder: 4,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
@@ -781,6 +813,12 @@ registerExperience({
     allowMetadataInheritance: true,
     allowPartialRecords: true,
     minimumCompletenessScore: 60,
+  },
+  documentSegmentationHints: {
+    allowCommercialInformation: false,
+    allowFinancialInformation: false,
+    allowAdministrativeInformation: false,
+    preferOperationalInformation: true,
   },
   defaultOrder: 5,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
