@@ -144,6 +144,14 @@ export async function parseDocument(file) {
     ? parsed.textContent.split(/\r?\n/).filter(l => l.trim())[0] || null
     : null;
 
+  const parserDiagnostics = {
+    textFound: !!(parsed.textContent && parsed.textContent.trim().length > 0),
+    totalCharacters: (parsed.textContent || '').length,
+    totalRows: parsed.rows.length,
+    totalColumns: parsed.headers ? parsed.headers.length : (parsed.rows[0]?.length || 0),
+    parserStatus: parsed.rows.length > 0 ? 'OK' : 'FAILED',
+  };
+
   return {
     fileName,
     fileType: fileTypeMap[ext],
@@ -155,5 +163,6 @@ export async function parseDocument(file) {
     sheetNames: parsed.sheetNames || null,
     activeSheet: parsed.activeSheet || null,
     documentSegments: null,
+    parserDiagnostics,
   };
 }

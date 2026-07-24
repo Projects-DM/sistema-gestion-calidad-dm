@@ -52,6 +52,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const [activeSheet, setActiveSheet] = useState(null);
   const [completenessScore, setCompletenessScore] = useState(0);
   const [builtRecords, setBuiltRecords] = useState([]);
+  const [recordBuilderDiag, setRecordBuilderDiag] = useState(null);
 
   const canonicalFields = contract?.documentContract?.canonicalFields || [];
   const tableFields = getTableFields(contract);
@@ -81,6 +82,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       const docModel = buildOperationalDocumentModel({ parsedDocument: parsedDoc, structureAnalysis: analysis });
       const recResult = buildOperationalRecords({ operationalDocumentModel: docModel, contract, recordBuilderHints: contract?.recordBuilderHints });
       setBuiltRecords(recResult.records || []);
+      setRecordBuilderDiag(recResult.recordBuilderDiagnostics || null);
       const segments = analysis?.documentSegments;
       const relModel = analysis?.relationshipModel;
       const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis, operationalSection: segments?.operationalSection, relationshipModel: relModel });
@@ -129,6 +131,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     setActiveSheet(null);
     setCompletenessScore(0);
     setBuiltRecords([]);
+    setRecordBuilderDiag(null);
   };
 
   const handleClose = () => {
@@ -433,6 +436,39 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                         </div>
                       );
                     })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 1.9: Import Pipeline Diagnostics */}
+              <div className="rounded-2xl border border-gray-200 bg-white px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-gray-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900">IMPORT PIPELINE DIAGNOSTICS</p>
+                    <div className="mt-3 space-y-2">
+                      {[
+                        { label: 'Parser', status: parsedDoc?.parserDiagnostics?.parserStatus || 'FAILED', detail: parsedDoc?.parserDiagnostics ? `${parsedDoc.parserDiagnostics.totalRows} filas, ${parsedDoc.parserDiagnostics.totalCharacters} caracteres` : 'Sin datos' },
+                        { label: 'Analyzer', status: structureAnalysis?.analysisDiagnostics?.status || 'FAILED', detail: structureAnalysis?.analysisDiagnostics ? `${structureAnalysis.analysisDiagnostics.metadataFound} metadata, ${structureAnalysis.analysisDiagnostics.tablesFound} tablas` : 'Sin datos' },
+                        { label: 'Segmentation', status: structureAnalysis?.segmentationDiagnostics?.status || 'FAILED', detail: structureAnalysis?.segmentationDiagnostics ? `${structureAnalysis.segmentationDiagnostics.operationalRows} ops / ${structureAnalysis.segmentationDiagnostics.administrativeRows} adm / ${structureAnalysis.segmentationDiagnostics.financialRows} fin` : 'Sin datos' },
+                        { label: 'Relationship', status: structureAnalysis?.relationshipModel?.estimatedRecords > 0 ? 'OK' : 'WARNING', detail: structureAnalysis?.relationshipModel ? `${Object.keys(structureAnalysis.relationshipModel.sharedFields).length} compartidos, ${structureAnalysis.relationshipModel.repeatingFields.length} repetitivos` : 'Sin datos' },
+                        { label: 'Record Builder', status: recordBuilderDiag?.status || 'FAILED', detail: recordBuilderDiag ? `${recordBuilderDiag.constructedRecords} construidos, ${recordBuilderDiag.discardedRecords} descartados` : 'Sin datos' },
+                        { label: 'Validation', status: rows.filter(r => r._included).length > 0 ? 'OK' : rows.length > 0 ? 'WARNING' : 'FAILED', detail: `${rows.filter(r => r._included).length} válidos, ${rows.filter(r => r._errors?.length).length} inválidos` },
+                      ].map((stage, i) => {
+                        const statusColor = stage.status === 'OK' ? 'bg-green-100 text-green-700 border-green-200' : stage.status === 'WARNING' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-red-100 text-red-700 border-red-200';
+                        return (
+                          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-100 bg-gray-50/50">
+                            <span className="w-28 text-[10px] font-bold text-gray-600 uppercase tracking-wider shrink-0">{stage.label}</span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
+                              {stage.status}
+                            </span>
+                            <span className="text-[10px] text-gray-500 truncate">{stage.detail}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
