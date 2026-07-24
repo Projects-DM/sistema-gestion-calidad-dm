@@ -168,6 +168,31 @@ export class OperationalExperienceLifecycleOrchestrator {
   // ---------------------------------------------------------------------------
   // Destroy
   // ---------------------------------------------------------------------------
+  async getRecordTimeline(recordId) {
+    return OperationalAuditService.getRecordTimeline(this.experienceKey, recordId);
+  }
+
+  async bulkUpdateStatus(ids, newStatus, user) {
+    if (!ids?.length) throw new Error('No hay registros seleccionados');
+    const results = [];
+    for (const id of ids) {
+      const record = { estado: newStatus };
+      const updated = await this._service.update(id, record);
+      OperationalAuditService.auditUpdate({ experienceKey: this.experienceKey, recordId: id, eventData: { bulkStatusChange: newStatus }, user });
+      results.push(updated);
+    }
+    return { success: true, count: results.length, records: results, action: 'bulk_status_updated' };
+  }
+
+  async bulkDelete(ids, user) {
+    if (!ids?.length) throw new Error('No hay registros seleccionados');
+    for (const id of ids) {
+      await this._service.delete(id);
+      OperationalAuditService.auditDelete({ experienceKey: this.experienceKey, recordId: id, user });
+    }
+    return { success: true, count: ids.length, action: 'bulk_deleted' };
+  }
+
   destroy() {
     this.contract = null;
     this._service = null;
