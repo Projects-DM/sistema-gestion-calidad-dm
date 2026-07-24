@@ -154,5 +154,6 @@ export async function parseDocument(file) {
     rawHeaders: parsed.headers || [],
     sheetNames: parsed.sheetNames || null,
     activeSheet: parsed.activeSheet || null,
+    documentSegments: null,
   };
 }

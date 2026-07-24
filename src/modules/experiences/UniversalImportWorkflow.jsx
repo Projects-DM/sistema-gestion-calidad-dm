@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert, FileText } from 'lucide-react';
 import { parseDocument, analyzeDocumentStructure } from '../../services/import/index.js';
-import { normalizeOperationalData, buildOperationalDocumentModel, buildOperationalRecords, buildOperationalSelectionSummary } from '../../services/import/operationalDataExtractionLayer.js';
+import { normalizeOperationalData, buildOperationalDocumentModel, buildOperationalRecords } from '../../services/import/operationalDataExtractionLayer.js';
 import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function getFieldLabel(contract, field) {
@@ -52,7 +52,6 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const [activeSheet, setActiveSheet] = useState(null);
   const [completenessScore, setCompletenessScore] = useState(0);
   const [builtRecords, setBuiltRecords] = useState([]);
-  const [selectionSummary, setSelectionSummary] = useState(null);
 
   const canonicalFields = contract?.documentContract?.canonicalFields || [];
   const tableFields = getTableFields(contract);
@@ -79,12 +78,11 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       });
       setStructureAnalysis(analysis);
       setParsedDoc(parsedDoc);
-      const selSummary = buildOperationalSelectionSummary({ structureAnalysis: analysis });
-      setSelectionSummary(selSummary);
       const docModel = buildOperationalDocumentModel({ parsedDocument: parsedDoc, structureAnalysis: analysis });
       const recResult = buildOperationalRecords({ operationalDocumentModel: docModel, contract, recordBuilderHints: contract?.recordBuilderHints });
       setBuiltRecords(recResult.records || []);
-      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis });
+      const segments = analysis?.documentSegments;
+      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis, operationalSection: segments?.operationalSection });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
       const rows = result.rows.map((r, i) => {
@@ -130,7 +128,6 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     setActiveSheet(null);
     setCompletenessScore(0);
     setBuiltRecords([]);
-    setSelectionSummary(null);
   };
 
   const handleClose = () => {
@@ -315,56 +312,69 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                 </div>
               </div>
 
-              {/* Block 1.75: Operational Information Detected */}
+              {/* Block 1.75: Operational Section Detected */}
               <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 sm:px-5 py-3 sm:py-4">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-cyan-100 border border-cyan-200 flex items-center justify-center shrink-0 mt-0.5">
                     <FileText className="w-4.5 h-4.5 text-cyan-700" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-cyan-800">INFORMACIÓN OPERACIONAL DETECTADA</p>
-                    {selectionSummary ? (
-                      <div className="mt-3 space-y-3">
-                        {selectionSummary.importable.length > 0 && (
+                    <p className="text-sm font-bold text-cyan-800">SECCIÓN OPERACIONAL DETECTADA</p>
+                    {(() => {
+                      const segs = structureAnalysis?.documentSegments;
+                      const op = segs?.operationalSection;
+                      const ignored = segs?.ignoredSections || [];
+                      return (
+                        <div className="mt-3 space-y-3">
                           <div>
-                            <p className="text-xs font-bold text-green-700 uppercase tracking-wider">Importable</p>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {selectionSummary.importable.map((f, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100/70 text-green-600 rounded text-[10px] font-medium border border-green-200/50">
-                                  <CheckCircle2 className="w-3 h-3" /> {f}
-                                </span>
-                              ))}
-                            </div>
+                            <p className="text-xs font-bold text-cyan-700 uppercase tracking-wider">Metadata operacional</p>
+                            {op?.metadata && Object.keys(op.metadata).length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {Object.entries(op.metadata).map(([k, v]) => (
+                                  <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-100/70 text-cyan-600 rounded text-[10px] font-medium border border-cyan-200/50">
+                                    {k}: <strong>{v}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-cyan-500 italic mt-1">No se encontró metadata operacional</p>
+                            )}
                           </div>
-                        )}
-                        {selectionSummary.ignorable.length > 0 && (
                           <div className="border-t border-cyan-200/50 pt-2">
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ignorada</p>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {selectionSummary.ignorable.map((f, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100/70 text-gray-500 rounded text-[10px] font-medium border border-gray-200/50">
-                                  <X className="w-3 h-3" /> {f}
-                                </span>
-                              ))}
-                            </div>
+                            <p className="text-xs font-bold text-cyan-700 uppercase tracking-wider">Headers detectados</p>
+                            {op?.headers?.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {op.headers.map((h, i) => (
+                                  <span key={i} className="inline-flex items-center px-2 py-0.5 bg-cyan-100/70 text-cyan-600 rounded text-[10px] font-medium border border-cyan-200/50">
+                                    {h}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-cyan-500 italic mt-1">No se detectaron headers</p>
+                            )}
                           </div>
-                        )}
-                        <div className="border-t border-cyan-200/50 pt-2 flex items-center gap-3">
-                          <span className="text-xs font-bold text-cyan-700 uppercase">Operational Score</span>
-                          <span className={[
-                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold',
-                            selectionSummary.operationalScore >= 80 ? 'bg-green-100 text-green-700' : selectionSummary.operationalScore >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700',
-                          ].join(' ')}>
-                            {selectionSummary.operationalScore}%
-                          </span>
-                          <span className="text-[10px] text-cyan-500">
-                            {selectionSummary.totalBlocks} bloque(s) — {selectionSummary.operationalBlocks} operacional(es), {selectionSummary.ignoredBlocks} ignorado(s)
-                          </span>
+                          <div className="border-t border-cyan-200/50 pt-2 flex items-center gap-2">
+                            <span className="text-xs font-bold text-cyan-700 uppercase">Registros encontrados</span>
+                            <span className="inline-flex items-center px-2.5 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold">
+                              {op?.rows?.length || 0}
+                            </span>
+                          </div>
+                          {ignored.length > 0 && (
+                            <div className="border-t border-cyan-200/50 pt-2">
+                              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Secciones ignoradas ({ignored.length})</p>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {ignored.map((sec, i) => (
+                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100/70 text-gray-500 rounded text-[10px] font-medium border border-gray-200/50">
+                                    <X className="w-3 h-3" /> {sec.reason}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-cyan-500 italic mt-2">Analizando información operacional...</p>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
