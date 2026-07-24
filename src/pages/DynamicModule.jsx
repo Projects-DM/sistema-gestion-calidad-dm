@@ -160,7 +160,7 @@ function OperationalExperiencesContent({ enabledExperiences, moduleSlug, moduleN
       {enabledExperiences.length > 1 && (
         <div className="flex gap-2 border-b border-gray-200 pb-2">
           {enabledExperiences.map((exp) => {
-            const ExpIcon = resolveIcon(exp.icon);
+            const ExpIcon = resolveIcon(exp.icon || exp.metadata?.icon || 'Zap');
             return (
               <button
                 key={exp.experienceKey}
@@ -172,7 +172,7 @@ function OperationalExperiencesContent({ enabledExperiences, moduleSlug, moduleN
                 }`}
               >
                 <ExpIcon className="w-4 h-4" />
-                {exp.metadata?.name || exp.experienceKey}
+                {exp.displayName || exp.metadata?.name || exp.experienceKey}
               </button>
             );
           })}

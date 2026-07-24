@@ -119,9 +119,9 @@ export class CapabilityPublicSetAdapter {
         if (normalizedKey === 'operational-experiences') {
           const availableExperiences = OperationalExperienceRegistry.listExperiences().map((exp) => ({
             experienceKey: exp.experienceKey,
-            displayName: exp.displayName,
-            description: exp.description,
-            icon: exp.icon,
+            displayName: exp.metadata?.name || exp.experienceKey,
+            description: exp.metadata?.description || '',
+            icon: exp.metadata?.icon || 'Zap',
           }));
           return {
             ...cap,
@@ -134,6 +134,13 @@ export class CapabilityPublicSetAdapter {
     }
 
     // --- Fallback: legacy modules (no capabilities assigned yet) ---
+    const availableExperiences = OperationalExperienceRegistry.listExperiences().map((exp) => ({
+      experienceKey: exp.experienceKey,
+      displayName: exp.metadata?.name || exp.experienceKey,
+      description: exp.metadata?.description || '',
+      icon: exp.metadata?.icon || 'Zap',
+    }));
+
     const assignments = [
       {
         assignmentId: `assign:${moduleId}:forms`,
@@ -148,6 +155,15 @@ export class CapabilityPublicSetAdapter {
         packageId: 'pkg:standard:records',
         state:       'active',
         version:     'v1',
+      },
+      {
+        assignmentId: `assign:${moduleId}:operational-experiences`,
+        moduleId,
+        packageId: 'pkg:standard:operational-experiences',
+        state:       'active',
+        version:     'v1',
+        enabledExperiences: availableExperiences.map((e) => e.experienceKey),
+        availableExperiences,
       },
     ];
 
@@ -188,7 +204,25 @@ export class CapabilityPublicSetAdapter {
     if (!packageId) return null;
     // packageId in resolver pipeline is adapter-internal identity: pkg:standard:<packageKey>
     const normalizedKey = String(packageId).replace('pkg:standard:', '');
-    return INTERNAL_PACKAGE_BY_KEY.get(normalizedKey) ?? null;
+    const pkg = INTERNAL_PACKAGE_BY_KEY.get(normalizedKey) ?? null;
+    if (!pkg) return null;
+
+    // Enrich operational-experiences with available experiences from registry
+    if (normalizedKey === 'operational-experiences') {
+      const availableExperiences = OperationalExperienceRegistry.listExperiences().map((exp) => ({
+        experienceKey: exp.experienceKey,
+        displayName: exp.metadata?.name || exp.experienceKey,
+        description: exp.metadata?.description || '',
+        icon: exp.metadata?.icon || 'Zap',
+      }));
+      return {
+        ...pkg,
+        availableExperiences,
+        enabledExperiences: availableExperiences.map((e) => e.experienceKey),
+      };
+    }
+
+    return pkg;
   }
 
 }

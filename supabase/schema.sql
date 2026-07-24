@@ -17,11 +17,16 @@ create table if not exists public.despachos (
   placa text not null default 'TRG786',
   conductor text not null default 'Juan Gómez',
   observaciones text,
-  estado text not null default 'Completado',
+  estado text not null default 'pendiente',
   created_at timestamptz not null default now()
 );
 
 create index if not exists despachos_created_at_idx on public.despachos (created_at desc);
+
+-- Sprint 113: añadir temperatura y signature_estado a despachos
+alter table public.despachos add column if not exists temperatura numeric;
+alter table public.despachos add column if not exists signature_estado text not null default 'pending';
+alter table public.despachos add column if not exists updated_at timestamptz default now();
 
 -- Tabla productos (maestro de productos)
 create table if not exists public.productos (

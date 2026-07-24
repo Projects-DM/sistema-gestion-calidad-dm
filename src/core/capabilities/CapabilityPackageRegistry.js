@@ -104,7 +104,7 @@ registerPackage({
   defaultOrder: 4,
   dependencies: [],
   visibility: 'public',
-  enabledByDefault: false,
+  enabledByDefault: true,
 });
 
 export const CapabilityPackageRegistry = {
