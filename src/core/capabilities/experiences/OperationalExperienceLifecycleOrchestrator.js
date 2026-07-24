@@ -26,7 +26,7 @@ export class OperationalExperienceLifecycleOrchestrator {
     const config = this.contract.persistence || {};
     this._service = createOperationalRecordsService(config.tableName || this.experienceKey, {
       prefix: config.prefix || this.experienceKey.slice(0, 3).toUpperCase(),
-      fieldMapping: this.contract.ui?.fieldMapping,
+      fieldMapping: config.fieldMapping,
     });
     this._initialized = true;
     return this.contract;
@@ -76,6 +76,10 @@ export class OperationalExperienceLifecycleOrchestrator {
     return getFormVisibility(formData, this.contract);
   }
 
+  evaluate(formData) {
+    return evaluateRecord(formData, this.contract);
+  }
+
   // ---------------------------------------------------------------------------
   // CRUD
   // ---------------------------------------------------------------------------
@@ -84,13 +88,17 @@ export class OperationalExperienceLifecycleOrchestrator {
     if (!evaluation.isValid) {
       return { success: false, errors: evaluation.allErrors, compliance: evaluation.complianceIssues, action: 'validation_failed' };
     }
-    const inserted = await this._service.insert(formData);
-    OperationalAuditService.auditCreate({ experienceKey: this.experienceKey, recordId: inserted.id, eventData: { fieldCount: Object.keys(formData).length }, user });
-    if (evaluation.complianceIssues?.length) {
-      OperationalAuditService.auditCompliance({ experienceKey: this.experienceKey, recordId: inserted.id, eventData: { warnings: evaluation.complianceIssues }, user });
+    try {
+      const inserted = await this._service.insert(formData);
+      OperationalAuditService.auditCreate({ experienceKey: this.experienceKey, recordId: inserted.id, eventData: { fieldCount: Object.keys(formData).length }, user });
+      if (evaluation.complianceIssues?.length) {
+        OperationalAuditService.auditCompliance({ experienceKey: this.experienceKey, recordId: inserted.id, eventData: { warnings: evaluation.complianceIssues }, user });
+      }
+      OperationalEventBus.publish('RECORD_CREATED', { experienceKey: this.experienceKey, recordId: inserted.id, action: 'created' });
+      return { success: true, record: inserted, compliance: evaluation.complianceIssues, action: 'created' };
+    } catch (err) {
+      return { success: false, errors: [{ field: 'general', message: err?.message || 'Error de persistencia' }], compliance: [], action: 'persistence_failed' };
     }
-    OperationalEventBus.publish('RECORD_CREATED', { experienceKey: this.experienceKey, recordId: inserted.id, action: 'created' });
-    return { success: true, record: inserted, compliance: evaluation.complianceIssues, action: 'created' };
   }
 
   async updateRecord(id, formData, user) {
@@ -98,13 +106,17 @@ export class OperationalExperienceLifecycleOrchestrator {
     if (!evaluation.isValid) {
       return { success: false, errors: evaluation.allErrors, compliance: evaluation.complianceIssues, action: 'validation_failed' };
     }
-    const updated = await this._service.update(id, formData);
-    OperationalAuditService.auditUpdate({ experienceKey: this.experienceKey, recordId: id, eventData: { fieldCount: Object.keys(formData).length }, user });
-    if (evaluation.complianceIssues?.length) {
-      OperationalAuditService.auditCompliance({ experienceKey: this.experienceKey, recordId: id, eventData: { warnings: evaluation.complianceIssues }, user });
+    try {
+      const updated = await this._service.update(id, formData);
+      OperationalAuditService.auditUpdate({ experienceKey: this.experienceKey, recordId: id, eventData: { fieldCount: Object.keys(formData).length }, user });
+      if (evaluation.complianceIssues?.length) {
+        OperationalAuditService.auditCompliance({ experienceKey: this.experienceKey, recordId: id, eventData: { warnings: evaluation.complianceIssues }, user });
+      }
+      OperationalEventBus.publish('RECORD_UPDATED', { experienceKey: this.experienceKey, recordId: id, action: 'updated' });
+      return { success: true, record: updated, compliance: evaluation.complianceIssues, action: 'updated' };
+    } catch (err) {
+      return { success: false, errors: [{ field: 'general', message: err?.message || 'Error de persistencia' }], compliance: [], action: 'persistence_failed' };
     }
-    OperationalEventBus.publish('RECORD_UPDATED', { experienceKey: this.experienceKey, recordId: id, action: 'updated' });
-    return { success: true, record: updated, compliance: evaluation.complianceIssues, action: 'updated' };
   }
 
   async deleteRecord(id, user) {

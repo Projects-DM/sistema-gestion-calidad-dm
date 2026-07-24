@@ -14,15 +14,18 @@ function numOrNull(v) {
 
 function applyFieldMapping(record, mapping) {
   if (!mapping) return record;
-  const result = {};
+  const result = { ...record };
   for (const [canonical, dbField] of Object.entries(mapping)) {
-    const val = record[canonical];
-    if (typeof val === 'string' && val === '') {
-      result[dbField] = null;
-    } else if (typeof val === 'number') {
-      result[dbField] = numOrNull(val);
-    } else {
-      result[dbField] = val ?? null;
+    if (canonical !== dbField) {
+      const val = record[canonical];
+      if (typeof val === 'string' && val === '') {
+        result[dbField] = null;
+      } else if (typeof val === 'number') {
+        result[dbField] = numOrNull(val);
+      } else {
+        result[dbField] = val ?? null;
+      }
+      delete result[canonical];
     }
   }
   return result;
@@ -31,8 +34,11 @@ function applyFieldMapping(record, mapping) {
 function applyFieldMappingToRow(row, reverseMapping) {
   if (!reverseMapping) return row;
   const result = { ...row };
-  for (const [canonical, dbField] of Object.entries(reverseMapping)) {
-    if (row[dbField] !== undefined) result[canonical] = row[dbField];
+  for (const [dbField, canonical] of Object.entries(reverseMapping)) {
+    if (row[dbField] !== undefined) {
+      result[canonical] = row[dbField];
+      delete result[dbField];
+    }
   }
   return result;
 }
@@ -62,7 +68,7 @@ export function createOperationalRecordsService(tableName, { prefix = 'REC', fie
     async insert(record) {
       const sb = getSupabaseClient();
       if (!sb) throw new Error('Supabase no configurado');
-      const payload = { ...applyFieldMapping(record, fieldMapping), estado: 'Completado' };
+      const payload = applyFieldMapping(record, fieldMapping);
       const { data, error } = await sb.from(tableName).insert(payload).select('*').single();
       if (error) throw error;
       return { ...applyFieldMappingToRow(data, revMapping), id: data.id, displayId: displayId(data.id, prefix), created_at: data.created_at };
@@ -89,7 +95,7 @@ export function createOperationalRecordsService(tableName, { prefix = 'REC', fie
       const sb = getSupabaseClient();
       if (!sb) throw new Error('Supabase no configurado');
       if (!records?.length) return [];
-      const payloads = records.map((r) => ({ ...applyFieldMapping(r, fieldMapping), estado: 'Completado' }));
+      const payloads = records.map((r) => applyFieldMapping(r, fieldMapping));
       const chunkSize = 200;
       const acc = [];
       for (let i = 0; i < payloads.length; i += chunkSize) {
