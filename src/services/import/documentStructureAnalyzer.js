@@ -50,6 +50,140 @@ function detectTableBlock(rows, sections) {
   };
 }
 
+const FINANCIAL_KEYWORDS = ['iva', 'subtotal', 'sub total', 'total', 'saldo', 'retencion', 'retefuente', 'reteiva', 'pago', 'neto', 'descuento', 'banco', 'bancolombia', 'precio', 'moneda', 'valor unitario', 'valor total', 'total factura', 'monto', 'cancelado', 'metodo pago', 'forma pago'];
+const ADMIN_KEYWORDS = ['nit', 'resolucion', 'resolucion dian', 'direccion', 'sede', 'ciudad', 'telefono', 'correo', 'email', 'web', ' regimen'];
+const COMMERCIAL_KEYWORDS = ['logo', 'empresa', 'compañia', 'compania', 'comercial', 'razon social', 'nombre comercial'];
+const OPERATIONAL_KEYWORDS = ['fecha', 'cliente', 'destino', 'conductor', 'placa', 'factura', 'observaciones', 'despacho', 'hora', 'vehiculo', 'camion', 'transportista', 'firma', 'chofer'];
+
+function normalizeText(str) {
+  return String(str ?? '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function classifyRowContent(row) {
+  const text = row.map(c => normalizeText(c)).join(' ').trim();
+  if (!text) return null;
+  let scores = { financiero: 0, administrativo: 0, comercial: 0, operacional: 0 };
+  for (const kw of FINANCIAL_KEYWORDS) { if (text.includes(kw)) scores.financiero++; }
+  for (const kw of ADMIN_KEYWORDS) { if (text.includes(kw)) scores.administrativo++; }
+  for (const kw of COMMERCIAL_KEYWORDS) { if (text.includes(kw)) scores.comercial++; }
+  for (const kw of OPERATIONAL_KEYWORDS) { if (text.includes(kw)) scores.operacional++; }
+  let best = 'ignorable', bestScore = 0;
+  for (const [type, score] of Object.entries(scores)) {
+    if (score > bestScore) { best = type; bestScore = score; }
+  }
+  return { type: best === 'ignorable' ? 'ignorable' : best, score: bestScore, text };
+}
+
+function segmentDocumentBlocks(rows, sections, discoveredMetadata) {
+  const blocks = [];
+  const metaFields = Object.keys(discoveredMetadata || {});
+
+  if (sections && sections.length > 0 && sections[0].startRow > 0) {
+    blocks.push({
+      id: 'block_pre_table',
+      startRow: 0,
+      endRow: sections[0].startRow - 1,
+      rowCount: sections[0].startRow,
+      source: 'metadata_region',
+    });
+  }
+
+  for (const section of sections) {
+    const headerRow = rows[section.startRow] || [];
+    const blockRows = rows.slice(section.startRow, section.endRow + 1);
+    const avgNonEmpty = blockRows.reduce((s, r) => s + r.filter(c => String(c ?? '').trim()).length, 0) / blockRows.length;
+    blocks.push({
+      id: `block_table_${section.id || blocks.length + 1}`,
+      startRow: section.startRow,
+      endRow: section.endRow,
+      rowCount: section.rowCount,
+      source: 'table_region',
+      avgNonEmpty,
+    });
+  }
+
+  if (sections && sections.length > 0) {
+    const lastEnd = sections[sections.length - 1].endRow;
+    if (lastEnd < rows.length - 1) {
+      blocks.push({
+        id: 'block_post_table',
+        startRow: lastEnd + 1,
+        endRow: rows.length - 1,
+        rowCount: rows.length - 1 - lastEnd,
+        source: 'post_table_region',
+      });
+    }
+  }
+
+  if (!blocks.length) {
+    blocks.push({ id: 'block_full', startRow: 0, endRow: rows.length - 1, rowCount: rows.length, source: 'full_document' });
+  }
+
+  return blocks;
+}
+
+function classifyDocumentBlocks(blocks, rows, discoveredMetadata) {
+  return blocks.map(block => {
+    const blockRows = rows.slice(block.startRow, block.endRow + 1);
+    const classifications = blockRows.map(r => classifyRowContent(r)).filter(Boolean);
+    const typeScores = {};
+    for (const c of classifications) {
+      typeScores[c.type] = (typeScores[c.type] || 0) + 1;
+    }
+    let dominantType = 'ignorable', maxCount = 0;
+    for (const [type, count] of Object.entries(typeScores)) {
+      if (count > maxCount) { dominantType = type; maxCount = count; }
+    }
+
+    const confidence = classifications.length > 0 ? Math.round((maxCount / classifications.length) * 100) : 0;
+    const isImportable = dominantType === 'operacional' || dominantType === 'productos';
+
+    const fieldsFound = [];
+    for (const r of blockRows) {
+      for (const c of r) {
+        const norm = normalizeText(c);
+        for (const group of KNOWN_META_LABELS) {
+          if (group.some(g => norm === normalizeText(g) || norm.includes(normalizeText(g)))) {
+            fieldsFound.push(group[0]);
+          }
+        }
+      }
+    }
+
+    return {
+      id: block.id,
+      type: dominantType,
+      confidence,
+      startRow: block.startRow,
+      endRow: block.endRow,
+      rowCount: block.rowCount,
+      fieldsFound: [...new Set(fieldsFound)],
+      importable: isImportable,
+      ignorable: !isImportable,
+    };
+  });
+}
+
+function buildOperationalRelevanceMap(classifiedBlocks, discoveredMetadata) {
+  const operationalBlocks = classifiedBlocks.filter(b => b.importable);
+  const ignoredBlocks = classifiedBlocks.filter(b => !b.importable);
+  const metaFieldsCount = Object.keys(discoveredMetadata || {}).length;
+  const operationalBlockScore = operationalBlocks.length > 0
+    ? Math.round((operationalBlocks.reduce((s, b) => s + b.confidence, 0) / operationalBlocks.length) * (operationalBlocks.length / classifiedBlocks.length) * 100)
+    : 0;
+  const metaScore = Math.min(metaFieldsCount * 10, 100);
+  const operationalScore = Math.round((operationalBlockScore * 0.7 + metaScore * 0.3));
+
+  return {
+    operationalBlocks,
+    ignoredBlocks,
+    operationalScore: Math.min(operationalScore, 100),
+    totalBlocks: classifiedBlocks.length,
+    operationalBlockCount: operationalBlocks.length,
+    ignoredBlockCount: ignoredBlocks.length,
+  };
+}
+
 function detectSparseFirstRow(rows) {
   if (!rows.length) return false;
   return countNonEmpty(rows[0]) <= 2;
@@ -205,6 +339,10 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
   const metadataBlockInfo = detectMetadataBlock(rows, sections);
   const tableBlockInfo = detectTableBlock(rows, sections);
 
+  const docBlocks = segmentDocumentBlocks(rows, sections, discoveredMetadata);
+  const classifiedBlocks = classifyDocumentBlocks(docBlocks, rows, discoveredMetadata);
+  const relevanceMap = buildOperationalRelevanceMap(classifiedBlocks, discoveredMetadata);
+
   const tableConfidence = tableBlockInfo ? Math.round(
     (density * 0.4 +
       (tableBlockInfo.headers.length > 0 ? Math.min(tableBlockInfo.headers.length / 10, 1) * 0.3 : 0) +
@@ -259,5 +397,7 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
     metadataBlock: metadataBlockInfo ? { startRow: metadataBlockInfo.startRow, endRow: metadataBlockInfo.endRow, fields: discoveredMetadata } : null,
     tableBlock: tableBlockInfo,
     documentSummary,
+    documentBlocks: classifiedBlocks,
+    operationalRelevanceMap: relevanceMap,
   };
 }
