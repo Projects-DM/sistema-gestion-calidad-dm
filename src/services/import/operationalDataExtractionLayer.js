@@ -268,7 +268,25 @@ export function buildOperationalRecords({ operationalDocumentModel, contract, re
     ? records
     : records.filter(r => r._completeness >= hints.minimumCompletenessScore);
 
-  return { records: filtered, totalBuilt: records.length, totalFiltered: filtered.length };
+  const discarded = records.filter(r => !filtered.includes(r));
+  const discardReasons = [];
+  for (const r of discarded) {
+    for (const f of r._missingFields) {
+      discardReasons.push(`${f} vacío.`);
+    }
+  }
+
+  const recordBuilderDiagnostics = {
+    constructedRecords: filtered.length,
+    discardedRecords: records.length - filtered.length,
+    discardReasons: [...new Set(discardReasons)],
+    completenessScore: filtered.length > 0
+      ? Math.round(filtered.reduce((s, r) => s + r._completeness, 0) / filtered.length)
+      : 0,
+    status: filtered.length > 0 ? 'OK' : 'FAILED',
+  };
+
+  return { records: filtered, totalBuilt: records.length, totalFiltered: filtered.length, recordBuilderDiagnostics };
 }
 
 

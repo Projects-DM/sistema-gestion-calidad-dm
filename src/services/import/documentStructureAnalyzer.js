@@ -361,6 +361,22 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
   const documentSegments = segmentDocument(rows, sections, discoveredMetadata);
   const relationshipModel = resolveOperationalRelationships(documentSegments?.operationalSection, discoveredMetadata);
 
+  const analysisDiagnostics = {
+    metadataFound: Object.keys(discoveredMetadata).length,
+    tablesFound: sections.length,
+    headersFound: !!(tableBlockInfo && tableBlockInfo.headers.length > 0),
+    confidence: Math.round(confidence * 100) / 100,
+    status: tableBlockInfo && tableBlockInfo.rows.length > 0 ? 'OK' : Object.keys(discoveredMetadata).length > 0 ? 'WARNING' : 'FAILED',
+  };
+
+  const segmentationDiagnostics = {
+    operationalRows: documentSegments?.operationalSection?.rows?.length || 0,
+    administrativeRows: documentSegments?.administrativeSection?.rows?.length || 0,
+    financialRows: documentSegments?.financialSection?.rows?.length || 0,
+    ignoredRows: (documentSegments?.ignoredSections || []).reduce((s, sec) => s + (sec.rows?.length || 0), 0),
+    status: (documentSegments?.operationalSection?.rows?.length || 0) > 0 ? 'OK' : 'WARNING',
+  };
+
   const tableConfidence = tableBlockInfo ? Math.round(
     (density * 0.4 +
       (tableBlockInfo.headers.length > 0 ? Math.min(tableBlockInfo.headers.length / 10, 1) * 0.3 : 0) +
@@ -417,5 +433,7 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
     documentSummary,
     documentSegments,
     relationshipModel,
+    analysisDiagnostics,
+    segmentationDiagnostics,
   };
 }
