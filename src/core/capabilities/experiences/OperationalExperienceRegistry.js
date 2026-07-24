@@ -24,8 +24,11 @@
  */
 
 import { toYmd, toHm, toNumber } from '../../../services/import/operationalDataExtractionLayer.js';
+import { getFlowOrchestrator } from './OperationalFlowOrchestrator.js';
 
 const registry = new Map();
+
+getFlowOrchestrator();
 
 /**
  * @typedef {object} OperationalExperienceDescriptor
@@ -131,7 +134,7 @@ registerExperience({
     name: 'Despachos',
     description: 'Registro, historial, reportes y búsqueda de despachos del módulo.',
     icon: 'Truck',
-    version: '1.0',
+    version: '2.0',
   },
   capabilities: {
     supportsImport: true,
@@ -141,7 +144,7 @@ registerExperience({
     supportsHumanValidation: true,
   },
   ui: {
-    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad'],
+    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad', 'estado'],
     fieldDisplay: {
       fecha: { label: 'Fecha Despacho' },
       hora: { label: 'Hora' },
@@ -153,6 +156,7 @@ registerExperience({
       destino: { label: 'Destino' },
       placa: { label: 'Placa' },
       conductor: { label: 'Conductor' },
+      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado'] },
       observaciones: { label: 'Observaciones' },
     },
   },
@@ -166,20 +170,21 @@ registerExperience({
   documentContract: {
     canonicalFields: [
       'fecha', 'hora', 'cliente', 'producto', 'lote',
-      'cantidad', 'peso', 'destino', 'placa', 'conductor', 'observaciones',
+      'cantidad', 'peso', 'destino', 'placa', 'conductor', 'estado', 'observaciones',
     ],
     synonyms: {
-      fecha: ['fecha', 'fec', 'fecha despacho', 'fecha de despacho', 'f despacho', 'f'],
-      hora: ['hora', 'hr', 'time', 'hora despacho'],
-      cliente: ['cliente', 'clientes', 'razon social', 'razon', 'cliente nombre', 'nombre cliente', 'tercero', 'nit', 'comprador'],
-      producto: ['producto', 'descripcion', 'desc', 'articulo', 'item', 'referencia', 'material'],
-      lote: ['lote', 'lote prod', 'numero lote', 'batch'],
-      cantidad: ['cantidad', 'cant', 'cant bolsas', 'cantidad bolsas', 'unidades', 'uds', 'qty', 'cant bultos', 'bolsas'],
-      peso: ['peso', 'kilos', 'kilo', 'kg', 'kilogramos', 'peso total'],
-      destino: ['destino', 'direccion', 'dir', 'ciudad', 'bodega', 'punto entrega', 'punto de entrega', 'sede'],
-      placa: ['placa', 'vehiculo', 'vehiculo placa', 'camion', 'tracto', 'placa vehiculo'],
-      conductor: ['conductor', 'chofer', 'driver', 'transportista', 'nombre conductor'],
-      observaciones: ['observaciones', 'obs', 'nota', 'notas', 'comentarios', 'observacion'],
+      fecha: ['fecha', 'fec', 'date', 'fecha despacho', 'fecha de despacho', 'f despacho', 'f', 'doc_date', 'posting_date'],
+      hora: ['hora', 'hr', 'time', 'hora despacho', 'hora salida', 'hora_carga', 'sale_time'],
+      cliente: ['cliente', 'clientes', 'razon social', 'razon', 'cliente nombre', 'nombre cliente', 'tercero', 'nit', 'comprador', 'customer', 'sold_to', 'ship_to', 'kunnr'],
+      producto: ['producto', 'descripcion', 'desc', 'articulo', 'item', 'referencia', 'material', 'matnr', 'material_code', 'sku', 'product_code'],
+      lote: ['lote', 'lote prod', 'numero lote', 'batch', 'charg', 'batch_number', 'lote_sap'],
+      cantidad: ['cantidad', 'cant', 'cant bolsas', 'cantidad bolsas', 'unidades', 'uds', 'qty', 'cant bultos', 'bolsas', 'quantity', 'menge', 'lfimg'],
+      peso: ['peso', 'kilos', 'kilo', 'kg', 'kilogramos', 'peso total', 'weight', 'brtgew', 'ntgew'],
+      destino: ['destino', 'direccion', 'dir', 'ciudad', 'bodega', 'punto entrega', 'punto de entrega', 'sede', 'delivery_addr', 'plant', 'werks'],
+      placa: ['placa', 'vehiculo', 'vehiculo placa', 'camion', 'tracto', 'placa vehiculo', 'vehicle', 'license_plate'],
+      conductor: ['conductor', 'chofer', 'driver', 'transportista', 'nombre conductor', 'driver_name'],
+      estado: ['estado', 'status', 'estado despacho', 'state', 'delivery_status'],
+      observaciones: ['observaciones', 'obs', 'nota', 'notas', 'comentarios', 'observacion', 'note', 'remarks', 'text'],
     },
     fieldNormalizers: {
       fecha: toYmd,
@@ -191,30 +196,36 @@ registerExperience({
   validationRules: {
     cliente: { required: true },
     producto: { required: true },
-    cantidad: { min: 1 },
+    fecha: { required: true },
+    cantidad: { required: true, min: 1 },
   },
   businessRules: [
     { field: 'producto', requires: ['lote'] },
     { field: 'cliente', requires: ['producto'] },
+    { field: 'conductor', requires: ['placa'] },
   ],
   complianceRules: [
     { field: 'cantidad', operator: 'greaterThan', value: 200, severity: 'info', message: 'Despacho mayor a 200 bolsas — verificar capacidad' },
+    { field: 'peso', operator: 'greaterThan', value: 5000, severity: 'info', message: 'Peso superior a 5000 kg — verificar límite vehículo' },
+    { field: 'estado', operator: 'equals', value: 'pendiente', severity: 'info', message: 'Despacho pendiente de procesar' },
   ],
   automationRules: [
     { field: 'fecha', action: 'setCurrentDate' },
     { field: 'hora', action: 'setCurrentTime' },
+    { field: 'estado', action: 'setDefault', value: 'pendiente' },
   ],
   visibilityRules: [
     { field: 'observaciones', showWhen: { producto: 'notEmpty' } },
+    { field: 'conductor', showWhen: { placa: 'notEmpty' } },
   ],
   dashboardRules: {
     enabled: true,
     trackTotals: true,
     trackCompliance: true,
     trackAuditMetrics: true,
-    groupBy: ['cliente', 'producto'],
+    groupBy: ['cliente', 'producto', 'estado'],
     trendBy: ['fecha'],
-    highlight: ['cliente', 'producto', 'cantidad'],
+    highlight: ['cliente', 'producto', 'cantidad', 'estado'],
   },
   defaultOrder: 1,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
