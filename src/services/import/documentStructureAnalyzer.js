@@ -154,6 +154,55 @@ function segmentDocument(rows, sections, discoveredMetadata) {
   return { operationalSection, administrativeSection, financialSection, ignoredSections };
 }
 
+function resolveOperationalRelationships(operationalSection, discoveredMetadata) {
+  const opMeta = operationalSection?.metadata || {};
+  const docMeta = discoveredMetadata || {};
+
+  const sharedFields = {};
+  for (const [key, value] of Object.entries(docMeta)) {
+    if (value) sharedFields[key] = value;
+  }
+  for (const [key, value] of Object.entries(opMeta)) {
+    if (value) sharedFields[key] = value;
+  }
+
+  const headers = operationalSection?.headers || [];
+  const dataRows = (operationalSection?.rows || []).slice(1).filter(r => r.some(c => String(c ?? '').trim() !== ''));
+
+  const repeatingCandidates = ['producto', 'lote', 'cantidad', 'temperatura', 'peso', 'cant bolsas', 'cantidad bolsas'];
+  const repeatingFields = [];
+  if (headers.length > 0) {
+    const headerLabels = headers.map(h => normalizeText(h));
+    for (const candidate of repeatingCandidates) {
+      const norm = normalizeText(candidate);
+      for (let i = 0; i < headerLabels.length; i++) {
+        if (headerLabels[i] === norm || headerLabels[i].includes(norm) || norm.includes(headerLabels[i])) {
+          repeatingFields.push({ field: candidate, header: headers[i], index: i });
+          break;
+        }
+      }
+    }
+  }
+
+  const fieldCounts = {};
+  for (const rf of repeatingFields) {
+    const values = new Set(dataRows.map(r => String(r[rf.index] ?? '').trim()).filter(Boolean));
+    fieldCounts[rf.field] = values.size;
+  }
+
+  return {
+    sharedFields,
+    repeatingFields: repeatingFields.map(rf => rf.field),
+    headerMap: repeatingFields.reduce((acc, rf) => { acc[rf.field] = rf.header; return acc; }, {}),
+    fieldCounts,
+    estimatedRecords: dataRows.length || 0,
+    hierarchy: {
+      shared: Object.keys(sharedFields),
+      repeating: repeatingFields.map(rf => rf.field),
+    },
+  };
+}
+
 function detectSparseFirstRow(rows) {
   if (!rows.length) return false;
   return countNonEmpty(rows[0]) <= 2;
@@ -310,6 +359,7 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
   const tableBlockInfo = detectTableBlock(rows, sections);
 
   const documentSegments = segmentDocument(rows, sections, discoveredMetadata);
+  const relationshipModel = resolveOperationalRelationships(documentSegments?.operationalSection, discoveredMetadata);
 
   const tableConfidence = tableBlockInfo ? Math.round(
     (density * 0.4 +
@@ -366,5 +416,6 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
     tableBlock: tableBlockInfo,
     documentSummary,
     documentSegments,
+    relationshipModel,
   };
 }

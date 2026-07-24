@@ -145,9 +145,10 @@ function getOriginalRow(aoa, rowIndex) {
   return (aoa[rowIndex] || []).map((v) => v !== undefined && v !== null ? String(v).trim() : '');
 }
 
-export function normalizeOperationalData({ parsedDocument, contract, structureAnalysis, operationalSection }) {
+export function normalizeOperationalData({ parsedDocument, contract, structureAnalysis, operationalSection, relationshipModel }) {
   const { canonicalFields, synonyms, fieldNormalizers = {} } = contract.documentContract || contract;
   let { rawHeaders, rawRows } = parsedDocument;
+  const relModel = relationshipModel || structureAnalysis?.relationshipModel;
 
   if (operationalSection?.rows?.length > 0) {
     rawHeaders = operationalSection.headers || [];
@@ -178,7 +179,18 @@ export function normalizeOperationalData({ parsedDocument, contract, structureAn
     }
     const record = {};
     for (const field of canonicalFields) {
-      const rawValue = pickValue(rowObj, matchedHeaders[field]);
+      let rawValue = pickValue(rowObj, matchedHeaders[field]);
+
+      if (!rawValue && relModel?.sharedFields) {
+        for (const [metaKey, metaVal] of Object.entries(relModel.sharedFields)) {
+          const syns = synonyms[field] || [field];
+          if (syns.some(s => normalizeHeader(s) === normalizeHeader(metaKey) || normalizeHeader(s).includes(normalizeHeader(metaKey)) || normalizeHeader(metaKey).includes(normalizeHeader(s)))) {
+            rawValue = metaVal;
+            break;
+          }
+        }
+      }
+
       const normalizer = fieldNormalizers[field] || defaultNormalizer;
       record[field] = normalizer(rawValue);
     }

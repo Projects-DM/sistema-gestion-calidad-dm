@@ -82,7 +82,8 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       const recResult = buildOperationalRecords({ operationalDocumentModel: docModel, contract, recordBuilderHints: contract?.recordBuilderHints });
       setBuiltRecords(recResult.records || []);
       const segments = analysis?.documentSegments;
-      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis, operationalSection: segments?.operationalSection });
+      const relModel = analysis?.relationshipModel;
+      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis, operationalSection: segments?.operationalSection, relationshipModel: relModel });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
       const rows = result.rows.map((r, i) => {
@@ -372,6 +373,63 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                               </div>
                             </div>
                           )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 1.8: Operational Relationship Model */}
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-amber-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-amber-800">MODELO OPERACIONAL DETECTADO</p>
+                    {(() => {
+                      const rm = structureAnalysis?.relationshipModel;
+                      if (!rm) return <p className="text-xs text-amber-500 italic mt-2">Analizando modelo operacional...</p>;
+                      const shared = rm.sharedFields || {};
+                      const cliente = shared.cliente || Object.values(shared).find(v => String(v).trim()) || '—';
+                      return (
+                        <div className="mt-3 space-y-3">
+                          <div>
+                            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+                              Cliente: <span className="normal-case font-bold text-amber-800">{cliente}</span>
+                            </p>
+                          </div>
+                          <div className="border-t border-amber-200/50 pt-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {rm.repeatingFields?.length > 0 && rm.repeatingFields.map((f, i) => {
+                              const count = rm.fieldCounts?.[f] || rm.estimatedRecords;
+                              return (
+                                <div key={i} className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-amber-600 uppercase">{f}</span>
+                                  <span className="text-lg font-bold text-amber-800">{count}</span>
+                                  <span className="text-[10px] text-amber-500">encontrado(s)</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {Object.keys(shared).length > 0 && (
+                            <div className="border-t border-amber-200/50 pt-2">
+                              <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Campos compartidos</p>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {Object.entries(shared).map(([k, v]) => (
+                                  <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100/70 text-amber-600 rounded text-[10px] font-medium border border-amber-200/50">
+                                    {k}: <strong>{v}</strong>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="border-t border-amber-200/50 pt-2 flex items-center gap-2">
+                            <span className="text-xs font-bold text-amber-700 uppercase">Registros construibles</span>
+                            <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
+                              {rm.estimatedRecords || 0}
+                            </span>
+                          </div>
                         </div>
                       );
                     })()}
