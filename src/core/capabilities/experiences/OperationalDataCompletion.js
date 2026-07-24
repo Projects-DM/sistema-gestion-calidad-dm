@@ -117,9 +117,24 @@ export function getReadinessState(record, contract) {
   const inconsistencies = detectInconsistencies(record, contract);
 
   if (record.estado === 'cerrado' || record.estado === 'closed') return 'closed';
+  if (record.estado === 'approved') return 'approved';
   if (record.estado === 'ready' || record.estado === 'listo') return 'ready';
   if (inconsistencies.length > 0) return 'inconsistent';
   if (errors.length > 0) return 'pending_completion';
   if (score < 100) return 'draft';
   return 'validated';
+}
+
+export function canApprove(record, contract) {
+  const state = getReadinessState(record, contract);
+  return state === 'ready' || state === 'validated';
+}
+
+export function canClose(record, contract) {
+  const state = getReadinessState(record, contract);
+  return state === 'approved';
+}
+
+export function canReopen(record, contract) {
+  return record.estado === 'cerrado' || record.estado === 'approved';
 }

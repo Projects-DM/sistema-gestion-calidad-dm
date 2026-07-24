@@ -64,6 +64,8 @@ export const auditExport = (args) => logEvent({ ...args, eventType: 'export' });
 export const auditCompliance = (args) => logEvent({ ...args, eventType: 'compliance' });
 export const auditRuleExecution = (args) => logEvent({ ...args, eventType: 'rule_execution' });
 export const auditFlowStep = (args) => logEvent({ ...args, eventType: 'flow_step' });
+export const auditApproval = (args) => logEvent({ ...args, eventType: 'record_approved' });
+export const auditClosure = (args) => logEvent({ ...args, eventType: 'record_closed' });
 
 export const OperationalAuditService = {
   logEvent,
@@ -77,4 +79,6 @@ export const OperationalAuditService = {
   auditCompliance,
   auditRuleExecution,
   auditFlowStep,
+  auditApproval,
+  auditClosure,
 };
