@@ -220,6 +220,124 @@ registerExperience({
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
 
+registerExperience({
+  experienceKey: 'inventarios',
+  metadata: {
+    name: 'Inventarios',
+    description: 'Control de inventarios, existencias, stock mínimo/máximo y alertas operacionales.',
+    icon: 'Package',
+    version: '1.0',
+  },
+  capabilities: {
+    supportsImport: true,
+    supportsExport: true,
+    supportsAudit: true,
+    supportsDashboard: true,
+    supportsHumanValidation: true,
+  },
+  ui: {
+    tableFields: ['fecha', 'producto', 'lote', 'cantidad_actual', 'stock_minimo', 'ubicacion', 'estado'],
+    fieldDisplay: {
+      fecha: { label: 'Fecha' },
+      producto: { label: 'Producto' },
+      lote: { label: 'Lote' },
+      cantidad_inicial: { label: 'Cant. Inicial' },
+      cantidad_actual: { label: 'Existencia Actual' },
+      stock_minimo: { label: 'Stock Mínimo' },
+      stock_maximo: { label: 'Stock Máximo' },
+      ubicacion: { label: 'Ubicación / Bodega' },
+      estado: { label: 'Estado' },
+      responsable: { label: 'Responsable' },
+      observaciones: { label: 'Observaciones' },
+    },
+  },
+  persistence: {
+    tableName: 'inventarios',
+    prefix: 'INV',
+    fieldMapping: {},
+  },
+  documentContract: {
+    canonicalFields: [
+      'fecha', 'producto', 'lote', 'cantidad_inicial', 'cantidad_actual',
+      'stock_minimo', 'stock_maximo', 'ubicacion', 'estado', 'responsable', 'observaciones',
+    ],
+    synonyms: {
+      fecha: ['fecha', 'fec', 'date', 'fecha inventario', 'fec inv'],
+      producto: ['producto', 'descripcion', 'desc', 'articulo', 'item', 'referencia', 'material'],
+      lote: ['lote', 'batch', 'numero lote', 'lote prod'],
+      cantidad_inicial: ['cantidad inicial', 'inicial', 'stock inicial', 'inv inicial', 'cant inicio'],
+      cantidad_actual: ['cantidad actual', 'actual', 'stock actual', 'existencia', 'saldo', 'inventario actual', 'cant actual', 'exist'],
+      stock_minimo: ['cantidad minima', 'stock minimo', 'minimo', 'min stock', 'stock min', 'cant minima', 'nivel minimo'],
+      stock_maximo: ['cantidad maxima', 'stock maximo', 'maximo', 'max stock', 'stock max', 'cant maxima', 'nivel maximo'],
+      ubicacion: ['ubicacion', 'bodega', 'almacen', 'deposito', 'zona', 'lugar', 'ubic'],
+      estado: ['estado', 'status', 'condicion', 'estado producto'],
+      responsable: ['responsable', 'encargado', 'responsable inv', 'usuario'],
+      observaciones: ['observaciones', 'obs', 'notas', 'comentarios', 'observacion', 'nota'],
+    },
+    fieldNormalizers: {
+      fecha: toYmd,
+      cantidad_inicial: toNumber,
+      cantidad_actual: toNumber,
+      stock_minimo: toNumber,
+      stock_maximo: toNumber,
+    },
+  },
+  validationRules: {
+    producto: { required: true },
+    cantidad_actual: { required: true, min: 0 },
+    stock_minimo: { min: 0 },
+    stock_maximo: { min: 0 },
+  },
+  businessRules: [
+    { field: 'stock_minimo', requires: ['cantidad_actual'] },
+    { field: 'stock_maximo', requires: ['cantidad_actual'] },
+    { field: 'lote', requires: ['producto'] },
+  ],
+  complianceRules: [
+    {
+      field: 'cantidad_actual',
+      operator: 'lessThan',
+      valueField: 'stock_minimo',
+      severity: 'warning',
+      message: 'Stock por debajo del mínimo — programar reabastecimiento',
+    },
+    {
+      field: 'cantidad_actual',
+      operator: 'greaterThan',
+      valueField: 'stock_maximo',
+      severity: 'info',
+      message: 'Stock excede el máximo — verificar capacidad de almacenamiento',
+    },
+    {
+      field: 'estado',
+      operator: 'equals',
+      value: 'en_cuarentena',
+      severity: 'critical',
+      message: 'Producto en cuarentena — requiere liberación por calidad',
+    },
+  ],
+  automationRules: [
+    { field: 'fecha', action: 'setCurrentDate' },
+    { field: 'estado', action: 'setDefault', value: 'aprobado' },
+  ],
+  visibilityRules: [
+    { field: 'observaciones', showWhen: { producto: 'notEmpty' } },
+    { field: 'stock_maximo', showWhen: { stock_minimo: 'notEmpty' } },
+    { field: 'responsable', showWhen: { producto: 'notEmpty' } },
+  ],
+  dashboardRules: {
+    enabled: true,
+    trackTotals: true,
+    trackCompliance: true,
+    trackAuditMetrics: true,
+    groupBy: ['producto', 'ubicacion', 'estado'],
+    trendBy: ['fecha'],
+    highlight: ['producto', 'cantidad_actual', 'estado'],
+  },
+  defaultOrder: 2,
+  resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
+});
+
 export const OperationalExperienceRegistry = {
   registerExperience,
   listExperiences,
