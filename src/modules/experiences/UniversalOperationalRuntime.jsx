@@ -467,12 +467,11 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">{contract.metadata.name || experienceKey}</h2>
-          {contract.metadata.description && (
-            <p className="text-sm text-gray-500 mt-1">{contract.metadata.description}</p>
-          )}
-        </div>
+        {contract.metadata.description && (
+          <div>
+            <p className="text-sm text-gray-500">{contract.metadata.description}</p>
+          </div>
+        )}
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
           {!isFormOpen && (
@@ -650,7 +649,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
           {/* Search + Filters bar */}
           <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gray-50/50">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full sm:w-auto flex-wrap">
               <div className="relative w-full sm:w-80">
                 <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}

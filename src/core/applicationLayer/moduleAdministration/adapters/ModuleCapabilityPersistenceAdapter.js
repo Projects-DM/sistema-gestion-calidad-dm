@@ -37,15 +37,21 @@ export class ModuleCapabilityPersistenceAdapter {
 
     const supabase = getSupabaseClient();
 
-    const normalized = assignments.map((a) => ({
-      assignmentId: a.assignmentId,
-      moduleId: moduleId,
-      packageId: a.packageId,
-      state: a.state || 'active',
-      owner: a.owner || 'system',
-      version: a.version || 'v1',
-      orderIndex: a.orderIndex ?? 0,
-    }));
+    const normalized = assignments.map((a) => {
+      const base = {
+        assignmentId: a.assignmentId,
+        moduleId: moduleId,
+        packageId: a.packageId,
+        state: a.state || 'active',
+        owner: a.owner || 'system',
+        version: a.version || 'v1',
+        orderIndex: a.orderIndex ?? 0,
+      };
+      if (String(a.packageId || '').replace('pkg:standard:', '') === 'operational-experiences' && Array.isArray(a.enabledExperiences)) {
+        base.enabledExperiences = a.enabledExperiences;
+      }
+      return base;
+    });
 
     const { error } = await supabase
       .from('sgc_modules')
