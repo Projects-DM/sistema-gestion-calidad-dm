@@ -1,3 +1,17 @@
+const KNOWN_META_LABELS = [
+  ['fecha', 'fec', 'date', 'fecha despacho', 'fecha salida'],
+  ['cliente', 'razon social', 'razon', 'comprador', 'cliente destino'],
+  ['destino', 'direccion', 'dir', 'ciudad', 'bodega', 'punto entrega'],
+  ['conductor', 'chofer', 'driver', 'transportista'],
+  ['placa', 'vehiculo', 'camion', 'vehicle', 'license plate'],
+  ['factura', 'nro factura', 'numero factura', 'factura nro', 'doc number', 'invoice'],
+  ['observaciones', 'obs', 'notas', 'comentarios', 'observacion'],
+  ['producto', 'descripcion', 'articulo', 'item', 'material', 'sku'],
+  ['lote', 'batch', 'numero lote', 'lote prod'],
+  ['temperatura', 'temp', 'temperatura producto', 'temp carga'],
+  ['cantidad', 'cant', 'cant bolsas', 'cantidad bolsas', 'qty'],
+];
+
 function countNonEmpty(row) {
   return row.filter(c => String(c ?? '').trim() !== '').length;
 }
@@ -8,6 +22,32 @@ function collectColumnStats(rows) {
   const avg = colCounts.reduce((a, b) => a + b, 0) / total;
   const variance = colCounts.reduce((s, c) => s + Math.pow(c - avg, 2), 0) / total;
   return { totalRows: rows.length, avgCols: avg, stdDev: Math.sqrt(variance), minCols: Math.min(...colCounts), maxCols: Math.max(...colCounts) };
+}
+
+function detectMetadataBlock(rows, sections) {
+  if (!sections || sections.length === 0) return null;
+  const endRow = sections[0].startRow;
+  if (endRow <= 0) return null;
+  return { startRow: 0, endRow: endRow - 1 };
+}
+
+function detectTableBlock(rows, sections) {
+  if (!sections || sections.length === 0) {
+    if (rows.length > 0) {
+      return { startRow: 0, endRow: rows.length - 1, headers: [], rows, columns: rows[0]?.length || 0 };
+    }
+    return null;
+  }
+  const best = sections.reduce((a, b) => a.rowCount > b.rowCount ? a : b);
+  const headerRow = rows[best.startRow] || [];
+  const dataRows = rows.slice(best.startRow + 1, best.endRow + 1);
+  return {
+    startRow: best.startRow,
+    endRow: best.endRow,
+    headers: headerRow.filter(h => String(h ?? '').trim() !== ''),
+    rows: dataRows,
+    columns: headerRow.length,
+  };
 }
 
 function detectSparseFirstRow(rows) {
@@ -78,10 +118,43 @@ function dataDensityScore(rows) {
   return total > 0 ? filled / total : 0;
 }
 
+function normalizeLabel(str) {
+  return str.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function extractAllMetadata(rows) {
+  const meta = {};
+  for (let i = 0; i < Math.min(rows.length, 50); i++) {
+    const row = rows[i] || [];
+    for (let j = 0; j < row.length; j++) {
+      const cell = String(row[j] ?? '').trim();
+      if (!cell) continue;
+      const norm = normalizeLabel(cell);
+      for (const group of KNOWN_META_LABELS) {
+        if (group.some(g => norm === g || norm.startsWith(g) || norm.includes(g))) {
+          const value = String(row[j + 1] ?? '').trim();
+          const valueNext = String(row[j + 2] ?? '').trim();
+          if (value && !value.endsWith(':') && !group.includes(normalizeLabel(value))) {
+            meta[group[0]] = value;
+          } else if (valueNext && !valueNext.endsWith(':') && !group.includes(normalizeLabel(valueNext))) {
+            meta[group[0]] = valueNext;
+          }
+        }
+      }
+      if (norm.endsWith(':') && j + 1 < row.length) {
+        const key = norm.replace(/:$/, '').trim();
+        const val = String(row[j + 1] ?? '').trim();
+        if (key && val) meta[key] = val;
+      }
+    }
+  }
+  return meta;
+}
+
 export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fileType }) {
   const rows = rawRows || [];
   if (!rows.length) {
-    return { documentType: 'TABULAR', confidence: 0.5, signals: {}, sections: [], recommendation: 'empty_default' };
+    return { documentType: 'TABULAR', confidence: 0.5, signals: {}, sections: [], metadata: {}, recommendation: 'empty_default' };
   }
 
   const stats = collectColumnStats(rows);
@@ -126,6 +199,39 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
   const confidence = total > 0 ? Math.max(tabular, semi) / total : 0.5;
 
   const sections = isSemi || (confidence > 0.55 && semi > tabular * 0.6) ? extractTableRegions(rows) : [];
+  const mappedSections = sections.map((s, i) => ({ ...s, id: `table_${i + 1}`, type: 'data_table' }));
+
+  const discoveredMetadata = extractAllMetadata(rows);
+  const metadataBlockInfo = detectMetadataBlock(rows, sections);
+  const tableBlockInfo = detectTableBlock(rows, sections);
+
+  const tableConfidence = tableBlockInfo ? Math.round(
+    (density * 0.4 +
+      (tableBlockInfo.headers.length > 0 ? Math.min(tableBlockInfo.headers.length / 10, 1) * 0.3 : 0) +
+      (tableBlockInfo.rows.length > 0 ? Math.min(tableBlockInfo.rows.length / 50, 1) * 0.3 : 0)
+    ) * 100) / 100 : 0;
+
+  const metadataConfidence = Object.keys(discoveredMetadata).length > 0 ? Math.round(
+    (Math.min(Object.keys(discoveredMetadata).length / 7, 1) * 0.6 +
+      (labelRatio > 0.3 ? 0.4 : labelRatio > 0.15 ? 0.2 : 0))
+    * 100) / 100 : 0;
+
+  const recordConfidence = Math.round(
+    (tableConfidence * 0.6 + metadataConfidence * 0.4)
+  ) * 100 / 100;
+
+  const documentSummary = {
+    hasMetadata: metadataBlockInfo !== null && Object.keys(discoveredMetadata).length > 0,
+    hasTable: tableBlockInfo !== null && tableBlockInfo.rows.length > 0,
+    totalRows: rows.length,
+    totalHeaders: tableBlockInfo ? tableBlockInfo.headers.length : 0,
+    metadataFieldsFound: Object.keys(discoveredMetadata).length,
+    tableHeadersFound: tableBlockInfo ? tableBlockInfo.headers.length : 0,
+    tableRowsFound: tableBlockInfo ? tableBlockInfo.rows.length : 0,
+    tableConfidence,
+    metadataConfidence,
+    recordConfidence,
+  };
 
   return {
     documentType: isSemi ? 'SEMI_STRUCTURED' : 'TABULAR',
@@ -142,8 +248,16 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
       dataDensity: Math.round(density * 100) / 100,
       sequentialFirstCol: sequential,
     },
-    sections: sections.map((s, i) => ({ ...s, id: `table_${i + 1}`, type: 'data_table' })),
-    metadata: { totalRows: rows.length, totalColumns: stats.maxCols },
+    sections: mappedSections,
+    metadata: {
+      totalRows: rows.length,
+      totalColumns: stats.maxCols,
+      discoveredLabels: Object.keys(discoveredMetadata).length > 0 ? discoveredMetadata : undefined,
+    },
+    hasMetadataBlock: Object.keys(discoveredMetadata).length > 0,
     recommendation: isSemi ? 'section_aware' : 'standard',
+    metadataBlock: metadataBlockInfo ? { startRow: metadataBlockInfo.startRow, endRow: metadataBlockInfo.endRow, fields: discoveredMetadata } : null,
+    tableBlock: tableBlockInfo,
+    documentSummary,
   };
 }

@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert, FileText } from 'lucide-react';
 import { parseDocument, analyzeDocumentStructure } from '../../services/import/index.js';
-import { normalizeOperationalData } from '../../services/import/operationalDataExtractionLayer.js';
+import { normalizeOperationalData, buildOperationalDocumentModel, buildOperationalRecords } from '../../services/import/operationalDataExtractionLayer.js';
 import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function getFieldLabel(contract, field) {
@@ -48,6 +48,10 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const [unknownHeaders, setUnknownHeaders] = useState([]);
   const [parsedRows, setParsedRows] = useState([]);
   const [structureAnalysis, setStructureAnalysis] = useState(null);
+  const [parsedDoc, setParsedDoc] = useState(null);
+  const [activeSheet, setActiveSheet] = useState(null);
+  const [completenessScore, setCompletenessScore] = useState(0);
+  const [builtRecords, setBuiltRecords] = useState([]);
 
   const canonicalFields = contract?.documentContract?.canonicalFields || [];
   const tableFields = getTableFields(contract);
@@ -73,6 +77,10 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
         fileType: parsedDoc.fileType,
       });
       setStructureAnalysis(analysis);
+      setParsedDoc(parsedDoc);
+      const docModel = buildOperationalDocumentModel({ parsedDocument: parsedDoc, structureAnalysis: analysis });
+      const recResult = buildOperationalRecords({ operationalDocumentModel: docModel, contract, recordBuilderHints: contract?.recordBuilderHints });
+      setBuiltRecords(recResult.records || []);
       const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
@@ -90,6 +98,8 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       setMissingHeaders(result.missingHeaders);
       setUnknownHeaders(unknown);
       setParsedRows(rows);
+      setActiveSheet(parsedDoc.activeSheet || null);
+      setCompletenessScore(result.completenessScore ?? 0);
       setPhase('preview');
     } catch (e) {
       setError(e?.message || 'Error al procesar el archivo.');
@@ -113,6 +123,10 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     setUnknownHeaders([]);
     setParsedRows([]);
     setStructureAnalysis(null);
+    setParsedDoc(null);
+    setActiveSheet(null);
+    setCompletenessScore(0);
+    setBuiltRecords([]);
   };
 
   const handleClose = () => {
@@ -170,7 +184,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
               onDragLeave={e => { e.preventDefault(); setIsDragging(false); }}
               onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
             >
-              <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
+               <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-sm">
@@ -178,7 +192,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900">Arrastra tu Excel aquí o selecciona un archivo</p>
-                    <p className="text-xs text-gray-500 mt-1">Se detectan encabezados de forma inteligente (sinónimos). Cada fila podrá revisarse antes de importar. Formatos soportados: Excel (.xlsx, .xls) y CSV.</p>
+                    <p className="text-xs text-gray-500 mt-1">Se detectan encabezados de forma inteligente (sinónimos). Cada fila podrá revisarse antes de importar. Formatos soportados: Excel (.xlsx, .xls), CSV y PDF.</p>
                     {fileName && <p className="text-xs text-gray-700 mt-2">Archivo: <span className="font-semibold">{fileName}</span></p>}
                   </div>
                 </div>
@@ -210,116 +224,300 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
             </div>
           )}
 
-          {/* Preview phase */}
+          {/* Preview phase — 5-block document rendering */}
           {phase === 'preview' && (
             <>
-              {/* Summary banner */}
-              <div className="rounded-2xl border border-green-200 bg-green-50 px-4 sm:px-5 py-3 sm:py-4">
+              {/* Block 1: Document Info */}
+              <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/[0.02] px-4 sm:px-5 py-3 sm:py-4">
                 <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-green-800">Documento procesado correctamente</p>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-green-700">
-                      <span><strong>{rows.length}</strong> filas detectadas</span>
-                      <span><strong>{validCount}</strong> filas válidas</span>
-                      {errorCount > 0 && <span className="text-amber-700"><strong>{errorCount}</strong> filas con observaciones</span>}
-                      <span><strong>{canonicalFields.length}</strong> campos configurados</span>
-                      <span><strong>{canonicalFields.length - missingHeaders.length}</strong> campos encontrados</span>
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                    {parsedDoc?.fileType === 'pdf' ? (
+                      <FileText className="w-4.5 h-4.5 text-primary" />
+                    ) : (
+                      <FileSpreadsheet className="w-4.5 h-4.5 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900">Bloque 1 — Información del documento</p>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-600">
+                      <span>Tipo: <strong className="text-gray-800">{parsedDoc?.fileType?.toUpperCase() || '—'}</strong></span>
+                      {activeSheet && <span>Hoja activa: <strong className="text-gray-800">{activeSheet}</strong></span>}
+                      {parsedDoc?.sheetNames?.length > 1 && <span>Hojas: <strong className="text-gray-800">{parsedDoc.sheetNames.length}</strong></span>}
+                      <span>Filas encontradas: <strong className="text-gray-800">{rows.length}</strong></span>
+                      {structureAnalysis?.signals?.avgColumns > 0 && <span>Columnas: <strong className="text-gray-800">{structureAnalysis.signals.avgColumns}</strong></span>}
+                      <span>Documento: <strong className="text-gray-800">{fileName}</strong></span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Document Intelligence */}
-              {structureAnalysis && (
-                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 sm:px-5 py-3 sm:py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[10px] font-bold text-indigo-700">{structureAnalysis.documentType === 'SEMI_STRUCTURED' ? 'S/E' : 'TB'}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-indigo-800">Inteligencia documental</p>
-                      <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-indigo-700">
-                        <span>
-                          Tipo: <strong>{structureAnalysis.documentType === 'SEMI_STRUCTURED' ? 'Semi-estructurado' : 'Tabular'}</strong>
-                        </span>
-                        <span>
-                          Confianza: <strong>{Math.round(structureAnalysis.confidence * 100)}%</strong>
-                        </span>
-                        {structureAnalysis.sections?.length > 0 && (
-                          <span>
-                            Tablas detectadas: <strong>{structureAnalysis.sections.length}</strong>
-                          </span>
-                        )}
-                        {structureAnalysis.signals?.avgColumns > 0 && (
-                          <span>
-                            Columnas promedio: <strong>{structureAnalysis.signals.avgColumns}</strong>
-                          </span>
-                        )}
-                        {structureAnalysis.signals?.dataDensity > 0 && (
-                          <span>
-                            Densidad: <strong>{Math.round(structureAnalysis.signals.dataDensity * 100)}%</strong>
-                          </span>
+              {/* Block 1.5: Document Analysis Summary */}
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-emerald-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-emerald-800">DOCUMENTO ANALIZADO</p>
+                    <div className="mt-3 space-y-3">
+                      <div>
+                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Metadata encontrada</p>
+                        {structureAnalysis?.metadataBlock?.fields && Object.keys(structureAnalysis.metadataBlock.fields).length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {Object.entries(structureAnalysis.metadataBlock.fields).map(([k, v]) => (
+                              <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100/70 text-emerald-600 rounded text-[10px] font-medium border border-emerald-200/50">
+                                {k}: <strong>{v}</strong>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-emerald-500 italic mt-1">No se encontró metadata</p>
                         )}
                       </div>
+                      <div className="border-t border-emerald-200/50 pt-2">
+                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                          Tabla encontrada
+                          {structureAnalysis?.tableBlock?.headers?.length > 0 && (
+                            <span className="ml-2 font-normal normal-case">Headers: {structureAnalysis.tableBlock.headers.length}</span>
+                          )}
+                        </p>
+                        {structureAnalysis?.tableBlock?.headers?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {structureAnalysis.tableBlock.headers.map((h, i) => (
+                              <span key={i} className="inline-flex items-center px-2 py-0.5 bg-emerald-100/70 text-emerald-600 rounded text-[10px] font-medium border border-emerald-200/50">
+                                {h}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-emerald-500 italic mt-1">No se detectó tabla</p>
+                        )}
+                      </div>
+                      <div className="border-t border-emerald-200/50 pt-2">
+                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+                          Registros encontrados: <span className="normal-case font-bold text-emerald-800">{structureAnalysis?.documentSummary?.tableRowsFound ?? rows.length}</span>
+                        </p>
+                      </div>
+                      {structureAnalysis?.documentSummary && (
+                        <div className="border-t border-emerald-200/50 pt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-emerald-600">
+                          <span>Metadata: {structureAnalysis.documentSummary.metadataFieldsFound} campos</span>
+                          <span>Headers tabla: {structureAnalysis.documentSummary.tableHeadersFound}</span>
+                          <span>Filas tabla: {structureAnalysis.documentSummary.tableRowsFound}</span>
+                          <span>Total filas doc: {structureAnalysis.documentSummary.totalRows}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
 
-              {/* Header mapping */}
+              {/* Block 2: Metadata Found */}
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <span className="text-[10px] font-bold text-indigo-700">{structureAnalysis?.documentType === 'SEMI_STRUCTURED' ? 'M' : 'H'}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-indigo-800">Bloque 2 — Metadata encontrada</p>
+                    <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-indigo-700">
+                      <span>Tipo documento: <strong>{structureAnalysis?.documentType === 'SEMI_STRUCTURED' ? 'Semi-estructurado' : 'Tabular'}</strong></span>
+                      <span>Confianza: <strong>{Math.round((structureAnalysis?.confidence ?? 0) * 100)}%</strong></span>
+                      {structureAnalysis?.sections?.length > 0 && <span>Tablas detectadas: <strong>{structureAnalysis.sections.length}</strong></span>}
+                      {structureAnalysis?.signals?.dataDensity > 0 && <span>Densidad: <strong>{Math.round(structureAnalysis.signals.dataDensity * 100)}%</strong></span>}
+                    </div>
+                    {structureAnalysis?.metadata?.discoveredLabels && Object.keys(structureAnalysis.metadata.discoveredLabels).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {Object.entries(structureAnalysis.metadata.discoveredLabels).map(([k, v]) => (
+                          <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100/70 text-indigo-600 rounded text-[10px] font-medium border border-indigo-200/50">
+                            {k}: <strong>{v}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {(!structureAnalysis?.metadata?.discoveredLabels || Object.keys(structureAnalysis.metadata.discoveredLabels).length === 0) && (
+                      <p className="text-xs text-indigo-500 italic mt-2">No se encontraron metadatos adicionales fuera de la tabla.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 3: Raw Table Preview (primeras 10 filas del documento original) */}
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                   <Eye className="w-4 h-4 text-gray-600" />
-                  <p className="text-sm font-bold text-gray-900">Mapeo de encabezados</p>
+                  <p className="text-sm font-bold text-gray-900">Bloque 3 — Tabla detectada</p>
+                  <span className="text-xs text-gray-500">Vista previa del documento original.</span>
                 </div>
-                <div className="p-4 sm:p-5 text-sm">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Encontrados ({canonicalFields.length - missingHeaders.length})</p>
-                      <div className="space-y-1">
-                        {canonicalFields.filter(f => matchedHeaders[f]).map(f => (
-                          <div key={f} className="flex items-center gap-2 text-xs">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                            <span className="font-medium text-gray-800">{getFieldLabel(contract, f)}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="text-gray-600 font-mono">{matchedHeaders[f]}</span>
-                          </div>
+                <div className="overflow-x-auto custom-scrollbar">
+                  <div className="max-h-[40dvh] overflow-y-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead>
+                        <tr className="bg-gray-100 border-b border-gray-200 text-[10px] sm:text-xs font-bold text-gray-600 uppercase tracking-wider sticky top-0 z-10">
+                          {(parsedDoc?.rawHeaders || []).map((h, i) => (
+                            <th key={i} className={`p-2 sm:p-3 ${matchedHeaders[Object.keys(matchedHeaders).find(k => matchedHeaders[k] === h)] ? 'text-green-700' : 'text-gray-500'}`}>
+                              {h || `Columna ${i + 1}`}
+                              {matchedHeaders[Object.keys(matchedHeaders).find(k => matchedHeaders[k] === h)] && (
+                                <span className="ml-1 text-[8px] text-green-500">●</span>
+                              )}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {(parsedDoc?.rawRows || []).slice(0, 10).map((row, idx) => (
+                          <tr key={idx} className="hover:bg-gray-50/50 text-xs text-gray-700">
+                            {(parsedDoc?.rawHeaders || []).map((_, ci) => (
+                              <td key={ci} className="p-2 sm:p-3 max-w-[200px] truncate">{row[ci] !== undefined ? String(row[ci]) : ''}</td>
+                            ))}
+                          </tr>
                         ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Faltantes ({missingHeaders.length})</p>
-                      <div className="space-y-1">
-                        {missingHeaders.map(f => (
-                          <div key={f} className="flex items-center gap-2 text-xs">
-                            <AlertTriangle className="w-3.5 h-3.5 text-accent shrink-0" />
-                            <span className="font-medium text-gray-800">{getFieldLabel(contract, f)}</span>
-                            <span className="text-gray-400">(se importará vacío)</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">No reconocidos ({unknownHeaders.length})</p>
-                      <div className="space-y-1">
-                        {unknownHeaders.map(h => (
-                          <div key={h} className="flex items-center gap-2 text-xs">
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                            <span className="font-mono text-gray-600">{h}</span>
-                            <span className="text-gray-400">(se ignora)</span>
-                          </div>
-                        ))}
-                        {!unknownHeaders.length && (
-                          <p className="text-xs text-gray-500 italic">Todos los encabezados fueron reconocidos.</p>
-                        )}
-                      </div>
-                    </div>
+                      </tbody>
+                    </table>
+                    {(parsedDoc?.rawRows?.length || 0) > 10 && (
+                      <p className="px-4 sm:px-5 py-2 text-[10px] text-gray-400 italic border-t border-gray-100">
+                        Mostrando 10 de {parsedDoc.rawRows.length} filas.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Row preview with human validation */}
+              {/* Block 4: Operational Mapping */}
+              <div className="rounded-2xl border border-gray-200 overflow-hidden">
+                <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-gray-600" />
+                  <p className="text-sm font-bold text-gray-900">Bloque 4 — Mapeo operacional</p>
+                  <span className="text-xs text-gray-500">Cómo cada columna del documento se asigna al contrato.</span>
+                </div>
+                <div className="p-4 sm:p-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {canonicalFields.filter(f => matchedHeaders[f]).map(f => (
+                      <div key={f} className="flex items-center gap-2 text-xs bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        <span className="font-mono text-gray-500 font-medium">{matchedHeaders[f]}</span>
+                        <span className="text-gray-300">→</span>
+                        <span className="font-semibold text-gray-800">{getFieldLabel(contract, f)}</span>
+                        <span className="text-[10px] text-gray-400 ml-auto">({f})</span>
+                      </div>
+                    ))}
+                    {missingHeaders.map(f => (
+                      <div key={f} className="flex items-center gap-2 text-xs bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span className="text-gray-400 italic">—</span>
+                        <span className="text-gray-300">→</span>
+                        <span className="font-semibold text-gray-800">{getFieldLabel(contract, f)}</span>
+                        <span className="text-[10px] text-amber-500 ml-auto">no encontrado</span>
+                      </div>
+                    ))}
+                  </div>
+                  {unknownHeaders.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-2">Columnas no reconocidas ({unknownHeaders.length})</p>
+                      <div className="flex flex-wrap gap-2">
+                        {unknownHeaders.map(h => (
+                          <span key={h} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-500 rounded text-[10px] font-mono">
+                            {h}
+                            <span className="text-gray-400">(se ignora)</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Block 5: Results */}
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-gray-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900">Bloque 5 — Resultado final</p>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-600">
+                      <span>Campos encontrados: <strong className="text-green-700">{canonicalFields.length - missingHeaders.length}</strong></span>
+                      <span>Campos faltantes: <strong className="text-amber-600">{missingHeaders.length}</strong></span>
+                      <span>Campos desconocidos: <strong className="text-amber-500">{unknownHeaders.length}</strong></span>
+                      <span>
+                        Score: <strong>{Math.round(completenessScore * 100)}%</strong>
+                        <span className="inline-block w-20 h-2 ml-1.5 rounded-full bg-gray-200 align-middle overflow-hidden">
+                          <span className={`block h-full rounded-full transition-all ${
+                            completenessScore >= 0.8 ? 'bg-green-500' : completenessScore >= 0.5 ? 'bg-accent' : 'bg-red-400'
+                          }`} style={{ width: `${Math.round(completenessScore * 100)}%` }} />
+                        </span>
+                      </span>
+                      <span>Registros válidos: <strong className="text-green-700">{validCount}</strong></span>
+                      <span>Registros inválidos: <strong className="text-red-500">{errorCount}</strong></span>
+                    </div>
+                    {missingHeaders.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {missingHeaders.map(f => (
+                          <span key={f} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-medium">
+                            No se encontró: {getFieldLabel(contract, f)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 6: Built Operational Records */}
+              <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-violet-100 border border-violet-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-violet-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-violet-800">REGISTROS OPERACIONALES CONSTRUIDOS</p>
+                    <p className="text-xs text-violet-600 mt-1">
+                      {builtRecords.length} registro(s) construido(s) con herencia de metadata y resolución de tipos.
+                    </p>
+                    {builtRecords.length > 0 && (
+                      <div className="mt-3 space-y-2 max-h-[40dvh] overflow-y-auto">
+                        {builtRecords.slice(0, 25).map((rec, idx) => {
+                          const displayFields = canonicalFields.filter(f => String(rec[f] ?? '').trim() !== '');
+                          return (
+                            <div key={idx} className="rounded-xl border border-violet-200/70 bg-white px-3 py-2.5 text-xs">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="font-bold text-violet-800">Registro #{idx + 1}</span>
+                                <span className={[
+                                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
+                                  rec._completeness >= 80 ? 'bg-green-100 text-green-700' : rec._completeness >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700',
+                                ].join(' ')}>
+                                  {rec._completeness}%
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-1">
+                                {displayFields.map(f => (
+                                  <div key={f} className="flex items-center gap-1">
+                                    <span className="font-medium text-gray-500">{getFieldLabel(contract, f)}:</span>
+                                    <span className="text-gray-800 truncate">{String(rec[f] ?? '')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {rec._missingFields?.length > 0 && (
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {rec._missingFields.map(f => (
+                                    <span key={f} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-[9px] font-medium border border-red-100">
+                                      {getFieldLabel(contract, f)} <span className="text-red-300">(faltante)</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {builtRecords.length === 0 && (
+                      <p className="text-xs text-violet-500 italic mt-2">No se pudieron construir registros a partir del documento.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Human Validation: normalized records table */}
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex items-center gap-2">
