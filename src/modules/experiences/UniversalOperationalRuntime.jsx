@@ -163,10 +163,23 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       return;
     }
     try {
-      await orchestratorRef.current.exportRecords(records, auditUser);
+      await orchestratorRef.current.exportPdf(records, auditUser);
       setBanner({ type: 'success', message: 'PDF generado.' });
     } catch {
       setBanner({ type: 'error', message: 'No se pudo generar el PDF.' });
+    }
+  };
+
+  const handleExportCsv = async () => {
+    if (!records?.length) {
+      setBanner({ type: 'error', message: 'No hay registros para exportar.' });
+      return;
+    }
+    try {
+      await orchestratorRef.current.exportExcel(records, auditUser);
+      setBanner({ type: 'success', message: 'CSV exportado.' });
+    } catch {
+      setBanner({ type: 'error', message: 'No se pudo exportar.' });
     }
   };
 
@@ -195,6 +208,14 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                   <button onClick={handleExportPdf} disabled={loading || saving}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
                     <FileText className="w-4 h-4" /> PDF
+                  </button>
+                </RoleGate>
+              )}
+              {contract.capabilities?.supportsExport && (
+                <RoleGate allowedRoles={['administrador', 'calidad']}>
+                  <button onClick={handleExportCsv} disabled={loading || saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50">
+                    <Download className="w-4 h-4" /> CSV
                   </button>
                 </RoleGate>
               )}
@@ -357,13 +378,13 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                       ))}
                       <td className="p-4 pr-6 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <RoleGate allowedRoles={['administrador']}>
+                          <RoleGate allowedRoles={['administrador', 'calidad', 'operativo']}>
                             <button onClick={() => handleEdit(record)}
                               className="p-1.5 text-gray-400 hover:text-primary bg-white border border-gray-200 rounded-lg shadow-sm" title="Editar">
                               <Edit2 className="w-4 h-4" />
                             </button>
                           </RoleGate>
-                          <RoleGate allowedRoles={['administrador']}>
+                          <RoleGate allowedRoles={['administrador', 'calidad', 'operativo']}>
                             <button onClick={() => handleDelete(record.id)}
                               className="p-1.5 text-gray-400 hover:text-red-600 bg-white border border-gray-200 rounded-lg shadow-sm" title="Eliminar">
                               <Trash2 className="w-4 h-4" />

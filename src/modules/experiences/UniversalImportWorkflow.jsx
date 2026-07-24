@@ -161,7 +161,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
               onDragLeave={e => { e.preventDefault(); setIsDragging(false); }}
               onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
             >
-              <input ref={inputRef} type="file" accept=".xlsx" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
+              <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-sm">
@@ -169,14 +169,14 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                   </div>
                   <div>
                     <p className="text-sm font-bold text-gray-900">Arrastra tu Excel aquí o selecciona un archivo</p>
-                    <p className="text-xs text-gray-500 mt-1">Se detectan encabezados de forma inteligente (sinónimos). Cada fila podrá revisarse antes de importar.</p>
+                    <p className="text-xs text-gray-500 mt-1">Se detectan encabezados de forma inteligente (sinónimos). Cada fila podrá revisarse antes de importar. Formatos soportados: Excel (.xlsx, .xls) y CSV.</p>
                     {fileName && <p className="text-xs text-gray-700 mt-2">Archivo: <span className="font-semibold">{fileName}</span></p>}
                   </div>
                 </div>
                 <button type="button" onClick={handlePick} disabled={phase === 'parsing'}
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-800 rounded-xl font-bold border border-gray-200 transition-all shadow-sm w-full md:w-auto disabled:opacity-50">
                   <FileSpreadsheet className="w-4 h-4 text-accent" />
-                  {phase === 'parsing' ? 'Procesando...' : 'Seleccionar .xlsx'}
+                  {phase === 'parsing' ? 'Procesando...' : 'Seleccionar archivo'}
                 </button>
               </div>
             </div>

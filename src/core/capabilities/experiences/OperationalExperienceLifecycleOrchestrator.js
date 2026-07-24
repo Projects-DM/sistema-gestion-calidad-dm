@@ -8,6 +8,7 @@ import {
   getFormVisibility,
 } from './rules/UniversalOperationalRulesEngine.js';
 import { OperationalAuditService } from '../../../services/operationalAuditService.js';
+import { OperationalEventBus } from './OperationalEventBus.js';
 
 export class OperationalExperienceLifecycleOrchestrator {
   constructor(experienceKey) {
@@ -88,6 +89,7 @@ export class OperationalExperienceLifecycleOrchestrator {
     if (evaluation.complianceIssues?.length) {
       OperationalAuditService.auditCompliance({ experienceKey: this.experienceKey, recordId: inserted.id, eventData: { warnings: evaluation.complianceIssues }, user });
     }
+    OperationalEventBus.publish('RECORD_CREATED', { experienceKey: this.experienceKey, recordId: inserted.id, action: 'created' });
     return { success: true, record: inserted, compliance: evaluation.complianceIssues, action: 'created' };
   }
 
@@ -101,12 +103,14 @@ export class OperationalExperienceLifecycleOrchestrator {
     if (evaluation.complianceIssues?.length) {
       OperationalAuditService.auditCompliance({ experienceKey: this.experienceKey, recordId: id, eventData: { warnings: evaluation.complianceIssues }, user });
     }
+    OperationalEventBus.publish('RECORD_UPDATED', { experienceKey: this.experienceKey, recordId: id, action: 'updated' });
     return { success: true, record: updated, compliance: evaluation.complianceIssues, action: 'updated' };
   }
 
   async deleteRecord(id, user) {
     await this._service.delete(id);
     OperationalAuditService.auditDelete({ experienceKey: this.experienceKey, recordId: id, user });
+    OperationalEventBus.publish('RECORD_DELETED', { experienceKey: this.experienceKey, recordId: id, action: 'deleted' });
     return { success: true, action: 'deleted' };
   }
 
@@ -117,13 +121,14 @@ export class OperationalExperienceLifecycleOrchestrator {
     if (!rows?.length) throw new Error('No hay filas para importar');
     const inserted = await this._service.insertBatch(rows);
     OperationalAuditService.auditImport({ experienceKey: this.experienceKey, recordId: null, eventData: { count: inserted.length }, user });
+    OperationalEventBus.publish('RECORDS_IMPORTED', { experienceKey: this.experienceKey, count: inserted.length, action: 'imported' });
     return { success: true, count: inserted.length, records: inserted, action: 'imported' };
   }
 
   // ---------------------------------------------------------------------------
   // Export
   // ---------------------------------------------------------------------------
-  async exportRecords(records, user) {
+  async exportPdf(records, user) {
     if (!records?.length) throw new Error('No hay registros para exportar');
     const { default: jsPDF } = await import('jspdf');
     const mod = await import('jspdf-autotable');
@@ -140,6 +145,24 @@ export class OperationalExperienceLifecycleOrchestrator {
     doc.save(filename);
     OperationalAuditService.auditExport({ experienceKey: this.experienceKey, recordId: null, eventData: { count: records.length, format: 'pdf' }, user });
     return { success: true, filename, action: 'exported' };
+  }
+
+  async exportExcel(records, user) {
+    if (!records?.length) throw new Error('No hay registros para exportar');
+    const tableFields = this.contract.ui?.tableFields || this.contract.documentContract.canonicalFields || [];
+    const cols = tableFields.map(f => this.contract.ui?.fieldDisplay?.[f]?.label || f);
+    const data = records.map(r => tableFields.map(f => String(r[f] ?? '')));
+    const BOM = '\uFEFF';
+    const csvContent = data.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.experienceKey}-${format(new Date(), 'yyyyMMdd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    OperationalAuditService.auditExport({ experienceKey: this.experienceKey, recordId: null, eventData: { count: records.length, format: 'csv' }, user });
+    return { success: true, filename: a.download, action: 'exported' };
   }
 
   // ---------------------------------------------------------------------------
