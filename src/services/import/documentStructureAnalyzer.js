@@ -38,16 +38,19 @@ function detectTableBlock(rows, sections) {
     }
     return null;
   }
-  const best = sections.reduce((a, b) => a.rowCount > b.rowCount ? a : b);
-  const headerRow = rows[best.startRow] || [];
-  const dataRows = rows.slice(best.startRow + 1, best.endRow + 1);
-  return {
-    startRow: best.startRow,
-    endRow: best.endRow,
-    headers: headerRow.filter(h => String(h ?? '').trim() !== ''),
-    rows: dataRows,
-    columns: headerRow.length,
-  };
+  const sorted = [...sections].sort((a, b) => b.rowCount - a.rowCount);
+  for (const section of sorted) {
+    const headerRow = rows[section.startRow] || [];
+    const nonEmpty = headerRow.filter(h => String(h ?? '').trim() !== '');
+    const labelCount = nonEmpty.filter(c => String(c).trim().endsWith(':')).length;
+    const isLabelRow = labelCount >= Math.ceil(nonEmpty.length / 2);
+    if (!isLabelRow && nonEmpty.length >= 2) {
+      const dataRows = rows.slice(section.startRow + 1, section.endRow + 1);
+      return { startRow: section.startRow, endRow: section.endRow, headers: nonEmpty, rows: dataRows, columns: headerRow.length };
+    }
+  }
+  const fall = sorted[0];
+  return { startRow: fall.startRow, endRow: fall.endRow, headers: [], rows: rows.slice(fall.startRow, fall.endRow + 1), columns: 0 };
 }
 
 const FINANCIAL_KEYWORDS = ['iva', 'subtotal', 'sub total', 'total', 'saldo', 'retencion', 'retefuente', 'reteiva', 'pago', 'neto', 'descuento', 'banco', 'bancolombia', 'precio', 'moneda', 'valor unitario', 'valor total', 'total factura', 'monto', 'cancelado', 'metodo pago', 'forma pago'];
@@ -243,11 +246,13 @@ function extractTableRegions(rows) {
   let start = -1;
   for (let i = 0; i < rows.length; i++) {
     const nonEmpty = countNonEmpty(rows[i]);
-    const isTableRow = nonEmpty >= 3;
+    const rowLabels = (rows[i] || []).filter(c => String(c ?? '').trim().endsWith(':')).length;
+    const isLabelRow = rowLabels >= Math.ceil(nonEmpty / 2) && nonEmpty >= 2;
+    const isTableRow = nonEmpty >= 3 && !isLabelRow;
     if (isTableRow) { if (start === -1) start = i; }
-    else if (start !== -1) { if (i - start >= 2) regions.push({ startRow: start, endRow: i - 1, rowCount: i - start }); start = -1; }
+    else if (start !== -1) { if (i - start >= 3) regions.push({ startRow: start, endRow: i - 1, rowCount: i - start }); start = -1; }
   }
-  if (start !== -1 && rows.length - start >= 2) regions.push({ startRow: start, endRow: rows.length - 1, rowCount: rows.length - start });
+  if (start !== -1 && rows.length - start >= 3) regions.push({ startRow: start, endRow: rows.length - 1, rowCount: rows.length - start });
   return regions;
 }
 
