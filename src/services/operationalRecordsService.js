@@ -71,7 +71,7 @@ export function createOperationalRecordsService(tableName, { prefix = 'REC', fie
     async update(id, record) {
       const sb = getSupabaseClient();
       if (!sb) throw new Error('Supabase no configurado');
-      const payload = applyFieldMapping(record, fieldMapping);
+      const payload = { ...applyFieldMapping(record, fieldMapping), updated_at: new Date().toISOString() };
       const { data, error } = await sb.from(tableName).update(payload).eq('id', id).select('*').single();
       if (error) throw error;
       return { ...applyFieldMappingToRow(data, revMapping), id: data.id, displayId: displayId(data.id, prefix), created_at: data.created_at };
