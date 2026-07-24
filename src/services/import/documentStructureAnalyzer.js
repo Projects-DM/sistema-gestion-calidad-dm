@@ -111,10 +111,10 @@ function segmentDocument(rows, sections, discoveredMetadata) {
     for (const kw of COMMERCIAL_KEYWORDS) { if (textContent.includes(kw)) comScore++; }
     for (const kw of OPERATIONAL_KEYWORDS) { if (textContent.includes(kw)) opeScore++; }
 
-    const isOperational = opeScore > 0 && opeScore >= Math.max(finScore, admScore, comScore);
-    const isFinancial = finScore > 0 && finScore > opeScore;
-    const isAdmin = admScore > 0 && admScore > opeScore;
-    const isCommercial = comScore > 0 && comScore > opeScore;
+    const isOperational = opeScore > 0 && (section.source === 'table' || section.source === 'full_document' || opeScore >= Math.max(finScore, admScore, comScore));
+    const isFinancial = finScore > 0 && finScore > opeScore && section.source !== 'table' && section.source !== 'full_document';
+    const isAdmin = admScore > 0 && admScore > opeScore && section.source !== 'table' && section.source !== 'full_document';
+    const isCommercial = comScore > 0 && comScore > opeScore && section.source !== 'table' && section.source !== 'full_document';
 
     const sectionMeta = {};
     for (let i = 0; i < Math.min(sectionRows.length, 50); i++) {
