@@ -153,6 +153,24 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
 
   const canImport = useMemo(() => phase === 'preview' && rows.some(r => r._included), [phase, rows]);
 
+  const handleExportCSV = () => {
+    const included = rows.filter(r => r._included);
+    if (!included.length) return;
+    const headerLine = canonicalFields.map(f => `"${getFieldLabel(contract, f)}"`).join(',');
+    const dataLines = included.map(r => canonicalFields.map(f => {
+      const v = String(r[f] ?? '').replace(/"/g, '""');
+      return `"${v}"`;
+    }).join(','));
+    const csv = [headerLine, ...dataLines].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileName || 'export'}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!open) return null;
 
   return (
@@ -833,14 +851,23 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
               {phase === 'preview' ? 'Cancelar' : 'Cerrar'}
             </button>
             {phase === 'preview' && (
-              <button type="button" onClick={handleImport} disabled={!canImport}
-                className={[
-                  'flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all shadow-lg w-full sm:w-auto',
-                  canImport ? 'bg-primary hover:bg-primary-light text-white shadow-primary/20' : 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none',
-                ].join(' ')}>
-                <CheckCircle2 className="w-4 h-4" />
-                Importar ({validCount})
-              </button>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button type="button" onClick={handleExportCSV} disabled={!canImport}
+                  className={[
+                    'flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold rounded-xl transition-all border w-full sm:w-auto',
+                    canImport ? 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200' : 'bg-gray-100 text-gray-400 border-gray-100 cursor-not-allowed',
+                  ].join(' ')}>
+                  Exportar CSV
+                </button>
+                <button type="button" onClick={handleImport} disabled={!canImport}
+                  className={[
+                    'flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl transition-all shadow-lg w-full sm:w-auto',
+                    canImport ? 'bg-primary hover:bg-primary-light text-white shadow-primary/20' : 'bg-gray-200 text-gray-500 cursor-not-allowed shadow-none',
+                  ].join(' ')}>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Importar ({validCount})
+                </button>
+              </div>
             )}
           </div>
         </div>

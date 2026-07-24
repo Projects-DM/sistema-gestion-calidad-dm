@@ -147,13 +147,8 @@ function getOriginalRow(aoa, rowIndex) {
 
 export function normalizeOperationalData({ parsedDocument, contract, structureAnalysis, operationalSection, relationshipModel }) {
   const { canonicalFields, synonyms, fieldNormalizers = {} } = contract.documentContract || contract;
-  let { rawHeaders, rawRows } = parsedDocument;
+  const { rawHeaders, rawRows } = parsedDocument;
   const relModel = relationshipModel || structureAnalysis?.relationshipModel;
-
-  if (operationalSection?.rows?.length > 0) {
-    rawHeaders = operationalSection.headers || [];
-    rawRows = operationalSection.rows;
-  }
 
   if (structureAnalysis?.documentType === 'SEMI_STRUCTURED' && structureAnalysis?.sections?.length > 0) {
     return normalizeSemiStructured({ rawHeaders, rawRows, canonicalFields, synonyms, fieldNormalizers, structureAnalysis });
