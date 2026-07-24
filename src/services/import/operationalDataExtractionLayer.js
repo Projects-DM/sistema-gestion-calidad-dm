@@ -129,6 +129,9 @@ export function detectHeaderRow(headers, rows, canonicalFields, fieldSynonyms, m
     const rawRow = aoa[i] || [];
     const row = rawRow.map((v) => String(v ?? '').trim()).filter(Boolean);
     if (row.length < 2) continue;
+    const labelCount = row.filter(c => c.endsWith(':')).length;
+    const isLabelRow = labelCount >= Math.ceil(row.length / 2);
+    if (isLabelRow) continue;
     const map = buildHeaderMap(row, canonicalFields, fieldSynonyms);
     const hits = canonicalFields.reduce((acc, f) => acc + (map[f] ? 1 : 0), 0);
     if (hits > best.score) best = { rowIndex: i, score: hits, rowHeaders: row };
