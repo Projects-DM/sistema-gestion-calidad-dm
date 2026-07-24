@@ -1,4 +1,4 @@
-# Sprint 92 — Operational Experience Data Normalization & Universal Intelligence Layer Certification
+# Sprint 94 — Operational Experience Data Normalization & Universal Intelligence Layer Certification
 
 **Tipo:** Operational Experience Architecture & Universal Data Normalization Certification
 **Estado:** LEVEL 3 — CERTIFIED
