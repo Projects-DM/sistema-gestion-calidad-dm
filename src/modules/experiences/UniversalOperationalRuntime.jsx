@@ -77,6 +77,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const [timelineRecord, setTimelineRecord] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const formTouchedRef = useRef(false);
 
   const { user: authUser, profile } = useAuth();
   const auditUser = { id: authUser?.id, nombre: profile?.nombre, email: authUser?.email };
@@ -109,43 +110,52 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
   useEffect(() => {
     if (!ready || !isFormOpen) return;
+    formTouchedRef.current = false;
     const result = orchestratorRef.current.buildInitialForm(editingRecord);
     setFormData(result.formData);
     setVisibility(result.visibility);
-    setFormErrors(result.errors);
-    setComplianceWarnings(result.compliance);
+    setFormErrors(editingRecord ? result.errors : []);
+    setComplianceWarnings(editingRecord ? result.compliance : []);
   }, [ready, isFormOpen, editingRecord]);
 
+  useEffect(() => {
+    if (!isFormOpen || !orchestratorRef.current || !formTouchedRef.current) return;
+    const { allErrors, complianceIssues } = orchestratorRef.current.evaluate(formData);
+    setFormErrors(allErrors || []);
+    setComplianceWarnings(complianceIssues || []);
+    setVisibility(orchestratorRef.current.recalcVisibility(formData));
+  }, [formData, isFormOpen]);
+
   const handleChange = (field, value) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value };
-      if (orchestratorRef.current) {
-        setVisibility(orchestratorRef.current.recalcVisibility(next));
-      }
-      return next;
-    });
+    formTouchedRef.current = true;
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = editingRecord
-      ? await orchestratorRef.current.updateRecord(editingRecord.id, formData, auditUser)
-      : await orchestratorRef.current.createRecord(formData, auditUser);
-    if (!result.success) {
-      setFormErrors(result.errors);
-      setComplianceWarnings(result.compliance);
-      setBanner({ type: 'error', message: `${result.errors.length} error(es) de validación.` });
-      return;
+    try {
+      const result = editingRecord
+        ? await orchestratorRef.current.updateRecord(editingRecord.id, formData, auditUser)
+        : await orchestratorRef.current.createRecord(formData, auditUser);
+      if (!result.success) {
+        setFormErrors(result.errors || []);
+        setComplianceWarnings(result.compliance || []);
+        const msg = result.errors?.[0]?.message || result.errors?.[0]?.field || result.message || 'Error al guardar.';
+        setBanner({ type: 'error', message: `${result.errors?.length || 1} error(es): ${msg}` });
+        return;
+      }
+      if (result.action === 'created') {
+        setRecords(prev => [result.record, ...prev]);
+        setBanner({ type: 'success', message: 'Registro guardado.' });
+      } else {
+        setRecords(prev => prev.map(r => r.id === result.record.id ? result.record : r));
+        setBanner({ type: 'success', message: 'Registro actualizado.' });
+      }
+      setIsFormOpen(false);
+      setEditingRecord(null);
+    } catch (err) {
+      setBanner({ type: 'error', message: err?.message || 'Error al guardar el registro.' });
     }
-    if (result.action === 'created') {
-      setRecords(prev => [result.record, ...prev]);
-      setBanner({ type: 'success', message: 'Registro guardado.' });
-    } else {
-      setRecords(prev => prev.map(r => r.id === result.record.id ? result.record : r));
-      setBanner({ type: 'success', message: 'Registro actualizado.' });
-    }
-    setIsFormOpen(false);
-    setEditingRecord(null);
   };
 
   const handleDelete = async (id) => {
@@ -547,6 +557,11 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
           </div>
 
           <form onSubmit={handleSubmit} className="p-8">
+            {formErrors.filter(e => e.field === 'general').map((e, i) => (
+              <div key={i} className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                {e.message}
+              </div>
+            ))}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
               {canonicalFields.filter(f => visibility[f] !== false).map((field) => {
                 const type = detectInputType(field, contract);
