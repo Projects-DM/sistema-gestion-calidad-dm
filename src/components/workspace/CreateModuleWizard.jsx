@@ -402,7 +402,7 @@ export default function CreateModuleWizard({ onCreated, onCancel }) {
                 <div className="space-y-2">
                   {allExperiences.map((exp) => {
                     const isEnabled = enabledExperiences.includes(exp.experienceKey);
-                    const ExpIcon = resolveIcon(exp.icon);
+                    const ExpIcon = resolveIcon(exp.metadata?.icon || 'Zap');
                     return (
                       <button
                         key={exp.experienceKey}
@@ -421,8 +421,8 @@ export default function CreateModuleWizard({ onCreated, onCancel }) {
                         </div>
                         <ExpIcon className={`w-4 h-4 ${isEnabled ? 'text-green-600' : 'text-gray-400'}`} />
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">{exp.displayName}</div>
-                          <div className="text-xs text-gray-500">{exp.description}</div>
+                          <div className="text-sm font-medium text-gray-900">{exp.metadata?.name || exp.experienceKey}</div>
+                          <div className="text-xs text-gray-500">{exp.metadata?.description || ''}</div>
                         </div>
                       </button>
                     );
