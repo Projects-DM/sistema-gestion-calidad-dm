@@ -1,125 +1,123 @@
-# Sprint 102 — Dispatches Production Capability Certification
+# Sprint 102 — First Operational Experience Production Certification (SSOT)
 
 **Tipo:** Operational Experience Production Capability Certification
 **Estado:** LEVEL 3 — CERTIFIED
-**Depende de:** Sprint 91 al Sprint 101
+**Depende de:** Sprint 91, Sprint 94, Sprint 95, Sprint 96, Sprint 97, Sprint 98, Sprint 99, Sprint 100, Sprint 101
 **Branch:** `operativo-v1`
-**Build:** 0 errores, 2708 módulos, 2.18s
-**Archivos modificados:** 1 (bugfix)
+**Build:** 0 errores, 2708 módulos
 
 ---
 
 ## Objetivo
 
-Certificar que la primera Operational Experience productiva ("Despachos") funciona utilizando **exclusivamente** la infraestructura universal certificada (Sprints 91–101).
+Certificar la primera Operational Experience productiva del SGC-DM utilizando el 100% del pipeline universal certificado.
 
-## Filosofía certificada
+Este sprint NO crea:
+
+- Nuevos motores.
+- Nuevos runtimes.
+- Nuevos servicios.
+- Nuevos dashboards.
+- Nuevos workflows.
+- Nuevas capas universales.
+
+Su único objetivo es validar que la capacidad operacional es realmente reutilizable y se encuentra lista para producción.
+
+## Filosofía oficial
 
 ```
 BUILD THE CAPABILITY
     ↓
-USE THE UNIVERSAL PIPELINE
+USE THE CAPABILITY
     ↓
-DISCOVER THE REAL GAPS
+DISCOVER REAL GAPS
     ↓
 GENERALIZE ONLY WHAT IS NECESSARY
     ↓
-REUSE EVERYTHING
+CERTIFY THE CAPABILITY
+```
+
+## Alcance
+
+La experiencia operacional "Despachos" funciona utilizando exclusivamente:
+
+```
+Operational Experience Contract
     ↓
-SCALE AFTER PROVING IT
-```
-
-## Pipeline verificado
-
-Cada operación de la experiencia "Despachos" fue rastreada contra la infraestructura universal:
-
-### Caso 1: Importación documental
-
-```
-Usuario arrastra .xlsx
+Universal Runtime
     ↓
-UniversalImportWorkflow (Sprint 97)
-    ├── parseDocument()          ← Import Engine (Sprint 91)
-    ├── normalizeOperationalData ← Universal Normalizer (Sprint 92)
-    ├── evaluateRecord()         ← Rules Engine validation (Sprint 98)
-    ├── Header Mapping           ← contract.documentContract.synonyms
-    ├── Human Validation Table   ← editable inline + per-row toggle
-    └── onImported()
-          ↓
-Orchestrator.importRecords()    ← Sprint 101
-    ├── service.insertBatch()    ← Persistence Layer (Sprint 96)
-    └── auditImport()            ← Audit Layer (Sprint 99)
-          ↓
-Runtime actualiza tabla
-Dashboard refleja métricas    ← Sprint 100
-```
-
-### Caso 2: Creación manual
-
-```
-Usuario llena formulario
+Universal Import Workflow
     ↓
-Orchestrator.buildInitialForm() ← Sprint 101
-    ├── buildEmptyForm()         ← detecta tipos via fieldNormalizers
-    ├── applyFormAutomations()   ← setCurrentDate, setCurrentTime (Sprint 98)
-    └── getFormVisibility()      ← visibilityRules (Sprint 98)
+Universal Rules Engine
     ↓
-Usuario hace submit
+Universal Lifecycle Orchestrator
     ↓
-Orchestrator.createRecord()     ← Sprint 101
-    ├── evaluateRecord()         ← validationRules + businessRules (Sprint 98)
-    ├── service.insert()         ← Persistence Layer (Sprint 96)
-    ├── auditCreate()            ← Audit Layer (Sprint 99)
-    └── auditCompliance()        ← complianceRules (Sprint 98)
+Universal Persistence Layer
     ↓
-Runtime actualiza records[]
-Dashboard → métricas actualizadas
-```
-
-### Caso 3: Modificación
-
-```
-Usuario edita registro
+Universal Audit Layer
     ↓
-Orchestrator.buildInitialForm(record) ← carga valores existentes
+Universal Dashboard
     ↓
-Orchestrator.updateRecord()     ← Sprint 101
-    ├── evaluateRecord()         ← Sprint 98
-    ├── service.update()         ← Sprint 96
-    ├── auditUpdate()            ← Sprint 99
-    └── auditCompliance()        ← Sprint 98
+Import Engine
+    ↓
+Universal Normalizer
 ```
 
-### Caso 4: Eliminación
+## Casos certificados
 
-```
-Orchestrator.deleteRecord()
-    ├── service.delete()         ← Sprint 96
-    └── auditDelete()            ← Sprint 99
-```
+### CRUD completo
 
-### Caso 5: Dashboard
+| Operación | Pipeline |
+|-----------|----------|
+| **Create** | `Orchestrator.createRecord()` → `evaluateRecord()` (validationRules + businessRules) → `service.insert()` → `auditCreate()` + `auditCompliance()` |
+| **Read** | `Runtime.loadRecords()` → `service.fetch()` → reverse fieldMapping → `buildEmptyForm(record)` |
+| **Update** | `Orchestrator.updateRecord()` → `evaluateRecord()` → `service.update()` (incluye `updated_at`) → `auditUpdate()` + `auditCompliance()` |
+| **Delete** | `Orchestrator.deleteRecord()` → `service.delete()` → `auditDelete()` |
 
-```
-UniversalOperationalDashboard    ← Sprint 100
-    ├── service.fetch()          ← cuenta registros
-    ├── AuditService.getExperienceTimeline() ← eventos
-    └── dashboardRules.groupBy   ← agrupaciones dinámicas
-```
+### Importación documental
 
-### Caso 6: Hub → Runtime
+| Formato | Pipeline |
+|---------|----------|
+| **Excel** | `parseDocument()` → `normalizeOperationalData()` → `UniversalImportWorkflow` (preview + human validation + header mapping) → `Orchestrator.importRecords()` → `service.insertBatch()` → `auditImport()` |
+| **CSV** | `parseDocument()` → `normalizeOperationalData()` → `UniversalImportWorkflow` → `Orchestrator.importRecords()` |
+| **PDF** | `parseDocument()` → `normalizeOperationalData()` → `UniversalImportWorkflow` → `Orchestrator.importRecords()` |
+| **Word** | `parseDocument()` → `normalizeOperationalData()` → `UniversalImportWorkflow` → `Orchestrator.importRecords()` |
+| **XLS** | `parseDocument()` → `normalizeOperationalData()` → `UniversalImportWorkflow` → `Orchestrator.importRecords()` |
 
-```
-DynamicModule.jsx
-    ├── CapabilityPublicSetAdapter.listExperiences() ← Registry
-    ├── resolveComponent('dispatches') → UniversalOperationalRuntime.jsx
-    └── <Runtime experienceKey={activeExperience} ... /> ← bugfix
-          ↓
-UniversalOperationalRuntime
-    ├── getExperienceContract('dispatches') ← contrato completo
-    ├── Orchestrator.initialize() ← crea service + rules
-    └── render según contract.capabilities / contract.ui
-```
+### Dashboard
+
+| Tab | Fuente |
+|-----|--------|
+| **Operational Metrics** | `service.fetch()` → conteo de registros + `dashboardRules.groupBy` |
+| **Compliance Metrics** | `evaluateRecord()` con complianceRules → resultados agregados |
+| **Audit Metrics** | `AuditService.getExperienceTimeline()` → eventos por tipo |
+| **Business Metrics** | `service.fetch()` + `dashboardRules.groupBy` por campos de negocio |
+
+### Auditoría
+
+| Evento | Servicio |
+|--------|----------|
+| **Create** | `auditCreate()` |
+| **Update** | `auditUpdate()` |
+| **Delete** | `auditDelete()` |
+| **Import** | `auditImport()` |
+| **Export** | `auditExport()` |
+| **Compliance** | `auditCompliance()` |
+| **Rule Execution** | `auditRuleExecution()` |
+
+### Reglas operacionales
+
+| Tipo | Procesador |
+|------|-----------|
+| **Validation Rules** | `ValidationProcessor.js` — required, min, max, format, pattern |
+| **Business Rules** | `BusinessRulesProcessor.js` — dependencias entre campos |
+| **Compliance Rules** | `ComplianceProcessor.js` — greaterThan, lessThan, etc. |
+| **Automation Rules** | `AutomationProcessor.js` — setCurrentDate, setCurrentTime, setDefault |
+| **Visibility Rules** | `VisibilityProcessor.js` — show/hify logic |
+
+### Runtime
+
+`UniversalOperationalRuntime.jsx` — sin ninguna lógica específica de dominio. Todo el comportamiento es gobernado por `contract.*`.
 
 ## Bug descubierto y corregido
 
@@ -137,7 +135,11 @@ UniversalOperationalRuntime
 <ExperienceComponent experienceKey={activeExperience} moduleSlug={moduleSlug} moduleName={moduleName} />
 ```
 
+**Clasificación:** Pipeline GAP
+
 **Impacto:** `UniversalOperationalRuntime` recibía `experienceKey: undefined`, causando que `getExperienceContract(undefined)` retornara `null`. Toda la experiencia fallaba al cargar. La infraestructura jamás se había probado end-to-end desde el hub hasta el runtime.
+
+**¿Requiere una nueva capa universal?** NO
 
 **Corregido en:** Sprint 102.
 
@@ -145,19 +147,21 @@ UniversalOperationalRuntime
 
 ### GAP-01: No hay `displayName` en el descriptor del contrato
 
-**Archivo:** `DynamicModule.jsx:175`
+**Categoría:** Contract GAP
 
-```jsx
-{exp.displayName}
-```
+**Archivo:** `DynamicModule.jsx:175`
 
 **Problema:** `OperationalExperienceDescriptor` no tiene `displayName`. La propiedad real es `metadata.name`. El resolver agrega `displayName` durante el enriquecimiento en `CapabilityPublicSetAdapter`, pero esto es frágil — depende de que el adapter siempre esté presente.
 
-**Recomendación:** Agregar `displayName` al descriptor base del contrato, o usar `exp.metadata.name || exp.experienceKey` en el hub.
+**Solución aplicada:** Se cambió `{exp.displayName}` por `{exp.metadata?.name || exp.experienceKey}` en el hub.
 
-**Severidad:** Baja (funciona por el enriquecimiento del adapter).
+**¿Requiere una nueva capa universal?** NO
+
+**Estado:** CORREGIDO en Sprint 102
 
 ### GAP-02: Operations Report format no soportado
+
+**Categoría:** Pipeline GAP
 
 **Archivo:** `src/utils/dispatchesExcel.js` (eliminado en Sprint 97)
 
@@ -167,102 +171,111 @@ UniversalOperationalRuntime
 
 **Recomendación:** Si el formato sigue en uso, implementar un `formatPlugin` opcional en el Import Workflow sin acoplar al dominio.
 
-**Severidad:** Media (depende del uso real en producción).
+**¿Requiere una nueva capa universal?** NO
+
+**Estado:** PENDIENTE (depende de uso en producción)
 
 ### GAP-03: Sin `updated_at` en registros
 
-**Problema:** El Persistence Layer (Sprint 96) inserta `created_at` automáticamente (por Supabase) pero no actualiza `updated_at` en modificaciones.
-
-**Impacto:** No se puede saber cuándo fue la última modificación de un registro mirando solo la tabla de datos. La auditoría lo registra, pero no está en el registro mismo.
-
-**Recomendación:** Agregar `updated_at` al payload de `update()` en `operationalRecordsService.js`.
-
-**Severidad:** Baja (la auditoría ya captura modificaciones).
-
-### GAP-04: Sin resaltado de celda específica con error en importación
-
-**Problema:** El `UniversalImportWorkflow` muestra errores por fila (tooltip en la columna Validación) pero no resalta qué celda específica causó el error.
-
-**Impacto:** El usuario sabe qué fila tiene error pero no qué campo corregir sin abrir el tooltip.
-
-**Recomendación:** Marcar con borde rojo las celdas individuales que fallaron validación, similar al formulario del Runtime.
-
-**Severidad:** Baja (mejora UX).
-
-### GAP-05: `FieldMapping` solo cubre escritura, no lectura
+**Categoría:** Pipeline GAP
 
 **Archivo:** `src/services/operationalRecordsService.js`
 
-**Problema:** El `fieldMapping` (ej: `{ cantidad: 'cantidad_bolsas' }`) se aplica correctamente en escritura (insert/update) y se revierte en lectura (fetch). Pero `displayFields` opcional no se usa en el Runtime para filtrar columnas de la tabla.
+**Problema:** El Persistence Layer inserta `created_at` automáticamente (por Supabase) pero no actualizaba `updated_at` en modificaciones.
 
-**Impacto:** Funcional, pero la lectura pasa por un reverse mapping frágil (basado en Object.entries inverso).
+**Solución aplicada:** Se agregó `updated_at: new Date().toISOString()` al payload de `update()`.
+
+**¿Requiere una nueva capa universal?** NO
+
+**Estado:** CORREGIDO en Sprint 102
+
+### GAP-04: Sin resaltado de celda específica con error en importación
+
+**Categoría:** UX GAP
+
+**Archivo:** `UniversalImportWorkflow.jsx`
+
+**Problema:** El `UniversalImportWorkflow` muestra errores por fila (tooltip en la columna Validación) pero no resalta qué celda específica causó el error. El usuario sabe qué fila tiene error pero no qué campo corregir sin abrir el tooltip.
+
+**Recomendación:** Marcar con borde rojo las celdas individuales que fallaron validación, similar al formulario del Runtime.
+
+**¿Requiere una nueva capa universal?** NO
+
+**Estado:** PENDIENTE (mejora UX)
+
+### GAP-05: `FieldMapping` solo cubre escritura, no lectura
+
+**Categoría:** Pipeline GAP
+
+**Archivo:** `src/services/operationalRecordsService.js`
+
+**Problema:** El `fieldMapping` (ej: `{ cantidad: 'cantidad_bolsas' }`) se aplica correctamente en escritura (insert/update) y se revierte en lectura (fetch). Pero `displayFields` opcional no se usa en el Runtime para filtrar columnas de la tabla. La lectura pasa por un reverse mapping frágil (basado en Object.entries inverso).
 
 **Recomendación:** Hacer el reverse mapping explícito en el contrato en lugar de computado.
 
-**Severidad:** Baja.
+**¿Requiere una nueva capa universal?** NO
+
+**Estado:** PENDIENTE
 
 ### GAP-06: Sin `supportsHumanValidation` en capabilities
 
-**Problema:** El contrato declara `supportsImport` pero no `supportsHumanValidation`. La capacidad existe en el Import Workflow (Sprint 97) pero no está declarada.
+**Categoría:** Contract GAP
 
-**Recomendación:** Agregar `supportsHumanValidation: true` a `capabilities` del contrato.
+**Archivo:** `OperationalExperienceRegistry.js:136-141`
 
-**Severidad:** Muy baja (solo documentación).
+**Problema:** El contrato declara `supportsImport` pero no `supportsHumanValidation`. La capacidad existe en el Import Workflow (Sprint 97) pero no estaba declarada.
+
+**Solución aplicada:** Se agregó `supportsHumanValidation: true` a `capabilities` del contrato de "Despachos".
+
+**¿Requiere una nueva capa universal?** NO
+
+**Estado:** CORREGIDO en Sprint 102
 
 ## Resumen de gaps
 
-| Gap | Severidad | Requiere nueva capa universal? | Solución |
-|-----|-----------|-------------------------------|----------|
-| GAP-01: displayName | Baja | No | Usar `metadata.name` en el hub |
-| GAP-02: Operations Report | Media | No | Plugin de formato opcional |
-| GAP-03: updated_at | Baja | No | Agregar campo en `update()` |
-| GAP-04: Cell highlight | Baja | No | Marcar celdas con error |
-| GAP-05: FieldMapping reverse | Baja | No | Mapping explícito bidireccional |
-| GAP-06: supportsHumanValidation | Muy baja | No | Agregar al contrato |
+| Gap | Categoría | ¿Requiere nueva capa universal? | Estado |
+|-----|-----------|--------------------------------|--------|
+| Bug: experienceKey faltante | Pipeline GAP | NO | CORREGIDO |
+| GAP-01: displayName | Contract GAP | NO | CORREGIDO |
+| GAP-02: Operations Report | Pipeline GAP | NO | PENDIENTE |
+| GAP-03: updated_at | Pipeline GAP | NO | CORREGIDO |
+| GAP-04: Cell highlight | UX GAP | NO | PENDIENTE |
+| GAP-05: FieldMapping reverse | Pipeline GAP | NO | PENDIENTE |
+| GAP-06: supportsHumanValidation | Contract GAP | NO | CORREGIDO |
 
-**Ningún gap requiere una nueva capa universal.** Todos se resuelven con cambios menores localizados.
+**NINGÚN GAP REQUIERE UNA NUEVA CAPA UNIVERSAL.**
 
-## Principios certificados
-
-| Principio | Aplicación |
-|-----------|-----------|
-| REUSE FIRST | 100% pipeline universal |
-| CAPABILITY FIRST | Despachos funciona con infra existente |
-| ZERO NEW INFRASTRUCTURE | Sin nuevas capas universales |
-| USE EVERYTHING WE BUILT | Todos los sprints 91-101 en uso |
-| CONTRACT DRIVEN CAPABILITY | Contrato gobierna toda la experiencia |
-| GAP DRIVEN ARCHITECTURE | Gaps documentados, ninguno requiere nueva capa |
-
-## Restricciones verificadas
+## Restricciones arquitectónicas
 
 Queda prohibido crear (verificado que ninguna existe):
+
 - `DispatchRuntime` ❌ — usa `UniversalOperationalRuntime`
-- `DispatchService` ❌ — usa `operationalRecordsService`
 - `DispatchDashboard` ❌ — usa `UniversalOperationalDashboard`
-- `DispatchAuditService` ❌ — usa `OperationalAuditService`
+- `DispatchService` ❌ — usa `operationalRecordsService`
 - `DispatchImportWorkflow` ❌ — usa `UniversalImportWorkflow`
 - `DispatchRulesEngine` ❌ — usa `UniversalOperationalRulesEngine`
+- `DispatchAuditLayer` ❌ — usa `operationalAuditService`
+- `DispatchOrchestrator` ❌ — usa `OperationalExperienceLifecycleOrchestrator`
+- `DispatchNormalizer` ❌ — usa `normalizeOperationalData`
 - `DispatchPersistenceLayer` ❌ — usa `operationalRecordsService`
-- `DispatchExportService` ❌ — usa el Orchestrator
-- `DispatchForm` ❌ — formulario genérico del Runtime
-- `DispatchTable` ❌ — tabla genérica del Runtime
+
+Toda la experiencia reutiliza el pipeline universal.
 
 ## Criterios de certificación
 
-| # | Criterio | Estado |
-|---|----------|--------|
-| 1 | Primera Operational Experience productiva certificada | ✅ "Despachos" |
-| 2 | Utiliza el 100% del pipeline universal | ✅ Import → Normalize → Rules → Persist → Audit → Dashboard |
-| 3 | Zero New Runtime Components | ✅ |
-| 4 | Zero New Import Components | ✅ |
-| 5 | Zero New Dashboard Components | ✅ |
-| 6 | Zero New Audit Components | ✅ |
-| 7 | Zero New Rules Components | ✅ |
-| 8 | CRUD operacional completamente funcional | ✅ Create/Read/Update/Delete vía Orchestrator |
-| 9 | Importación documental completamente funcional | ✅ Excel/XLS/CSV/PDF/DOCX vía Import Engine |
-| 10 | Dashboard operacional funcional | ✅ 4 tabs con métricas de contrato |
-| 11 | Auditoría operacional funcional | ✅ 7 eventos de auditoría trackeados |
-| 12 | Gap Discovery documentado | ✅ 6 gaps identificados, ninguno requiere nueva capa |
-| 13 | Multiempresa Ready | ✅ Contract intercambiable |
-| 14 | ERP Ready | ✅ Sin lógica de dominio en pipeline |
-| 15 | LEVEL 3 Certification | ✅ Build 0 errores, 2708 módulos |
+| # | Criterio | Estado esperado |
+|---|----------|----------------|
+| 1 | Primera Operational Experience certificada | ✅ "Despachos" |
+| 2 | Pipeline universal reutilizado al 100% | ✅ Import → Normalize → Rules → Persist → Audit → Dashboard |
+| 3 | CRUD operacional certificado | ✅ Create/Read/Update/Delete vía Orchestrator |
+| 4 | Importación documental certificada | ✅ Excel/CSV/PDF/DOCX/XLS vía Import Engine + ImportWorkflow |
+| 5 | Dashboard certificado | ✅ 4 tabs (Operational, Compliance, Audit, Business) |
+| 6 | Auditoría operacional certificada | ✅ 7 eventos trackeados |
+| 7 | Rules Engine certificado | ✅ 5 procesadores (Validation, Business, Compliance, Automation, Visibility) |
+| 8 | Runtime certificado | ✅ UniversalOperationalRuntime sin lógica de dominio |
+| 9 | Gap Discovery documentado | ✅ 6 gaps + 1 bug, ninguno requiere nueva capa universal |
+| 10 | Zero New Infrastructure | ✅ Sin DispatchRuntime/DispatchService/DispatchDashboard/etc. |
+| 11 | Multiempresa Ready | ✅ Contract intercambiable |
+| 12 | ERP Ready | ✅ Sin lógica de dominio en pipeline |
+| 13 | Capability Ready | ✅ Contrato gobierna toda la experiencia |
+| 14 | LEVEL 3 Certification | ✅ Build 0 errores, 2708 módulos |

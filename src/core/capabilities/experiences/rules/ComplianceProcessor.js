@@ -6,16 +6,18 @@ export function checkCompliance(record, complianceRules) {
     const strVal = String(value ?? '').trim();
     let triggered = false;
     let detail = '';
+    const compareValue = rule.valueField ? Number(record[rule.valueField]) : rule.value;
     if (rule.operator === 'greaterThan' || rule.condition === 'greaterThan') {
       const n = Number(value);
-      if (!isNaN(n) && n > rule.value) { triggered = true; detail = `${n} > ${rule.value}`; }
+      if (!isNaN(n) && n > compareValue) { triggered = true; detail = `${n} > ${compareValue}`; }
     }
     if (rule.operator === 'lessThan' || rule.condition === 'lessThan') {
       const n = Number(value);
-      if (!isNaN(n) && n < rule.value) { triggered = true; detail = `${n} < ${rule.value}`; }
+      if (!isNaN(n) && n < compareValue) { triggered = true; detail = `${n} < ${compareValue}`; }
     }
     if (rule.operator === 'equals' || rule.condition === 'equals') {
-      if (strVal === String(rule.value ?? '')) { triggered = true; detail = `= ${rule.value}`; }
+      const eqValue = rule.valueField ? String(record[rule.valueField] ?? '') : String(rule.value ?? '');
+      if (strVal === eqValue) { triggered = true; detail = `= ${eqValue}`; }
     }
     if (rule.operator === 'notEmpty' || rule.condition === 'notEmpty') {
       if (strVal !== '') { triggered = true; detail = 'no vacío'; }
