@@ -7,7 +7,7 @@ import UniversalImportWorkflow from './UniversalImportWorkflow';
 import UniversalOperationalDashboard from './UniversalOperationalDashboard';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { OperationalExperienceLifecycleOrchestrator } from '../../core/capabilities/experiences/OperationalExperienceLifecycleOrchestrator.js';
-import { computeCompletionScore, detectDuplicates, detectInconsistencies, getReadinessState } from '../../core/capabilities/experiences/OperationalDataCompletion.js';
+import { computeCompletionScore, detectDuplicates, detectInconsistencies, getReadinessState, canApprove, canClose, canReopen } from '../../core/capabilities/experiences/OperationalDataCompletion.js';
 
 function getFieldLabel(field, contract) {
   return contract.ui?.fieldDisplay?.[field]?.label
@@ -233,6 +233,63 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     }
   };
 
+  const handleBulkApprove = async () => {
+    if (selectedIds.size === 0) return;
+    const selected = records.filter(r => selectedIds.has(r.id));
+    const invalid = selected.filter(r => !canApprove(r, contract));
+    if (invalid.length > 0) {
+      setBanner({ type: 'error', message: `${invalid.length} registro(s) no cumplen los requisitos para aprobación (score < 100% o inconsistencias).` });
+      return;
+    }
+    try {
+      const result = await orchestratorRef.current.approveRecords(Array.from(selectedIds), auditUser);
+      const updatedIds = new Set(result.records.map(r => r.id));
+      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
+      setSelectedIds(new Set());
+      setBanner({ type: 'success', message: `${result.count} registro(s) aprobados.` });
+    } catch (err) {
+      setBanner({ type: 'error', message: 'Error al aprobar: ' + err.message });
+    }
+  };
+
+  const handleBulkClose = async () => {
+    if (selectedIds.size === 0) return;
+    const selected = records.filter(r => selectedIds.has(r.id));
+    const invalid = selected.filter(r => !canClose(r, contract));
+    if (invalid.length > 0) {
+      setBanner({ type: 'error', message: `${invalid.length} registro(s) no están aprobados. Apruebe primero.` });
+      return;
+    }
+    try {
+      const result = await orchestratorRef.current.closeRecords(Array.from(selectedIds), auditUser);
+      const updatedIds = new Set(result.records.map(r => r.id));
+      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
+      setSelectedIds(new Set());
+      setBanner({ type: 'success', message: `${result.count} registro(s) cerrados.` });
+    } catch (err) {
+      setBanner({ type: 'error', message: 'Error al cerrar: ' + err.message });
+    }
+  };
+
+  const handleBulkReopen = async () => {
+    if (selectedIds.size === 0) return;
+    const selected = records.filter(r => selectedIds.has(r.id));
+    const invalid = selected.filter(r => !canReopen(r, contract));
+    if (invalid.length > 0) {
+      setBanner({ type: 'error', message: `${invalid.length} registro(s) no pueden reabrirse. Solo registros aprobados o cerrados.` });
+      return;
+    }
+    try {
+      const result = await orchestratorRef.current.reopenRecords(Array.from(selectedIds), auditUser);
+      const updatedIds = new Set(result.records.map(r => r.id));
+      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
+      setSelectedIds(new Set());
+      setBanner({ type: 'success', message: `${result.count} registro(s) reabiertos.` });
+    } catch (err) {
+      setBanner({ type: 'error', message: 'Error al reabrir: ' + err.message });
+    }
+  };
+
   const handleViewTimeline = async (record) => {
     setTimelineRecord(record);
     setLoadingTimeline(true);
@@ -320,6 +377,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     inconsistent: r => recordInconsistencies[r.id]?.length > 0,
     duplicates: r => duplicatedIds.has(r.id),
     readyToClose: r => readinessStates[r.id] === 'validated' || readinessStates[r.id] === 'ready',
+    approved: r => r.estado === 'approved',
+    closed: r => r.estado === 'cerrado',
   }), [records, completionScores, readinessStates, recordInconsistencies, duplicatedIds]);
 
   const views = [
@@ -332,6 +391,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     { key: 'inconsistent', label: 'Inconsistentes', icon: ShieldAlert },
     { key: 'duplicates', label: 'Duplicados', icon: Copy },
     { key: 'readyToClose', label: 'Listos', icon: CheckCheck },
+    { key: 'approved', label: 'Aprobados', icon: CheckCheck },
+    { key: 'closed', label: 'Cerrados', icon: CheckCircle },
     { key: 'withObservations', label: 'Con observaciones', icon: AlertTriangle },
     { key: 'importedToday', label: 'Importados hoy', icon: Download },
   ];
@@ -633,13 +694,25 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                   <option value="">Cambiar estado...</option>
                   {estadoOptions.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
+                <button onClick={handleBulkApprove}
+                  className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100">
+                  Aprobar
+                </button>
+                <button onClick={handleBulkClose}
+                  className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100">
+                  Cerrar
+                </button>
+                <button onClick={handleBulkReopen}
+                  className="px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
+                  Reabrir
+                </button>
                 <button onClick={() => handleExportCsv(Array.from(selectedIds).map(id => records.find(r => r.id === id)).filter(Boolean))}
                   className="px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Exportar seleccionados
+                  Exportar
                 </button>
                 <button onClick={handleBulkDelete}
                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
-                  Eliminar seleccionados
+                  Eliminar
                 </button>
               </div>
             </div>

@@ -156,7 +156,7 @@ registerExperience({
       destino: { label: 'Destino' },
       placa: { label: 'Placa' },
       conductor: { label: 'Conductor' },
-      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado', 'draft', 'validated', 'ready', 'cerrado'] },
+      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado', 'draft', 'validated', 'ready', 'approved', 'cerrado'] },
       observaciones: { label: 'Observaciones' },
     },
   },
@@ -593,6 +593,122 @@ registerExperience({
     highlight: ['producto', 'proveedor', 'temperatura'],
   },
   defaultOrder: 4,
+  resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
+});
+
+registerExperience({
+  experienceKey: 'productos',
+  metadata: {
+    name: 'Productos',
+    description: 'Maestro de productos, insumos y materiales — catálogo central de la organización.',
+    icon: 'Package',
+    version: '1.0',
+  },
+  capabilities: {
+    supportsImport: true,
+    supportsExport: true,
+    supportsAudit: true,
+    supportsDashboard: true,
+    supportsHumanValidation: true,
+  },
+  ui: {
+    tableFields: ['codigo', 'nombre', 'tipo', 'categoria', 'unidad_medida', 'presentacion', 'proveedor', 'estado'],
+    fieldDisplay: {
+      codigo: { label: 'Código / SKU' },
+      nombre: { label: 'Nombre del Producto' },
+      descripcion: { label: 'Descripción' },
+      tipo: {
+        label: 'Tipo',
+        options: ['materia_prima', 'producto_terminado', 'empaque', 'insumo', 'suministro'],
+      },
+      categoria: {
+        label: 'Categoría',
+        options: ['granos', 'lácteos', 'cárnicos', 'verduras', 'frutas', 'empaques', 'químicos', 'otros'],
+      },
+      unidad_medida: {
+        label: 'Unidad de Medida',
+        options: ['kg', 'lb', 'g', 'und', 'caja', 'bulto', 'l', 'ml', 'gal', 'ton'],
+      },
+      presentacion: { label: 'Presentación' },
+      especificaciones_calidad: { label: 'Especificaciones de Calidad' },
+      proveedor: { label: 'Proveedor' },
+      precio: { label: 'Precio' },
+      moneda: { label: 'Moneda', options: ['COP', 'USD'] },
+      estado: {
+        label: 'Estado',
+        options: ['activo', 'inactivo', 'descontinuado'],
+      },
+      observaciones: { label: 'Observaciones' },
+    },
+  },
+  persistence: {
+    tableName: 'productos',
+    prefix: 'PROD',
+    fieldMapping: {},
+  },
+  documentContract: {
+    canonicalFields: [
+      'codigo', 'nombre', 'descripcion', 'tipo', 'categoria',
+      'unidad_medida', 'presentacion', 'especificaciones_calidad',
+      'proveedor', 'precio', 'moneda', 'estado', 'observaciones',
+    ],
+    synonyms: {
+      codigo: ['codigo', 'cod', 'sku', 'codigo producto', 'cod prod', 'codigo material', 'material code', 'matnr', 'material_number', 'part_number', 'article_number'],
+      nombre: ['nombre', 'nombre producto', 'descripcion', 'desc', 'descripcion producto', 'material description', 'maktx', 'product_name', 'item_name'],
+      descripcion: ['descripcion', 'desc', 'descripcion producto', 'detalle', 'detalle producto', 'description', 'maktx', 'product_description'],
+      tipo: ['tipo', 'tipo producto', 'tipo material', 'clase', 'clase material', 'material type', 'mtart', 'product_type', 'category_type'],
+      categoria: ['categoria', 'cat', 'grupo', 'grupo material', 'familia', 'linea', 'material group', 'matkl', 'product_category', 'commodity'],
+      unidad_medida: ['unidad medida', 'unidad', 'umed', 'u m', 'medida', 'base unit', 'meins', 'unit', 'uom', 'unit_of_measure'],
+      presentacion: ['presentacion', 'presentacion producto', 'formato', 'tamano', 'size', 'package_size', 'packaging', 'pack_size'],
+      especificaciones_calidad: ['especificaciones calidad', 'espec', 'especificaciones', 'calidad', 'quality specs', 'quality spec', 'quality specifications', 'qc_specs', 'product_specs'],
+      proveedor: ['proveedor', 'prov', 'vendor', 'supplier', 'vendedor', 'lifnr', 'nombre proveedor', 'provider'],
+      precio: ['precio', 'valor', 'costo', 'precio unitario', 'price', 'cost', 'unit_price', 'net_price', 'netpr', 'precio_compra'],
+      moneda: ['moneda', 'divisa', 'currency', 'waers', 'coin', 'tipo moneda'],
+      estado: ['estado', 'status', 'estado producto', 'material status', 'product_status', 'mmsta', 'state'],
+      observaciones: ['observaciones', 'obs', 'notas', 'comentarios', 'observacion', 'note', 'remarks', 'text', 'notes'],
+    },
+    fieldNormalizers: {
+      precio: toNumber,
+    },
+  },
+  validationRules: {
+    codigo: { required: true },
+    nombre: { required: true },
+    tipo: { required: true },
+    unidad_medida: { required: true },
+    precio: { min: 0 },
+  },
+  businessRules: [
+    { field: 'categoria', requires: ['tipo'] },
+    { field: 'presentacion', requires: ['unidad_medida'] },
+    { field: 'proveedor', requires: ['nombre'] },
+    { field: 'especificaciones_calidad', requires: ['tipo'] },
+  ],
+  complianceRules: [
+    { field: 'precio', operator: 'greaterThan', value: 0, severity: 'info', message: 'Producto con precio registrado' },
+    { field: 'estado', operator: 'equals', value: 'inactivo', severity: 'warning', message: 'Producto inactivo — verificar disponibilidad' },
+    { field: 'estado', operator: 'equals', value: 'descontinuado', severity: 'info', message: 'Producto descontinuado — no programar compras' },
+  ],
+  automationRules: [
+    { field: 'estado', action: 'setDefault', value: 'activo' },
+    { field: 'moneda', action: 'setDefault', value: 'COP' },
+  ],
+  visibilityRules: [
+    { field: 'observaciones', showWhen: { nombre: 'notEmpty' } },
+    { field: 'precio', showWhen: { tipo: 'notEmpty' } },
+    { field: 'moneda', showWhen: { precio: 'notEmpty' } },
+    { field: 'especificaciones_calidad', showWhen: { tipo: 'notEmpty' } },
+  ],
+  dashboardRules: {
+    enabled: true,
+    trackTotals: true,
+    trackCompliance: true,
+    trackAuditMetrics: true,
+    groupBy: ['tipo', 'categoria', 'estado'],
+    trendBy: [],
+    highlight: ['codigo', 'nombre', 'tipo', 'estado'],
+  },
+  defaultOrder: 5,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
 

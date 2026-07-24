@@ -193,6 +193,42 @@ export class OperationalExperienceLifecycleOrchestrator {
     return { success: true, count: ids.length, action: 'bulk_deleted' };
   }
 
+  async approveRecords(ids, user) {
+    if (!ids?.length) throw new Error('No hay registros seleccionados');
+    const results = [];
+    for (const id of ids) {
+      const record = { estado: 'approved' };
+      const updated = await this._service.update(id, record);
+      OperationalAuditService.auditApproval({ experienceKey: this.experienceKey, recordId: id, eventData: { action: 'approved' }, user });
+      results.push(updated);
+    }
+    return { success: true, count: results.length, records: results, action: 'approved' };
+  }
+
+  async closeRecords(ids, user) {
+    if (!ids?.length) throw new Error('No hay registros seleccionados');
+    const results = [];
+    for (const id of ids) {
+      const record = { estado: 'cerrado' };
+      const updated = await this._service.update(id, record);
+      OperationalAuditService.auditClosure({ experienceKey: this.experienceKey, recordId: id, eventData: { action: 'closed' }, user });
+      results.push(updated);
+    }
+    return { success: true, count: results.length, records: results, action: 'closed' };
+  }
+
+  async reopenRecords(ids, user) {
+    if (!ids?.length) throw new Error('No hay registros seleccionados');
+    const results = [];
+    for (const id of ids) {
+      const record = { estado: 'validated' };
+      const updated = await this._service.update(id, record);
+      OperationalAuditService.auditUpdate({ experienceKey: this.experienceKey, recordId: id, eventData: { action: 'reopened' }, user });
+      results.push(updated);
+    }
+    return { success: true, count: results.length, records: results, action: 'reopened' };
+  }
+
   destroy() {
     this.contract = null;
     this._service = null;

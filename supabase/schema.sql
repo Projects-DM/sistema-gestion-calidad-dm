@@ -23,6 +23,31 @@ create table if not exists public.despachos (
 
 create index if not exists despachos_created_at_idx on public.despachos (created_at desc);
 
+-- Tabla productos (maestro de productos)
+create table if not exists public.productos (
+  id uuid primary key default gen_random_uuid(),
+  codigo text not null default '',
+  nombre text not null default '',
+  descripcion text default '',
+  tipo text not null default '',
+  categoria text default '',
+  unidad_medida text not null default '',
+  presentacion text default '',
+  especificaciones_calidad text default '',
+  proveedor text default '',
+  precio numeric default 0,
+  moneda text default 'COP',
+  estado text not null default 'activo',
+  observaciones text default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists productos_codigo_idx on public.productos (codigo);
+create index if not exists productos_tipo_idx on public.productos (tipo);
+create index if not exists productos_estado_idx on public.productos (estado);
+create index if not exists productos_created_at_idx on public.productos (created_at desc);
+
 -- Tabla documentos (metadatos; archivos en Storage)
 create table if not exists public.documentos (
   id uuid primary key default gen_random_uuid(),
@@ -45,6 +70,7 @@ create table if not exists public.usuarios (
 
 -- Row Level Security (ajusta políticas para producción)
 alter table public.despachos enable row level security;
+alter table public.productos enable row level security;
 alter table public.documentos enable row level security;
 alter table public.usuarios enable row level security;
 
@@ -52,6 +78,9 @@ alter table public.usuarios enable row level security;
 -- En producción: sustituir por auth.uid() y roles.
 drop policy if exists "despachos_anon_all" on public.despachos;
 create policy "despachos_anon_all" on public.despachos for all using (true) with check (true);
+
+drop policy if exists "productos_anon_all" on public.productos;
+create policy "productos_anon_all" on public.productos for all using (true) with check (true);
 
 drop policy if exists "documentos_anon_all" on public.documentos;
 create policy "documentos_anon_all" on public.documentos for all using (true) with check (true);
