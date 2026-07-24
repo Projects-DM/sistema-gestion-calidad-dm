@@ -195,7 +195,18 @@ export function normalizeOperationalData({ parsedDocument, contract, structureAn
     return record;
   });
 
-  const filtered = rows.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
+  const LABEL_KEYWORDS = ['cliente:', 'vendedor', 'fecha:', 'factura:', 'nit:', 'tel:', 'direccion', 'total', 'subtotal', 'vuelto', 'saldo', 'descuento', 'cancelado', 'neto', 'iva', 'retencion', 'banco', 'consignar', 'resolucion', 'gracias', '----'];
+  const hasData = rows.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
+  const filtered = hasData.filter(r => {
+    const prodField = canonicalFields.find(f => f === 'producto' || f === 'descripcion');
+    const prodVal = prodField ? String(r[prodField] ?? '').trim().toLowerCase() : '';
+    if (!prodVal) return false;
+    const colonCount = (prodVal.match(/:/g) || []).length;
+    if (colonCount > 0 && prodVal.length < 20) return false;
+    if (LABEL_KEYWORDS.some(kw => prodVal.startsWith(kw) || prodVal.includes(kw))) return false;
+    if (!isNaN(Number(prodVal.replace(/[,.]/g, ''))) && prodVal.replace(/[,.]/g, '').length > 2) return false;
+    return true;
+  });
   const matchedCount = Object.values(matchedHeaders).filter(Boolean).length;
   return { rows: filtered, matchedHeaders, missingHeaders, completenessScore: canonicalFields.length > 0 ? matchedCount / canonicalFields.length : 0 };
 }
