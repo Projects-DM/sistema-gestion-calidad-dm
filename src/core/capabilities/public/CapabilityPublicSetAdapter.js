@@ -80,6 +80,7 @@ export class CapabilityPublicSetAdapter {
       throw new Error('CapabilityPublicSetAdapter: moduleSlug is required');
     }
     this._moduleSlug = moduleSlug;
+    this._experiencesConfig = null;
   }
 
   /**
@@ -113,7 +114,7 @@ export class CapabilityPublicSetAdapter {
 
     if (dbCapabilities) {
       // For operational-experiences, enrich with available experiences from registry
-      return dbCapabilities.map((cap) => {
+      const enriched = dbCapabilities.map((cap) => {
         const pkgId = typeof cap === 'string' ? cap : (cap.packageId || '');
         const normalizedKey = String(pkgId).replace('pkg:standard:', '');
         if (normalizedKey === 'operational-experiences') {
@@ -123,14 +124,19 @@ export class CapabilityPublicSetAdapter {
             description: exp.metadata?.description || '',
             icon: exp.metadata?.icon || 'Zap',
           }));
-          return {
-            ...cap,
+          const experiencesConfig = {
             enabledExperiences: cap.enabledExperiences || availableExperiences.map((e) => e.experienceKey),
             availableExperiences,
+          };
+          this._experiencesConfig = experiencesConfig;
+          return {
+            ...cap,
+            ...experiencesConfig,
           };
         }
         return cap;
       });
+      return enriched;
     }
 
     // --- Fallback: legacy modules (no capabilities assigned yet) ---
@@ -140,6 +146,11 @@ export class CapabilityPublicSetAdapter {
       description: exp.metadata?.description || '',
       icon: exp.metadata?.icon || 'Zap',
     }));
+    const fallbackExperiencesConfig = {
+      enabledExperiences: availableExperiences.map((e) => e.experienceKey),
+      availableExperiences,
+    };
+    this._experiencesConfig = fallbackExperiencesConfig;
 
     const assignments = [
       {
@@ -162,8 +173,7 @@ export class CapabilityPublicSetAdapter {
         packageId: 'pkg:standard:operational-experiences',
         state:       'active',
         version:     'v1',
-        enabledExperiences: availableExperiences.map((e) => e.experienceKey),
-        availableExperiences,
+        ...fallbackExperiencesConfig,
       },
     ];
 
@@ -204,25 +214,17 @@ export class CapabilityPublicSetAdapter {
     if (!packageId) return null;
     // packageId in resolver pipeline is adapter-internal identity: pkg:standard:<packageKey>
     const normalizedKey = String(packageId).replace('pkg:standard:', '');
-    const pkg = INTERNAL_PACKAGE_BY_KEY.get(normalizedKey) ?? null;
-    if (!pkg) return null;
+    return INTERNAL_PACKAGE_BY_KEY.get(normalizedKey) ?? null;
+  }
 
-    // Enrich operational-experiences with available experiences from registry
-    if (normalizedKey === 'operational-experiences') {
-      const availableExperiences = OperationalExperienceRegistry.listExperiences().map((exp) => ({
-        experienceKey: exp.experienceKey,
-        displayName: exp.metadata?.name || exp.experienceKey,
-        description: exp.metadata?.description || '',
-        icon: exp.metadata?.icon || 'Zap',
-      }));
-      return {
-        ...pkg,
-        availableExperiences,
-        enabledExperiences: availableExperiences.map((e) => e.experienceKey),
-      };
-    }
-
-    return pkg;
+  /**
+   * Returns the experiences config captured during the last listAssignmentsByModuleId call.
+   * Used by useCapabilityPublicSet to pass enabledExperiences to CapabilityPublicSet.
+   *
+   * @returns {{ enabledExperiences: string[], availableExperiences: Array<object> } | null}
+   */
+  getExperiencesConfig() {
+    return this._experiencesConfig;
   }
 
 }
