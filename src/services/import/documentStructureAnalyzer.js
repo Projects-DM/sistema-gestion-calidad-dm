@@ -74,114 +74,84 @@ function classifyRowContent(row) {
   return { type: best === 'ignorable' ? 'ignorable' : best, score: bestScore, text };
 }
 
-function segmentDocumentBlocks(rows, sections, discoveredMetadata) {
-  const blocks = [];
-  const metaFields = Object.keys(discoveredMetadata || {});
+function segmentDocument(rows, sections, discoveredMetadata) {
+  const operationalSection = { rows: [], metadata: {}, headers: [] };
+  const administrativeSection = { rows: [], metadata: {} };
+  const financialSection = { rows: [], metadata: {} };
+  const ignoredSections = [];
+
+  const allSections = [];
 
   if (sections && sections.length > 0 && sections[0].startRow > 0) {
-    blocks.push({
-      id: 'block_pre_table',
-      startRow: 0,
-      endRow: sections[0].startRow - 1,
-      rowCount: sections[0].startRow,
-      source: 'metadata_region',
-    });
+    allSections.push({ startRow: 0, endRow: sections[0].startRow - 1, source: 'pre_table' });
   }
 
-  for (const section of sections) {
-    const headerRow = rows[section.startRow] || [];
-    const blockRows = rows.slice(section.startRow, section.endRow + 1);
-    const avgNonEmpty = blockRows.reduce((s, r) => s + r.filter(c => String(c ?? '').trim()).length, 0) / blockRows.length;
-    blocks.push({
-      id: `block_table_${section.id || blocks.length + 1}`,
-      startRow: section.startRow,
-      endRow: section.endRow,
-      rowCount: section.rowCount,
-      source: 'table_region',
-      avgNonEmpty,
-    });
+  for (const section of sections || []) {
+    allSections.push({ startRow: section.startRow, endRow: section.endRow, source: 'table' });
   }
 
   if (sections && sections.length > 0) {
     const lastEnd = sections[sections.length - 1].endRow;
     if (lastEnd < rows.length - 1) {
-      blocks.push({
-        id: 'block_post_table',
-        startRow: lastEnd + 1,
-        endRow: rows.length - 1,
-        rowCount: rows.length - 1 - lastEnd,
-        source: 'post_table_region',
-      });
+      allSections.push({ startRow: lastEnd + 1, endRow: rows.length - 1, source: 'post_table' });
     }
   }
 
-  if (!blocks.length) {
-    blocks.push({ id: 'block_full', startRow: 0, endRow: rows.length - 1, rowCount: rows.length, source: 'full_document' });
+  if (allSections.length === 0 && rows.length > 0) {
+    allSections.push({ startRow: 0, endRow: rows.length - 1, source: 'full_document' });
   }
 
-  return blocks;
-}
+  for (const section of allSections) {
+    const sectionRows = rows.slice(section.startRow, section.endRow + 1);
+    const textContent = sectionRows.map(r => r.join(' ')).join(' ').toLowerCase();
 
-function classifyDocumentBlocks(blocks, rows, discoveredMetadata) {
-  return blocks.map(block => {
-    const blockRows = rows.slice(block.startRow, block.endRow + 1);
-    const classifications = blockRows.map(r => classifyRowContent(r)).filter(Boolean);
-    const typeScores = {};
-    for (const c of classifications) {
-      typeScores[c.type] = (typeScores[c.type] || 0) + 1;
-    }
-    let dominantType = 'ignorable', maxCount = 0;
-    for (const [type, count] of Object.entries(typeScores)) {
-      if (count > maxCount) { dominantType = type; maxCount = count; }
-    }
+    let finScore = 0, admScore = 0, comScore = 0, opeScore = 0;
+    for (const kw of FINANCIAL_KEYWORDS) { if (textContent.includes(kw)) finScore++; }
+    for (const kw of ADMIN_KEYWORDS) { if (textContent.includes(kw)) admScore++; }
+    for (const kw of COMMERCIAL_KEYWORDS) { if (textContent.includes(kw)) comScore++; }
+    for (const kw of OPERATIONAL_KEYWORDS) { if (textContent.includes(kw)) opeScore++; }
 
-    const confidence = classifications.length > 0 ? Math.round((maxCount / classifications.length) * 100) : 0;
-    const isImportable = dominantType === 'operacional' || dominantType === 'productos';
+    const isOperational = opeScore > 0 && opeScore >= Math.max(finScore, admScore, comScore);
+    const isFinancial = finScore > 0 && finScore > opeScore;
+    const isAdmin = admScore > 0 && admScore > opeScore;
+    const isCommercial = comScore > 0 && comScore > opeScore;
 
-    const fieldsFound = [];
-    for (const r of blockRows) {
-      for (const c of r) {
-        const norm = normalizeText(c);
+    const sectionMeta = {};
+    for (let i = 0; i < Math.min(sectionRows.length, 50); i++) {
+      const row = sectionRows[i] || [];
+      for (let j = 0; j < row.length - 1; j++) {
+        const label = String(row[j] ?? '').trim().toLowerCase();
         for (const group of KNOWN_META_LABELS) {
-          if (group.some(g => norm === normalizeText(g) || norm.includes(normalizeText(g)))) {
-            fieldsFound.push(group[0]);
+          if (group.some(g => g === label || label.startsWith(g))) {
+            sectionMeta[group[0]] = String(row[j + 1] ?? '').trim();
           }
         }
       }
     }
 
-    return {
-      id: block.id,
-      type: dominantType,
-      confidence,
-      startRow: block.startRow,
-      endRow: block.endRow,
-      rowCount: block.rowCount,
-      fieldsFound: [...new Set(fieldsFound)],
-      importable: isImportable,
-      ignorable: !isImportable,
-    };
-  });
-}
+    if (isOperational) {
+      operationalSection.rows.push(...sectionRows);
+      Object.assign(operationalSection.metadata, sectionMeta);
+    } else if (isFinancial) {
+      financialSection.rows.push(...sectionRows);
+      Object.assign(financialSection.metadata, sectionMeta);
+    } else if (isAdmin) {
+      administrativeSection.rows.push(...sectionRows);
+      Object.assign(administrativeSection.metadata, sectionMeta);
+    } else {
+      ignoredSections.push({ rows: sectionRows, reason: isCommercial ? 'información comercial' : 'información no clasificada' });
+    }
+  }
 
-function buildOperationalRelevanceMap(classifiedBlocks, discoveredMetadata) {
-  const operationalBlocks = classifiedBlocks.filter(b => b.importable);
-  const ignoredBlocks = classifiedBlocks.filter(b => !b.importable);
-  const metaFieldsCount = Object.keys(discoveredMetadata || {}).length;
-  const operationalBlockScore = operationalBlocks.length > 0
-    ? Math.round((operationalBlocks.reduce((s, b) => s + b.confidence, 0) / operationalBlocks.length) * (operationalBlocks.length / classifiedBlocks.length) * 100)
-    : 0;
-  const metaScore = Math.min(metaFieldsCount * 10, 100);
-  const operationalScore = Math.round((operationalBlockScore * 0.7 + metaScore * 0.3));
+  for (let i = 0; i < Math.min(operationalSection.rows.length, 10); i++) {
+    const nonEmpty = operationalSection.rows[i].filter(c => String(c ?? '').trim());
+    if (nonEmpty.length >= 2) {
+      operationalSection.headers = operationalSection.rows[i].filter(c => String(c ?? '').trim());
+      break;
+    }
+  }
 
-  return {
-    operationalBlocks,
-    ignoredBlocks,
-    operationalScore: Math.min(operationalScore, 100),
-    totalBlocks: classifiedBlocks.length,
-    operationalBlockCount: operationalBlocks.length,
-    ignoredBlockCount: ignoredBlocks.length,
-  };
+  return { operationalSection, administrativeSection, financialSection, ignoredSections };
 }
 
 function detectSparseFirstRow(rows) {
@@ -339,9 +309,7 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
   const metadataBlockInfo = detectMetadataBlock(rows, sections);
   const tableBlockInfo = detectTableBlock(rows, sections);
 
-  const docBlocks = segmentDocumentBlocks(rows, sections, discoveredMetadata);
-  const classifiedBlocks = classifyDocumentBlocks(docBlocks, rows, discoveredMetadata);
-  const relevanceMap = buildOperationalRelevanceMap(classifiedBlocks, discoveredMetadata);
+  const documentSegments = segmentDocument(rows, sections, discoveredMetadata);
 
   const tableConfidence = tableBlockInfo ? Math.round(
     (density * 0.4 +
@@ -397,7 +365,6 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
     metadataBlock: metadataBlockInfo ? { startRow: metadataBlockInfo.startRow, endRow: metadataBlockInfo.endRow, fields: discoveredMetadata } : null,
     tableBlock: tableBlockInfo,
     documentSummary,
-    documentBlocks: classifiedBlocks,
-    operationalRelevanceMap: relevanceMap,
+    documentSegments,
   };
 }

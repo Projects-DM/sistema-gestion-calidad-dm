@@ -145,9 +145,14 @@ function getOriginalRow(aoa, rowIndex) {
   return (aoa[rowIndex] || []).map((v) => v !== undefined && v !== null ? String(v).trim() : '');
 }
 
-export function normalizeOperationalData({ parsedDocument, contract, structureAnalysis }) {
+export function normalizeOperationalData({ parsedDocument, contract, structureAnalysis, operationalSection }) {
   const { canonicalFields, synonyms, fieldNormalizers = {} } = contract.documentContract || contract;
-  const { rawHeaders, rawRows } = parsedDocument;
+  let { rawHeaders, rawRows } = parsedDocument;
+
+  if (operationalSection?.rows?.length > 0) {
+    rawHeaders = operationalSection.headers || [];
+    rawRows = operationalSection.rows;
+  }
 
   if (structureAnalysis?.documentType === 'SEMI_STRUCTURED' && structureAnalysis?.sections?.length > 0) {
     return normalizeSemiStructured({ rawHeaders, rawRows, canonicalFields, synonyms, fieldNormalizers, structureAnalysis });
@@ -254,70 +259,7 @@ export function buildOperationalRecords({ operationalDocumentModel, contract, re
   return { records: filtered, totalBuilt: records.length, totalFiltered: filtered.length };
 }
 
-export function filterOperationalInformation({ operationalDocumentModel, structureAnalysis, documentSegmentationHints }) {
-  const { metadata, table } = operationalDocumentModel || {};
-  const hints = documentSegmentationHints || { allowCommercialInformation: false, allowFinancialInformation: false, allowAdministrativeInformation: false, preferOperationalInformation: true };
-  const relevanceMap = structureAnalysis?.operationalRelevanceMap;
 
-  if (!relevanceMap || relevanceMap.operationalBlocks.length === 0) {
-    return { metadata, table, isFiltered: false };
-  }
-
-  const filteredTable = { headers: table?.headers || [], rows: [] };
-  const operationalRowIndices = new Set();
-  for (const block of relevanceMap.operationalBlocks) {
-    for (let i = block.startRow; i <= block.endRow; i++) {
-      operationalRowIndices.add(i);
-    }
-  }
-
-  if (structureAnalysis?.tableBlock) {
-    const tableStart = structureAnalysis.tableBlock.startRow;
-    const tableEnd = structureAnalysis.tableBlock.endRow;
-    const filteredRows = [];
-    for (let i = 0; i < (table?.rows || []).length; i++) {
-      const absoluteRow = tableStart + 1 + i;
-      if (absoluteRow <= tableEnd && operationalRowIndices.has(absoluteRow)) {
-        filteredRows.push((table?.rows || [])[i]);
-      }
-    }
-    filteredTable.rows = filteredRows;
-  }
-
-  return { metadata, table: filteredTable, isFiltered: true };
-}
-
-export function buildOperationalSelectionSummary({ structureAnalysis }) {
-  const relevanceMap = structureAnalysis?.operationalRelevanceMap;
-  if (!relevanceMap) {
-    return { importable: [], ignorable: [], operationalScore: 0 };
-  }
-
-  const importableFields = [];
-  const ignorableFields = [];
-  const seenFields = new Set();
-
-  for (const block of relevanceMap.operationalBlocks) {
-    for (const f of block.fieldsFound || []) {
-      if (!seenFields.has(f)) { importableFields.push(f); seenFields.add(f); }
-    }
-  }
-
-  for (const block of relevanceMap.ignoredBlocks) {
-    for (const f of block.fieldsFound || []) {
-      if (!seenFields.has(f)) { ignorableFields.push(f); seenFields.add(f); }
-    }
-  }
-
-  return {
-    importable: importableFields,
-    ignorable: ignorableFields,
-    operationalScore: relevanceMap.operationalScore || 0,
-    operationalBlocks: relevanceMap.operationalBlockCount || 0,
-    ignoredBlocks: relevanceMap.ignoredBlockCount || 0,
-    totalBlocks: relevanceMap.totalBlocks || 0,
-  };
-}
 
 export function buildOperationalDocumentModel({ parsedDocument, structureAnalysis }) {
   const { rawRows } = parsedDocument || {};
