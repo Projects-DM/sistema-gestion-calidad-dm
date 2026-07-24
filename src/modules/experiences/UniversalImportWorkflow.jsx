@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert } from 'lucide-react';
-import { parseDocument } from '../../services/import/index.js';
+import { parseDocument, analyzeDocumentStructure } from '../../services/import/index.js';
 import { normalizeOperationalData } from '../../services/import/operationalDataExtractionLayer.js';
 import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
@@ -47,6 +47,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const [missingHeaders, setMissingHeaders] = useState([]);
   const [unknownHeaders, setUnknownHeaders] = useState([]);
   const [parsedRows, setParsedRows] = useState([]);
+  const [structureAnalysis, setStructureAnalysis] = useState(null);
 
   const canonicalFields = contract?.documentContract?.canonicalFields || [];
   const tableFields = getTableFields(contract);
@@ -65,7 +66,14 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     try {
       const parsedDoc = await parseDocument(file);
       if (!parsedDoc?.rawRows?.length) throw new Error('El archivo no contiene filas con datos.');
-      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract });
+      const analysis = analyzeDocumentStructure({
+        rawRows: parsedDoc.rawRows,
+        rawHeaders: parsedDoc.rawHeaders,
+        textContent: parsedDoc.textContent,
+        fileType: parsedDoc.fileType,
+      });
+      setStructureAnalysis(analysis);
+      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
       const rows = result.rows.map((r, i) => {
@@ -104,6 +112,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     setMissingHeaders([]);
     setUnknownHeaders([]);
     setParsedRows([]);
+    setStructureAnalysis(null);
   };
 
   const handleClose = () => {
@@ -220,6 +229,43 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                   </div>
                 </div>
               </div>
+
+              {/* Document Intelligence */}
+              {structureAnalysis && (
+                <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 sm:px-5 py-3 sm:py-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[10px] font-bold text-indigo-700">{structureAnalysis.documentType === 'SEMI_STRUCTURED' ? 'S/E' : 'TB'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-indigo-800">Inteligencia documental</p>
+                      <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-indigo-700">
+                        <span>
+                          Tipo: <strong>{structureAnalysis.documentType === 'SEMI_STRUCTURED' ? 'Semi-estructurado' : 'Tabular'}</strong>
+                        </span>
+                        <span>
+                          Confianza: <strong>{Math.round(structureAnalysis.confidence * 100)}%</strong>
+                        </span>
+                        {structureAnalysis.sections?.length > 0 && (
+                          <span>
+                            Tablas detectadas: <strong>{structureAnalysis.sections.length}</strong>
+                          </span>
+                        )}
+                        {structureAnalysis.signals?.avgColumns > 0 && (
+                          <span>
+                            Columnas promedio: <strong>{structureAnalysis.signals.avgColumns}</strong>
+                          </span>
+                        )}
+                        {structureAnalysis.signals?.dataDensity > 0 && (
+                          <span>
+                            Densidad: <strong>{Math.round(structureAnalysis.signals.dataDensity * 100)}%</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Header mapping */}
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
