@@ -45,6 +45,8 @@ getFlowOrchestrator();
  * @property {object} visibilityRules  — [{ field, showWhen }]
  * @property {object} auditRules       — { trackCompliance, trackImports, trackExports, trackRuleExecutions, trackVisibilityChanges }
  * @property {object} dashboardRules   — { enabled, trackTotals, trackCompliance, trackAuditMetrics, groupBy, trendBy, highlight }
+ * @property {object} documentMappingHints — { preferMetadata, preferTables, minimumTableColumns }
+ * @property {object} recordBuilderHints — { allowMetadataInheritance, allowPartialRecords, minimumCompletenessScore }
  * @property {object} exportRules      — future
  * @property {number} defaultOrder     — default display order within the tab
  * @property {Function} resolveComponent — lazy component resolver () => Promise<{ default: React.Component }>
@@ -66,6 +68,16 @@ function registerExperience(descriptor) {
     complianceRules: descriptor.complianceRules ?? [],
     automationRules: descriptor.automationRules ?? [],
     visibilityRules: descriptor.visibilityRules ?? [],
+    documentMappingHints: descriptor.documentMappingHints ?? {
+      preferMetadata: true,
+      preferTables: true,
+      minimumTableColumns: 2,
+    },
+    recordBuilderHints: descriptor.recordBuilderHints ?? {
+      allowMetadataInheritance: true,
+      allowPartialRecords: true,
+      minimumCompletenessScore: 60,
+    },
     auditRules: descriptor.auditRules ?? {
       trackCompliance: true,
       trackImports: true,
@@ -113,6 +125,8 @@ function getExperienceContract(experienceKey) {
     auditRules: exp.auditRules,
     dashboardRules: exp.dashboardRules,
     exportRules: exp.exportRules,
+    documentMappingHints: exp.documentMappingHints,
+    recordBuilderHints: exp.recordBuilderHints,
     experienceKey: exp.experienceKey,
   };
 }
@@ -237,6 +251,16 @@ registerExperience({
     trendBy: ['fecha'],
     highlight: ['cliente', 'producto', 'cantidad', 'temperatura', 'estado'],
   },
+  documentMappingHints: {
+    preferMetadata: true,
+    preferTables: true,
+    minimumTableColumns: 2,
+  },
+  recordBuilderHints: {
+    allowMetadataInheritance: true,
+    allowPartialRecords: true,
+    minimumCompletenessScore: 60,
+  },
   defaultOrder: 1,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
@@ -354,6 +378,16 @@ registerExperience({
     groupBy: ['producto', 'ubicacion', 'estado'],
     trendBy: ['fecha'],
     highlight: ['producto', 'cantidad_actual', 'estado'],
+  },
+  documentMappingHints: {
+    preferMetadata: true,
+    preferTables: true,
+    minimumTableColumns: 2,
+  },
+  recordBuilderHints: {
+    allowMetadataInheritance: true,
+    allowPartialRecords: true,
+    minimumCompletenessScore: 60,
   },
   defaultOrder: 2,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
@@ -482,6 +516,16 @@ registerExperience({
     trendBy: ['fecha'],
     highlight: ['producto', 'cantidad_producida', 'estado'],
   },
+  documentMappingHints: {
+    preferMetadata: true,
+    preferTables: true,
+    minimumTableColumns: 2,
+  },
+  recordBuilderHints: {
+    allowMetadataInheritance: true,
+    allowPartialRecords: true,
+    minimumCompletenessScore: 60,
+  },
   defaultOrder: 3,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
@@ -602,6 +646,16 @@ registerExperience({
     trendBy: ['fecha'],
     highlight: ['producto', 'proveedor', 'temperatura'],
   },
+  documentMappingHints: {
+    preferMetadata: true,
+    preferTables: true,
+    minimumTableColumns: 2,
+  },
+  recordBuilderHints: {
+    allowMetadataInheritance: true,
+    allowPartialRecords: true,
+    minimumCompletenessScore: 60,
+  },
   defaultOrder: 4,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),
 });
@@ -717,6 +771,16 @@ registerExperience({
     groupBy: ['tipo', 'categoria', 'estado'],
     trendBy: [],
     highlight: ['codigo', 'nombre', 'tipo', 'estado'],
+  },
+  documentMappingHints: {
+    preferMetadata: true,
+    preferTables: true,
+    minimumTableColumns: 2,
+  },
+  recordBuilderHints: {
+    allowMetadataInheritance: true,
+    allowPartialRecords: true,
+    minimumCompletenessScore: 60,
   },
   defaultOrder: 5,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),

@@ -1,12 +1,13 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 let pdfjsLib = null;
 
 async function getPdfJs() {
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
   }
   return pdfjsLib;
 }
@@ -40,14 +41,27 @@ function parseCSV(text) {
 async function parseXLSX(file) {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
+  const sheetNames = workbook.SheetNames;
+
+  let bestName = sheetNames[0];
+  let bestScore = -1;
+  for (const name of sheetNames) {
+    const s = workbook.Sheets[name];
+    if (!s || !s['!ref']) continue;
+    const range = XLSX.utils.decode_range(s['!ref']);
+    const rows = range.e.r - range.s.r + 1;
+    const cols = range.e.c - range.s.c + 1;
+    const score = rows * cols;
+    if (score > bestScore) { bestScore = score; bestName = name; }
+  }
+
+  const sheet = workbook.Sheets[bestName];
   const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
   const rawHeaders = jsonData[0] ? jsonData[0].map(String) : [];
   const rawRows = jsonData.slice(1);
   const rows = rawRows.map(row => row.map(String));
   const allText = jsonData.map(row => row.join(' ')).join('\n');
-  return { headers: rawHeaders, rows, rawRows, textContent: allText };
+  return { headers: rawHeaders, rows, rawRows, textContent: allText, sheetNames, activeSheet: bestName };
 }
 
 async function parseDOCX(file) {
@@ -62,14 +76,39 @@ async function parsePDF(file) {
   const pdfjs = await getPdfJs();
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
-  let text = '';
+  const allRows = [];
+  let allText = '';
+
   for (let i = 0; i < doc.numPages; i++) {
     const page = await doc.getPage(i + 1);
     const content = await page.getTextContent();
-    text += content.items.map(item => item.str).join(' ') + '\n';
+
+    const ROW_TOLERANCE = 5;
+    const groups = [];
+    for (const item of content.items) {
+      const text = (item.str || '').trim();
+      if (!text) continue;
+      const y = Math.round(item.transform[5]);
+      const x = Math.round(item.transform[4]);
+      let group = groups.find(g => Math.abs(g.y - y) <= ROW_TOLERANCE);
+      if (!group) { group = { y, items: [] }; groups.push(group); }
+      group.items.push({ x, text });
+    }
+
+    groups.sort((a, b) => a.y - b.y);
+    for (const g of groups) {
+      g.items.sort((a, b) => a.x - b.x);
+      const row = g.items.map(it => it.text);
+      allRows.push(row);
+      allText += row.join(' ') + '\n';
+    }
   }
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-  return { headers: lines.length > 0 ? [lines[0]] : [], rows: lines.map(l => [l]), textContent: text };
+
+  if (allRows.length === 0) {
+    throw new Error('El PDF no contiene texto extraíble. Asegúrate de que no sea un documento escaneado (imagen).');
+  }
+
+  return { headers: allRows[0] || [], rows: allRows.slice(1), textContent: allText };
 }
 
 export async function parseDocument(file) {
@@ -113,5 +152,7 @@ export async function parseDocument(file) {
     rawRows: parsed.rawRows || parsed.rows,
     textContent: parsed.textContent || '',
     rawHeaders: parsed.headers || [],
+    sheetNames: parsed.sheetNames || null,
+    activeSheet: parsed.activeSheet || null,
   };
 }
