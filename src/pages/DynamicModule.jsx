@@ -158,7 +158,7 @@ function OperationalExperiencesContent({ enabledExperiences, moduleSlug, moduleN
     <div className="space-y-6">
       {/* Experience sub-tabs */}
       {enabledExperiences.length > 1 && (
-        <div className="flex gap-2 border-b border-gray-200 pb-2">
+        <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
           {enabledExperiences.map((exp) => {
             const ExpIcon = resolveIcon(exp.icon || exp.metadata?.icon || 'Zap');
             return (
@@ -359,7 +359,7 @@ export default function DynamicModule() {
       </div>
 
       {/* Tabs — built exclusively from Capability Public Set */}
-      <div className="flex border-b border-gray-200 gap-8">
+      <div className="flex flex-wrap border-b border-gray-200 gap-2 sm:gap-8">
         {tabs.map((tab) => {
           const TabIcon = resolveIcon(tab.icon);
           const isActive = activeTab === tab.key;
