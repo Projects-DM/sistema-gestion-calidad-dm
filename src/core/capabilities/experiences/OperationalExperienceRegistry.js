@@ -134,7 +134,7 @@ registerExperience({
     name: 'Despachos',
     description: 'Registro, historial, reportes y búsqueda de despachos del módulo.',
     icon: 'Truck',
-    version: '2.0',
+    version: '2.1',
   },
   capabilities: {
     supportsImport: true,
@@ -144,7 +144,7 @@ registerExperience({
     supportsHumanValidation: true,
   },
   ui: {
-    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad', 'estado'],
+    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad', 'temperatura', 'destino', 'conductor', 'estado'],
     fieldDisplay: {
       fecha: { label: 'Fecha Despacho' },
       hora: { label: 'Hora' },
@@ -153,11 +153,13 @@ registerExperience({
       lote: { label: 'Lote' },
       cantidad: { label: 'Cant. Bolsas' },
       peso: { label: 'Peso (Kg)' },
+      temperatura: { label: 'Temperatura (°C)' },
       destino: { label: 'Destino' },
-      placa: { label: 'Placa' },
+      placa: { label: 'Vehículo / Placa' },
       conductor: { label: 'Conductor' },
       estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado', 'draft', 'validated', 'ready', 'approved', 'cerrado'] },
       observaciones: { label: 'Observaciones' },
+      signature_estado: { label: 'Firma Conductor', options: ['pending', 'signed'] },
     },
   },
   persistence: {
@@ -170,7 +172,7 @@ registerExperience({
   documentContract: {
     canonicalFields: [
       'fecha', 'hora', 'cliente', 'producto', 'lote',
-      'cantidad', 'peso', 'destino', 'placa', 'conductor', 'estado', 'observaciones',
+      'cantidad', 'peso', 'temperatura', 'destino', 'placa', 'conductor', 'estado', 'observaciones', 'signature_estado',
     ],
     synonyms: {
       fecha: ['fecha', 'fec', 'date', 'fecha despacho', 'fecha de despacho', 'f despacho', 'f', 'doc_date', 'posting_date'],
@@ -180,17 +182,20 @@ registerExperience({
       lote: ['lote', 'lote prod', 'numero lote', 'batch', 'charg', 'batch_number', 'lote_sap'],
       cantidad: ['cantidad', 'cant', 'cant bolsas', 'cantidad bolsas', 'unidades', 'uds', 'qty', 'cant bultos', 'bolsas', 'quantity', 'menge', 'lfimg'],
       peso: ['peso', 'kilos', 'kilo', 'kg', 'kilogramos', 'peso total', 'weight', 'brtgew', 'ntgew'],
+      temperatura: ['temperatura', 'temp', 'temperatura producto', 'temperatura despacho', 'temperature', 'temp_c', 'temp_carga', 'temp_producto', 'temp_ambiente'],
       destino: ['destino', 'direccion', 'dir', 'ciudad', 'bodega', 'punto entrega', 'punto de entrega', 'sede', 'delivery_addr', 'plant', 'werks'],
-      placa: ['placa', 'vehiculo', 'vehiculo placa', 'camion', 'tracto', 'placa vehiculo', 'vehicle', 'license_plate'],
+      placa: ['placa', 'vehiculo', 'vehiculo placa', 'camion', 'tracto', 'placa vehiculo', 'vehicle', 'license_plate', 'vehiculo'],
       conductor: ['conductor', 'chofer', 'driver', 'transportista', 'nombre conductor', 'driver_name'],
       estado: ['estado', 'status', 'estado despacho', 'state', 'delivery_status'],
       observaciones: ['observaciones', 'obs', 'nota', 'notas', 'comentarios', 'observacion', 'note', 'remarks', 'text'],
+      signature_estado: ['firma', 'signature', 'firma conductor', 'conductor signature', 'signature_status', 'firma_estado'],
     },
     fieldNormalizers: {
       fecha: toYmd,
       hora: toHm,
       cantidad: toNumber,
       peso: toNumber,
+      temperatura: toNumber,
     },
   },
   validationRules: {
@@ -205,6 +210,8 @@ registerExperience({
     { field: 'conductor', requires: ['placa'] },
   ],
   complianceRules: [
+    { field: 'temperatura', operator: 'greaterThan', value: 8, severity: 'warning', message: 'Temperatura superior a 8°C — riesgo de cadena de frío' },
+    { field: 'temperatura', operator: 'lessThan', value: 0, severity: 'warning', message: 'Temperatura bajo 0°C — posible congelación del producto' },
     { field: 'cantidad', operator: 'greaterThan', value: 200, severity: 'info', message: 'Despacho mayor a 200 bolsas — verificar capacidad' },
     { field: 'peso', operator: 'greaterThan', value: 5000, severity: 'info', message: 'Peso superior a 5000 kg — verificar límite vehículo' },
     { field: 'estado', operator: 'equals', value: 'pendiente', severity: 'info', message: 'Despacho pendiente de procesar' },
@@ -213,10 +220,13 @@ registerExperience({
     { field: 'fecha', action: 'setCurrentDate' },
     { field: 'hora', action: 'setCurrentTime' },
     { field: 'estado', action: 'setDefault', value: 'pendiente' },
+    { field: 'signature_estado', action: 'setDefault', value: 'pending' },
   ],
   visibilityRules: [
     { field: 'observaciones', showWhen: { producto: 'notEmpty' } },
     { field: 'conductor', showWhen: { placa: 'notEmpty' } },
+    { field: 'temperatura', showWhen: { producto: 'notEmpty' } },
+    { field: 'signature_estado', showWhen: { conductor: 'notEmpty' } },
   ],
   dashboardRules: {
     enabled: true,
@@ -225,7 +235,7 @@ registerExperience({
     trackAuditMetrics: true,
     groupBy: ['cliente', 'producto', 'estado'],
     trendBy: ['fecha'],
-    highlight: ['cliente', 'producto', 'cantidad', 'estado'],
+    highlight: ['cliente', 'producto', 'cantidad', 'temperatura', 'estado'],
   },
   defaultOrder: 1,
   resolveComponent: () => import('../../../modules/experiences/UniversalOperationalRuntime.jsx'),

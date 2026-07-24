@@ -608,6 +608,24 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          {/* Business summary bar */}
+          {!isFormOpen && records.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-px bg-gray-200">
+              {[
+                { label: `Total ${contract.metadata.name || 'registros'}`, count: records.length, color: 'text-gray-900', bg: 'bg-white' },
+                { label: 'Pendientes', count: records.filter(r => r.estado === 'pendiente' || !r.estado).length, color: 'text-yellow-800', bg: 'bg-yellow-50' },
+                { label: 'En proceso', count: records.filter(r => r.estado === 'en_proceso').length, color: 'text-blue-800', bg: 'bg-blue-50' },
+                { label: 'Completados', count: records.filter(r => r.estado === 'completado' || r.estado === 'cerrado').length, color: 'text-green-800', bg: 'bg-green-50' },
+                { label: 'Alertas', count: filteredRecords.filter(r => recordInconsistencies[r.id]?.length > 0 || duplicatedIds.has(r.id)).length, color: 'text-red-800', bg: 'bg-red-50' },
+              ].map(item => (
+                <div key={item.label} className={`${item.bg} px-5 py-4`}>
+                  <p className={`text-2xl font-bold ${item.color}`}>{item.count}</p>
+                  <p className="text-xs font-medium text-gray-500 mt-0.5">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Operational Views Tabs */}
           <div className="flex flex-wrap gap-1 px-4 pt-4 pb-2 border-b border-gray-200 bg-gray-50/30">
             {views.map(v => {
