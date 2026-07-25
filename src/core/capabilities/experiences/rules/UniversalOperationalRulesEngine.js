@@ -4,21 +4,31 @@ import { checkCompliance } from './ComplianceProcessor.js';
 import { applyAutomations } from './AutomationProcessor.js';
 import { computeVisibility } from './VisibilityProcessor.js';
 
+const CRITICAL_FIELDS = new Set(['cliente', 'producto', 'cantidad']);
+
 export function evaluateRecord(record, contract) {
   const validationRules = contract?.validationRules || {};
   const businessRules = contract?.businessRules || [];
   const complianceRules = contract?.complianceRules || [];
 
-  const validationErrors = validateRecord(record, validationRules);
+  const rawValidationErrors = validateRecord(record, validationRules);
   const businessErrors = checkBusinessRules(record, businessRules);
-  const complianceIssues = checkCompliance(record, complianceRules);
+  const rawComplianceIssues = checkCompliance(record, complianceRules);
+
+  const criticalErrors = rawValidationErrors.filter(e => CRITICAL_FIELDS.has(e.field));
+  const complementaryWarnings = [
+    ...rawValidationErrors.filter(e => !CRITICAL_FIELDS.has(e.field)),
+    ...rawComplianceIssues,
+  ];
 
   return {
-    isValid: validationErrors.length === 0 && businessErrors.length === 0,
-    validationErrors,
+    isValid: criticalErrors.length === 0,
+    isImportable: criticalErrors.length === 0,
+    criticalErrors,
+    validationErrors: rawValidationErrors,
     businessErrors,
-    complianceIssues,
-    allErrors: [...validationErrors, ...businessErrors],
+    complianceIssues: complementaryWarnings,
+    allErrors: criticalErrors,
   };
 }
 

@@ -1,13 +1,15 @@
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 let pdfjsLib = null;
+let pdfWorker = null;
 
 async function getPdfJs() {
   if (!pdfjsLib) {
     pdfjsLib = await import('pdfjs-dist');
-    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    const { default: workerUrl } = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
+    pdfWorker = new Worker(workerUrl, { type: 'module' });
+    pdfjsLib.GlobalWorkerOptions.workerPort = pdfWorker;
   }
   return pdfjsLib;
 }
@@ -77,10 +79,12 @@ async function parsePDF(file) {
   const buffer = await file.arrayBuffer();
   const doc = await pdfjs.getDocument({ data: buffer }).promise;
   const allRows = [];
+  const allSpatialRows = [];
+  const allRawCells = [];
   let allText = '';
 
-  for (let i = 0; i < doc.numPages; i++) {
-    const page = await doc.getPage(i + 1);
+  for (let pageNum = 1; pageNum <= doc.numPages; pageNum++) {
+    const page = await doc.getPage(pageNum);
     const content = await page.getTextContent();
 
     const ROW_TOLERANCE = 5;
@@ -90,16 +94,23 @@ async function parsePDF(file) {
       if (!text) continue;
       const y = Math.round(item.transform[5]);
       const x = Math.round(item.transform[4]);
+      allRawCells.push({ text, x, y, page: pageNum });
       let group = groups.find(g => Math.abs(g.y - y) <= ROW_TOLERANCE);
       if (!group) { group = { y, items: [] }; groups.push(group); }
       group.items.push({ x, text });
     }
 
-    groups.sort((a, b) => a.y - b.y);
+    // Top to bottom (higher Y to lower Y in PDF coordinates)
+    groups.sort((a, b) => b.y - a.y);
     for (const g of groups) {
       g.items.sort((a, b) => a.x - b.x);
       const row = g.items.map(it => it.text);
       allRows.push(row);
+      allSpatialRows.push({
+        y: g.y,
+        page: pageNum,
+        cells: g.items.map(it => ({ text: it.text, x: it.x }))
+      });
       allText += row.join(' ') + '\n';
     }
   }
@@ -108,7 +119,14 @@ async function parsePDF(file) {
     throw new Error('El PDF no contiene texto extraíble. Asegúrate de que no sea un documento escaneado (imagen).');
   }
 
-  return { headers: allRows[0] || [], rows: allRows.slice(1), textContent: allText };
+  return {
+    headers: allRows[0] || [],
+    rows: allRows.slice(1),
+    rawRows: allRows,
+    textContent: allText,
+    rawCells: allRawCells,
+    spatialRows: allSpatialRows,
+  };
 }
 
 export async function parseDocument(file) {
@@ -160,12 +178,10 @@ export async function parseDocument(file) {
     rawRows: parsed.rawRows || parsed.rows,
     textContent: parsed.textContent || '',
     rawHeaders: parsed.headers || [],
+    rawCells: parsed.rawCells || [],
+    spatialRows: parsed.spatialRows || [],
     sheetNames: parsed.sheetNames || null,
     activeSheet: parsed.activeSheet || null,
-    documentSegments: null,
-    documentPattern: null,
-    documentRecords: [],
-    documentAnatomy: null,
     parserDiagnostics,
   };
 }

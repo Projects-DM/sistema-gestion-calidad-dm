@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert, FileText } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { parseDocument, analyzeDocumentStructure } from '../../services/import/index.js';
-import { normalizeOperationalData, buildOperationalDocumentModel, buildOperationalRecords, buildDocumentRecords } from '../../services/import/operationalDataExtractionLayer.js';
+import { normalizeOperationalData, mapOperationalRecordToPersistence, validatePersistencePayload } from '../../services/import/operationalDataExtractionLayer.js';
 import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function getFieldLabel(contract, field) {
@@ -27,20 +27,10 @@ function computeUnknownHeaders(rawHeaders, matchedHeaders) {
   return (rawHeaders || []).filter(h => h && !matchedRawHeaders.has(h));
 }
 
-function computeRowErrors(row, errorExpectations, canonicalFields) {
-  const errs = [];
-  for (const f of canonicalFields) {
-    if (errorExpectations.required?.[f] && !String(row[f] ?? '').trim()) {
-      errs.push(`${getFieldLabel(errorExpectations, f)} está vacío`);
-    }
-  }
-  return errs;
-}
-
 export default function UniversalImportWorkflow({ open, onClose, onImported, contract }) {
   const inputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [phase, setPhase] = useState('idle'); // idle | parsing | preview | complete
+  const [phase, setPhase] = useState('idle');
   const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
   const [matchedHeaders, setMatchedHeaders] = useState({});
@@ -50,22 +40,31 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const [structureAnalysis, setStructureAnalysis] = useState(null);
   const [parsedDoc, setParsedDoc] = useState(null);
   const [activeSheet, setActiveSheet] = useState(null);
-  const [completenessScore, setCompletenessScore] = useState(0);
-  const [builtRecords, setBuiltRecords] = useState([]);
-  const [recordBuilderDiag, setRecordBuilderDiag] = useState(null);
-  const [documentPattern, setDocumentPattern] = useState(null);
-  const [documentRecords, setDocumentRecords] = useState([]);
-  const [documentAnatomy, setDocumentAnatomy] = useState(null);
-  const [operationalRegion, setOperationalRegion] = useState(null);
-  const [operationalHeaders, setOperationalHeaders] = useState(null);
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [docMetadata, setDocMetadata] = useState({});
 
   const canonicalFields = contract?.documentContract?.canonicalFields || [];
   const tableFields = getTableFields(contract);
   const displayFields = tableFields.length ? tableFields : canonicalFields;
+  const computedFields = ['_pesoUnitario', '_pesoTotal', '_trazable'];
+  const showComputed = parsedRows.some(r => r._pesoUnitario !== undefined || r._pesoTotal !== undefined || r._trazable !== undefined);
 
   const rows = parsedRows;
   const validCount = rows.filter(r => r._included && !r._errors?.length).length;
   const errorCount = rows.filter(r => r._errors?.length).length;
+
+  const bizSummary = useMemo(() => {
+    const productos = new Set();
+    const lotes = new Set();
+    let pesoTotal = 0;
+    for (const r of rows) {
+      if (r.producto) productos.add(r.producto);
+      if (r.lote) lotes.add(r.lote);
+      if (r._pesoTotal) pesoTotal += r._pesoTotal;
+    }
+    const trazables = rows.filter(r => r._trazable).length;
+    return { productos: productos.size, lotes: lotes.size, pesoTotal: Math.round(pesoTotal * 100) / 100, trazables };
+  }, [rows]);
 
   const handlePick = () => inputRef.current?.click();
 
@@ -79,25 +78,15 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       const analysis = analyzeDocumentStructure({
         rawRows: parsedDoc.rawRows,
         rawHeaders: parsedDoc.rawHeaders,
-        textContent: parsedDoc.textContent,
-        fileType: parsedDoc.fileType,
       });
       setStructureAnalysis(analysis);
       setParsedDoc(parsedDoc);
-      const docModel = buildOperationalDocumentModel({ parsedDocument: parsedDoc, structureAnalysis: analysis });
-      const recResult = buildOperationalRecords({ operationalDocumentModel: docModel, contract, recordBuilderHints: contract?.recordBuilderHints });
-      setBuiltRecords(recResult.records || []);
-      setRecordBuilderDiag(recResult.recordBuilderDiagnostics || null);
-      const docPattern = analysis?.documentPattern;
-      setDocumentPattern(docPattern);
-      setDocumentAnatomy(analysis?.documentAnatomy || null);
-      setOperationalRegion(analysis?.operationalRegion || null);
-      setOperationalHeaders(analysis?.operationalHeaders || null);
-      const docRecResult = buildDocumentRecords({ rawRows: parsedDoc.rawRows, rawHeaders: parsedDoc.rawHeaders, documentPattern: docPattern, operationalRegion: analysis?.operationalRegion });
-      setDocumentRecords(docRecResult.records || []);
-      const segments = analysis?.documentSegments;
-      const relModel = analysis?.relationshipModel;
-      const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis, operationalSection: segments?.operationalSection, relationshipModel: relModel });
+      const result = normalizeOperationalData({
+        parsedDocument: parsedDoc,
+        canonicalFields,
+        synonyms: contract?.documentContract?.synonyms || {},
+        fieldNormalizers: contract?.documentContract?.fieldNormalizers || {},
+      });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
       const rows = result.rows.map((r, i) => {
@@ -115,7 +104,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       setUnknownHeaders(unknown);
       setParsedRows(rows);
       setActiveSheet(parsedDoc.activeSheet || null);
-      setCompletenessScore(result.completenessScore ?? 0);
+      setDocMetadata(result.metadata || {});
       setPhase('preview');
     } catch (e) {
       setError(e?.message || 'Error al procesar el archivo.');
@@ -126,8 +115,26 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const handleImport = async () => {
     const included = rows.filter(r => r._included);
     if (!included.length) return;
+    const persistenceRecords = included.map(({ _rowIndex, _included, _errors, _compliance, ...record }) => {
+      const payload = mapOperationalRecordToPersistence(record);
+      const validationErrors = validatePersistencePayload(payload);
+      return { payload, validationErrors, original: record };
+    });
+    const failed = persistenceRecords.filter(r => r.validationErrors.length > 0);
+    if (failed.length > 0) {
+      const first = failed[0];
+      setError(`Error de validación: ${first.validationErrors.map(e => `${e.field}: ${e.reason}`).join(', ')}`);
+      return;
+    }
     setPhase('complete');
-    onImported?.(included.map(({ _rowIndex, _included, _errors, ...record }) => record));
+    const payloads = persistenceRecords.map(r => r.payload);
+    console.table(payloads);
+    try {
+      await onImported?.(payloads);
+    } catch (err) {
+      setError(`Error al importar: ${err?.message || 'Error de persistencia'}`);
+      setPhase('preview');
+    }
   };
 
   const reset = () => {
@@ -141,33 +148,20 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     setStructureAnalysis(null);
     setParsedDoc(null);
     setActiveSheet(null);
-    setCompletenessScore(0);
-    setBuiltRecords([]);
-    setRecordBuilderDiag(null);
-    setDocumentPattern(null);
-    setDocumentRecords([]);
-    setDocumentAnatomy(null);
-    setOperationalRegion(null);
-    setOperationalHeaders(null);
+    setDocMetadata({});
   };
 
-  const handleClose = () => {
-    reset();
-    onClose?.();
-  };
-
+  const handleClose = () => { reset(); onClose?.(); };
   const toggleRow = (rowIndex) => {
     setParsedRows(prev => prev.map(r =>
       r._rowIndex === rowIndex ? { ...r, _included: !r._included } : r
     ));
   };
-
   const updateCell = (rowIndex, field, value) => {
     setParsedRows(prev => prev.map(r =>
       r._rowIndex === rowIndex ? { ...r, [field]: value } : r
     ));
   };
-
   const canImport = useMemo(() => phase === 'preview' && rows.some(r => r._included), [phase, rows]);
 
   const handleExportCSV = () => {
@@ -193,9 +187,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-primary/50 backdrop-blur-sm" onClick={handleClose} />
-
       <div className="relative w-full sm:max-w-5xl bg-white sm:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-in zoom-in-95 duration-200 h-[100dvh] sm:h-auto sm:max-h-[95dvh] flex flex-col">
-        {/* Header */}
         <div className="bg-primary px-4 sm:px-6 py-4 flex items-center justify-between text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
@@ -212,7 +204,6 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
         </div>
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1 min-h-0">
-          {/* Upload zone (visible in idle/parsing) */}
           {phase !== 'preview' && (
             <div
               className={[
@@ -224,7 +215,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
               onDragLeave={e => { e.preventDefault(); setIsDragging(false); }}
               onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); }}
             >
-               <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
+              <input ref={inputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden" onChange={e => handleFile(e.target.files?.[0])} />
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-start gap-4">
                   <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-sm">
@@ -249,7 +240,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
             <div className="flex items-center justify-center py-12">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-gray-600 font-medium">Analizando documento con inteligencia documental...</p>
+                <p className="text-sm text-gray-600 font-medium">Analizando documento...</p>
               </div>
             </div>
           )}
@@ -264,7 +255,6 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
             </div>
           )}
 
-          {/* Preview phase — 5-block document rendering */}
           {phase === 'preview' && (
             <>
               {/* Block 1: Document Info */}
@@ -278,464 +268,63 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900">Bloque 1 — Información del documento</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-gray-900">Información del documento</p>
+                      <button onClick={() => setDiagOpen(!diagOpen)} className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        {diagOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        Pipeline Diagnostics
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-600">
                       <span>Tipo: <strong className="text-gray-800">{parsedDoc?.fileType?.toUpperCase() || '—'}</strong></span>
                       {activeSheet && <span>Hoja activa: <strong className="text-gray-800">{activeSheet}</strong></span>}
                       {parsedDoc?.sheetNames?.length > 1 && <span>Hojas: <strong className="text-gray-800">{parsedDoc.sheetNames.length}</strong></span>}
-                      <span>Filas encontradas: <strong className="text-gray-800">{rows.length}</strong></span>
+                      <span>Filas: <strong className="text-gray-800">{rows.length}</strong></span>
                       {structureAnalysis?.signals?.avgColumns > 0 && <span>Columnas: <strong className="text-gray-800">{structureAnalysis.signals.avgColumns}</strong></span>}
-                      <span>Documento: <strong className="text-gray-800">{fileName}</strong></span>
+                      <span>Tipo: <strong className="text-gray-800">{structureAnalysis?.documentType === 'SEMI_STRUCTURED' ? 'Semi-estructurado' : 'Tabular'}</strong></span>
+                      <span>Confianza: <strong className="text-gray-800">{Math.round((structureAnalysis?.confidence ?? 0) * 100)}%</strong></span>
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.5: Document Analysis Summary */}
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-emerald-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-emerald-800">DOCUMENTO ANALIZADO</p>
-                    <div className="mt-3 space-y-3">
-                      <div>
-                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Metadata encontrada</p>
-                        {structureAnalysis?.metadataBlock?.fields && Object.keys(structureAnalysis.metadataBlock.fields).length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {Object.entries(structureAnalysis.metadataBlock.fields).map(([k, v]) => (
-                              <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100/70 text-emerald-600 rounded text-[10px] font-medium border border-emerald-200/50">
-                                {k}: <strong>{v}</strong>
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-emerald-500 italic mt-1">No se encontró metadata</p>
-                        )}
+                    {structureAnalysis?.sections?.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">Tablas detectadas: {structureAnalysis.sections.length}</p>
+                    )}
+                    {docMetadata && Object.values(docMetadata).some(Boolean) && (
+                      <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-primary/10">
+                        {docMetadata.cliente && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/5 text-primary rounded text-[10px] font-medium">Cliente: <strong>{docMetadata.cliente}</strong></span>}
+                        {docMetadata.fecha && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/5 text-primary rounded text-[10px] font-medium">Fecha doc: <strong>{docMetadata.fecha}</strong></span>}
+                        {docMetadata.factura && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/5 text-primary rounded text-[10px] font-medium">Factura: <strong>{docMetadata.factura}</strong></span>}
+                        {docMetadata.direccion && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/5 text-primary rounded text-[10px] font-medium">Dirección: <strong>{docMetadata.direccion}</strong></span>}
                       </div>
-                      <div className="border-t border-emerald-200/50 pt-2">
-                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                          Tabla encontrada
-                          {structureAnalysis?.tableBlock?.headers?.length > 0 && (
-                            <span className="ml-2 font-normal normal-case">Headers: {structureAnalysis.tableBlock.headers.length}</span>
-                          )}
-                        </p>
-                        {structureAnalysis?.tableBlock?.headers?.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {structureAnalysis.tableBlock.headers.map((h, i) => (
-                              <span key={i} className="inline-flex items-center px-2 py-0.5 bg-emerald-100/70 text-emerald-600 rounded text-[10px] font-medium border border-emerald-200/50">
-                                {h}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-emerald-500 italic mt-1">No se detectó tabla</p>
-                        )}
-                      </div>
-                      <div className="border-t border-emerald-200/50 pt-2">
-                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
-                          Registros encontrados: <span className="normal-case font-bold text-emerald-800">{structureAnalysis?.documentSummary?.tableRowsFound ?? rows.length}</span>
-                        </p>
-                      </div>
-                      {structureAnalysis?.documentSummary && (
-                        <div className="border-t border-emerald-200/50 pt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-emerald-600">
-                          <span>Metadata: {structureAnalysis.documentSummary.metadataFieldsFound} campos</span>
-                          <span>Headers tabla: {structureAnalysis.documentSummary.tableHeadersFound}</span>
-                          <span>Filas tabla: {structureAnalysis.documentSummary.tableRowsFound}</span>
-                          <span>Total filas doc: {structureAnalysis.documentSummary.totalRows}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.75: Operational Section Detected */}
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-cyan-100 border border-cyan-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-cyan-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-cyan-800">SECCIÓN OPERACIONAL DETECTADA</p>
-                    {(() => {
-                      const segs = structureAnalysis?.documentSegments;
-                      const op = segs?.operationalSection;
-                      const ignored = segs?.ignoredSections || [];
-                      return (
-                        <div className="mt-3 space-y-3">
-                          <div>
-                            <p className="text-xs font-bold text-cyan-700 uppercase tracking-wider">Metadata operacional</p>
-                            {op?.metadata && Object.keys(op.metadata).length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                {Object.entries(op.metadata).map(([k, v]) => (
-                                  <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-100/70 text-cyan-600 rounded text-[10px] font-medium border border-cyan-200/50">
-                                    {k}: <strong>{v}</strong>
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-cyan-500 italic mt-1">No se encontró metadata operacional</p>
-                            )}
-                          </div>
-                          <div className="border-t border-cyan-200/50 pt-2">
-                            <p className="text-xs font-bold text-cyan-700 uppercase tracking-wider">Headers detectados</p>
-                            {op?.headers?.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                {op.headers.map((h, i) => (
-                                  <span key={i} className="inline-flex items-center px-2 py-0.5 bg-cyan-100/70 text-cyan-600 rounded text-[10px] font-medium border border-cyan-200/50">
-                                    {h}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-xs text-cyan-500 italic mt-1">No se detectaron headers</p>
-                            )}
-                          </div>
-                          <div className="border-t border-cyan-200/50 pt-2 flex items-center gap-2">
-                            <span className="text-xs font-bold text-cyan-700 uppercase">Registros encontrados</span>
-                            <span className="inline-flex items-center px-2.5 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-bold">
-                              {op?.rows?.length || 0}
-                            </span>
-                          </div>
-                          {ignored.length > 0 && (
-                            <div className="border-t border-cyan-200/50 pt-2">
-                              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Secciones ignoradas ({ignored.length})</p>
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                {ignored.map((sec, i) => (
-                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100/70 text-gray-500 rounded text-[10px] font-medium border border-gray-200/50">
-                                    <X className="w-3 h-3" /> {sec.reason}
-                                  </span>
-                                ))}
-                              </div>
+                    )}
+                    {/* Pipeline Diagnostics Accordion */}
+                    {diagOpen && (
+                      <div className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
+                        {[
+                          { label: 'Parser', status: parsedDoc?.parserDiagnostics?.parserStatus || 'OK', detail: parsedDoc?.parserDiagnostics ? `${parsedDoc.parserDiagnostics.totalRows} filas` : 'Completado' },
+                          { label: 'Analyzer', status: structureAnalysis?.confidence > 0.5 ? 'OK' : 'WARNING', detail: `${structureAnalysis?.documentType || '—'} (${Math.round((structureAnalysis?.confidence ?? 0) * 100)}%)` },
+                          { label: 'Headers', status: matchedHeaders && Object.keys(matchedHeaders).length > 0 ? 'OK' : 'WARNING', detail: `${canonicalFields.filter(f => matchedHeaders[f]).length}/${canonicalFields.length} mapeados` },
+                          { label: 'Validation', status: validCount > 0 ? 'OK' : rows.length > 0 ? 'WARNING' : 'FAILED', detail: `${validCount} válidos, ${errorCount} inválidos` },
+                        ].map((stage, i) => {
+                          const sc = stage.status === 'OK' ? 'bg-green-100 text-green-700 border-green-200' : stage.status === 'WARNING' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-red-100 text-red-700 border-red-200';
+                          return (
+                            <div key={i} className="flex items-center gap-3 px-3 py-1.5 rounded-lg border border-gray-100 bg-gray-50/50">
+                              <span className="w-20 text-[10px] font-bold text-gray-600 uppercase shrink-0">{stage.label}</span>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${sc}`}>{stage.status}</span>
+                              <span className="text-[10px] text-gray-500 truncate">{stage.detail}</span>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.8: Operational Relationship Model */}
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-amber-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-amber-800">MODELO OPERACIONAL DETECTADO</p>
-                    {(() => {
-                      const rm = structureAnalysis?.relationshipModel;
-                      if (!rm) return <p className="text-xs text-amber-500 italic mt-2">Analizando modelo operacional...</p>;
-                      const shared = rm.sharedFields || {};
-                      const cliente = shared.cliente || Object.values(shared).find(v => String(v).trim()) || '—';
-                      return (
-                        <div className="mt-3 space-y-3">
-                          <div>
-                            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">
-                              Cliente: <span className="normal-case font-bold text-amber-800">{cliente}</span>
-                            </p>
-                          </div>
-                          <div className="border-t border-amber-200/50 pt-2 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {rm.repeatingFields?.length > 0 && rm.repeatingFields.map((f, i) => {
-                              const count = rm.fieldCounts?.[f] || rm.estimatedRecords;
-                              return (
-                                <div key={i} className="flex flex-col">
-                                  <span className="text-[10px] font-bold text-amber-600 uppercase">{f}</span>
-                                  <span className="text-lg font-bold text-amber-800">{count}</span>
-                                  <span className="text-[10px] text-amber-500">encontrado(s)</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {Object.keys(shared).length > 0 && (
-                            <div className="border-t border-amber-200/50 pt-2">
-                              <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Campos compartidos</p>
-                              <div className="flex flex-wrap gap-1.5 mt-1">
-                                {Object.entries(shared).map(([k, v]) => (
-                                  <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100/70 text-amber-600 rounded text-[10px] font-medium border border-amber-200/50">
-                                    {k}: <strong>{v}</strong>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          <div className="border-t border-amber-200/50 pt-2 flex items-center gap-2">
-                            <span className="text-xs font-bold text-amber-700 uppercase">Registros construibles</span>
-                            <span className="inline-flex items-center px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold">
-                              {rm.estimatedRecords || 0}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.83: Document Anatomy Layer */}
-              <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-orange-100 border border-orange-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-orange-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-orange-800">ANATOMÍA DOCUMENTAL</p>
-                    {documentAnatomy?.regions?.length > 0 ? (
-                      <div className="mt-3 space-y-3">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
-                          <span className="text-xs font-bold text-orange-700 uppercase">Regiones: <span className="normal-case font-bold text-orange-900">{documentAnatomy.totalRegions}</span></span>
-                          {operationalRegion && (
-                            <span className="text-xs font-bold text-orange-700 uppercase">Región operacional: <span className="normal-case font-bold text-orange-900">filas {operationalRegion.startRow}–{operationalRegion.endRow} ({operationalRegion.rowCount} filas)</span></span>
-                          )}
-                        </div>
-                        <div className="border-t border-orange-200/50 pt-2">
-                          <div className="flex flex-wrap gap-2">
-                            {documentAnatomy.regions.map((r, i) => (
-                              <div key={i} className={[
-                                'flex flex-col px-3 py-2 rounded-lg border text-xs',
-                                r.processable ? 'bg-green-50 border-green-200' : r.type === 'operational' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200',
-                              ].join(' ')}>
-                                <span className="font-bold text-gray-700 uppercase text-[10px]">{r.type}</span>
-                                <span className="text-gray-500">filas {r.startRow}–{r.endRow}</span>
-                                <div className="flex gap-2 mt-0.5">
-                                  <span className={r.processable ? 'text-green-600 font-medium' : 'text-gray-400'}>{r.processable ? 'procesable' : 'no procesable'}</span>
-                                  <span className={r.containsRecords ? 'text-green-600 font-medium' : 'text-gray-400'}>{r.containsRecords ? 'contiene registros' : 'sin registros'}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <p className="text-xs text-orange-500 italic mt-2">Analizando anatomía documental...</p>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Block 1.84: Operational Headers Detected */}
-              <div className="rounded-2xl border border-lime-200 bg-lime-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-lime-100 border border-lime-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-lime-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-lime-800">HEADERS OPERACIONALES DETECTADOS</p>
-                    {operationalHeaders?.headers?.length > 0 ? (
-                      <div className="mt-3 space-y-3">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
-                          <span className="text-xs font-bold text-lime-700 uppercase">Fila: <span className="normal-case font-bold text-lime-900">{operationalHeaders.headerRow}</span></span>
-                          <span className="text-xs font-bold text-lime-700 uppercase">Columnas: <span className="normal-case font-bold text-lime-900">{operationalHeaders.columnCount}</span></span>
-                          <span className="text-xs font-bold text-lime-700 uppercase">Confianza: <span className="normal-case font-bold text-lime-900">{operationalHeaders.confidence}%</span></span>
-                        </div>
-                        <div className="border-t border-lime-200/50 pt-2 flex flex-wrap gap-1.5">
-                          {operationalHeaders.headers.map((h, i) => (
-                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-white text-lime-700 rounded text-[10px] font-mono font-medium border border-lime-200/70">
-                              {h}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-lime-500 italic mt-2">No se detectaron headers operacionales.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.85: Document Pattern Detected */}
-              <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-purple-100 border border-purple-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-purple-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-purple-800">PATRÓN DOCUMENTAL DETECTADO</p>
-                    {documentPattern ? (
-                      <div className="mt-3 space-y-3">
-                        <div className="flex flex-wrap gap-x-6 gap-y-1">
-                          <span className="text-xs font-bold text-purple-700 uppercase">Tipo: <span className="normal-case font-bold text-purple-900">{documentPattern.type}</span></span>
-                          <span className="text-xs font-bold text-purple-700 uppercase">Confianza: <span className="normal-case font-bold text-purple-900">{documentPattern.confidence}%</span></span>
-                        </div>
-                        {documentPattern.recordPattern && (
-                          <div className="border-t border-purple-200/50 pt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-purple-600 uppercase">Inicio registro</span>
-                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.recordStartsAt}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-purple-600 uppercase">Fin registro</span>
-                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.recordEndsAt}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-purple-600 uppercase">Tamaño patrón</span>
-                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.recordSize}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-purple-600 uppercase">Registros estimados</span>
-                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.estimatedRecords}</span>
-                            </div>
-                          </div>
-                        )}
-                        {documentPattern.documentGroups?.length > 0 && (
-                          <div className="border-t border-purple-200/50 pt-2">
-                            <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Agrupaciones detectadas ({documentPattern.documentGroups.length})</p>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {documentPattern.documentGroups.map((g, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100/70 text-purple-600 rounded text-[10px] font-medium border border-purple-200/50">
-                                  filas {g.startRow}–{g.endRow} ({g.rowCount} filas)
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {documentPattern.documentSections?.length > 0 && (
-                          <div className="border-t border-purple-200/50 pt-2">
-                            <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Secciones detectadas ({documentPattern.documentSections.length})</p>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {documentPattern.documentSections.map((s, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100/70 text-purple-600 rounded text-[10px] font-medium border border-purple-200/50">
-                                  {s.type}: {s.rowCount} filas
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {documentPattern.repeatingStructures?.length > 0 && (
-                          <div className="border-t border-purple-200/50 pt-2">
-                            <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Estructuras repetitivas</p>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {documentPattern.repeatingStructures.map((rs, i) => (
-                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100/70 text-purple-600 rounded text-[10px] font-medium border border-purple-200/50">
-                                  ciclo: {rs.cycle} filas, confianza: {rs.confidence}%
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-purple-500 italic mt-2">Analizando patrón documental...</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.86: Document Records Detected */}
-              <div className="rounded-2xl border border-pink-200 bg-pink-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-pink-100 border border-pink-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-pink-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-pink-800">REGISTROS DOCUMENTALES DETECTADOS</p>
-                    <p className="text-xs text-pink-600 mt-1">
-                      {documentRecords.length} registro(s) documental(es) sin mapeo operacional todavía.
-                    </p>
-                    {documentRecords.length > 0 && (
-                      <div className="mt-3 space-y-2 max-h-[40dvh] overflow-y-auto">
-                        {documentRecords.slice(0, 25).map((rec, idx) => (
-                          <div key={idx} className="rounded-xl border border-pink-200/70 bg-white px-3 py-2.5 text-xs">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="font-bold text-pink-800">Registro documental #{rec.recordIndex + 1}</span>
-                              <span className="inline-flex items-center px-2 py-0.5 bg-pink-100 text-pink-600 rounded-full text-[10px] font-medium">
-                                {rec.pattern}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-x-2 gap-y-1">
-                              {rec.rawRecord.map((cell, ci) => (
-                                <span key={ci} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-700 rounded border border-gray-100 font-mono text-[10px]">
-                                  {cell}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {documentRecords.length === 0 && (
-                      <p className="text-xs text-pink-500 italic mt-2">No se detectaron registros documentales.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 1.9: Import Pipeline Diagnostics */}
-              <div className="rounded-2xl border border-gray-200 bg-white px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-gray-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900">IMPORT PIPELINE DIAGNOSTICS</p>
-                    <div className="mt-3 space-y-2">
-                      {[
-                        { label: 'Parser', status: parsedDoc?.parserDiagnostics?.parserStatus || 'FAILED', detail: parsedDoc?.parserDiagnostics ? `${parsedDoc.parserDiagnostics.totalRows} filas, ${parsedDoc.parserDiagnostics.totalCharacters} caracteres` : 'Sin datos' },
-                        { label: 'Analyzer', status: structureAnalysis?.analysisDiagnostics?.status || 'FAILED', detail: structureAnalysis?.analysisDiagnostics ? `${structureAnalysis.analysisDiagnostics.metadataFound} metadata, ${structureAnalysis.analysisDiagnostics.tablesFound} tablas` : 'Sin datos' },
-                        { label: 'Segmentation', status: structureAnalysis?.segmentationDiagnostics?.status || 'FAILED', detail: structureAnalysis?.segmentationDiagnostics ? `${structureAnalysis.segmentationDiagnostics.operationalRows} ops / ${structureAnalysis.segmentationDiagnostics.administrativeRows} adm / ${structureAnalysis.segmentationDiagnostics.financialRows} fin` : 'Sin datos' },
-                        { label: 'Anatomy', status: documentAnatomy?.regions?.length > 0 ? 'OK' : 'WARNING', detail: documentAnatomy ? `${documentAnatomy.totalRegions} regiones` : 'Sin detectar' },
-                        { label: 'Headers', status: operationalHeaders?.headers?.length > 0 ? 'OK' : 'WARNING', detail: operationalHeaders ? `${operationalHeaders.headers.length} headers (confianza ${operationalHeaders.confidence}%)` : 'Sin detectar' },
-                        { label: 'Relationship', status: structureAnalysis?.relationshipModel?.estimatedRecords > 0 ? 'OK' : 'WARNING', detail: structureAnalysis?.relationshipModel ? `${Object.keys(structureAnalysis.relationshipModel.sharedFields).length} compartidos, ${structureAnalysis.relationshipModel.repeatingFields.length} repetitivos` : 'Sin datos' },
-                        { label: 'Record Builder', status: recordBuilderDiag?.status || 'FAILED', detail: recordBuilderDiag ? `${recordBuilderDiag.constructedRecords} construidos, ${recordBuilderDiag.discardedRecords} descartados` : 'Sin datos' },
-                        { label: 'Pattern', status: documentPattern ? 'OK' : 'WARNING', detail: documentPattern ? `${documentPattern.type} (${documentPattern.confidence}% confianza)` : 'Sin detectar' },
-                        { label: 'Validation', status: rows.filter(r => r._included).length > 0 ? 'OK' : rows.length > 0 ? 'WARNING' : 'FAILED', detail: `${rows.filter(r => r._included).length} válidos, ${rows.filter(r => r._errors?.length).length} inválidos` },
-                        { label: 'Pipeline', status: structureAnalysis?.pipelineConfidence > 0.5 ? 'OK' : 'WARNING', detail: `Confianza: ${Math.round((structureAnalysis?.pipelineConfidence || 0) * 100)}%` },
-                      ].map((stage, i) => {
-                        const statusColor = stage.status === 'OK' ? 'bg-green-100 text-green-700 border-green-200' : stage.status === 'WARNING' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-red-100 text-red-700 border-red-200';
-                        return (
-                          <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-100 bg-gray-50/50">
-                            <span className="w-28 text-[10px] font-bold text-gray-600 uppercase tracking-wider shrink-0">{stage.label}</span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor}`}>
-                              {stage.status}
-                            </span>
-                            <span className="text-[10px] text-gray-500 truncate">{stage.detail}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 2: Metadata Found */}
-              <div className="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[10px] font-bold text-indigo-700">{structureAnalysis?.documentType === 'SEMI_STRUCTURED' ? 'M' : 'H'}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-indigo-800">Bloque 2 — Metadata encontrada</p>
-                    <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-xs text-indigo-700">
-                      <span>Tipo documento: <strong>{structureAnalysis?.documentType === 'SEMI_STRUCTURED' ? 'Semi-estructurado' : 'Tabular'}</strong></span>
-                      <span>Confianza: <strong>{Math.round((structureAnalysis?.confidence ?? 0) * 100)}%</strong></span>
-                      {structureAnalysis?.sections?.length > 0 && <span>Tablas detectadas: <strong>{structureAnalysis.sections.length}</strong></span>}
-                      {structureAnalysis?.signals?.dataDensity > 0 && <span>Densidad: <strong>{Math.round(structureAnalysis.signals.dataDensity * 100)}%</strong></span>}
-                    </div>
-                    {structureAnalysis?.metadata?.discoveredLabels && Object.keys(structureAnalysis.metadata.discoveredLabels).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {Object.entries(structureAnalysis.metadata.discoveredLabels).map(([k, v]) => (
-                          <span key={k} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-100/70 text-indigo-600 rounded text-[10px] font-medium border border-indigo-200/50">
-                            {k}: <strong>{v}</strong>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {(!structureAnalysis?.metadata?.discoveredLabels || Object.keys(structureAnalysis.metadata.discoveredLabels).length === 0) && (
-                      <p className="text-xs text-indigo-500 italic mt-2">No se encontraron metadatos adicionales fuera de la tabla.</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 3: Raw Table Preview (primeras 10 filas del documento original) */}
+              {/* Block 2: Raw Table Preview */}
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                   <Eye className="w-4 h-4 text-gray-600" />
-                  <p className="text-sm font-bold text-gray-900">Bloque 3 — Tabla detectada</p>
-                  <span className="text-xs text-gray-500">Vista previa del documento original.</span>
+                  <p className="text-sm font-bold text-gray-900">Vista previa del documento</p>
+                  <span className="text-xs text-gray-500">Primeras 10 filas del documento original.</span>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
                   <div className="max-h-[40dvh] overflow-y-auto">
@@ -745,9 +334,6 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                           {(parsedDoc?.rawHeaders || []).map((h, i) => (
                             <th key={i} className={`p-2 sm:p-3 ${matchedHeaders[Object.keys(matchedHeaders).find(k => matchedHeaders[k] === h)] ? 'text-green-700' : 'text-gray-500'}`}>
                               {h || `Columna ${i + 1}`}
-                              {matchedHeaders[Object.keys(matchedHeaders).find(k => matchedHeaders[k] === h)] && (
-                                <span className="ml-1 text-[8px] text-green-500">●</span>
-                              )}
                             </th>
                           ))}
                         </tr>
@@ -771,12 +357,12 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                 </div>
               </div>
 
-              {/* Block 4: Operational Mapping */}
+              {/* Block 3: Operational Mapping */}
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                   <Pencil className="w-4 h-4 text-gray-600" />
-                  <p className="text-sm font-bold text-gray-900">Bloque 4 — Mapeo operacional</p>
-                  <span className="text-xs text-gray-500">Cómo cada columna del documento se asigna al contrato.</span>
+                  <p className="text-sm font-bold text-gray-900">Mapeo operacional</p>
+                  <span className="text-xs text-gray-500">Columnas del documento mapeadas al contrato.</span>
                 </div>
                 <div className="p-4 sm:p-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -815,28 +401,24 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                 </div>
               </div>
 
-              {/* Block 5: Results */}
+              {/* Block 4: Results Summary */}
               <div className="rounded-2xl border border-gray-200 bg-gray-50/50 px-4 sm:px-5 py-3 sm:py-4">
                 <div className="flex items-start gap-3">
                   <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 mt-0.5">
                     <FileText className="w-4.5 h-4.5 text-gray-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900">Bloque 5 — Resultado final</p>
+                    <p className="text-sm font-bold text-gray-900">Resultado final</p>
                     <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 text-xs text-gray-600">
                       <span>Campos encontrados: <strong className="text-green-700">{canonicalFields.length - missingHeaders.length}</strong></span>
                       <span>Campos faltantes: <strong className="text-amber-600">{missingHeaders.length}</strong></span>
                       <span>Campos desconocidos: <strong className="text-amber-500">{unknownHeaders.length}</strong></span>
-                      <span>
-                        Score: <strong>{Math.round(completenessScore * 100)}%</strong>
-                        <span className="inline-block w-20 h-2 ml-1.5 rounded-full bg-gray-200 align-middle overflow-hidden">
-                          <span className={`block h-full rounded-full transition-all ${
-                            completenessScore >= 0.8 ? 'bg-green-500' : completenessScore >= 0.5 ? 'bg-accent' : 'bg-red-400'
-                          }`} style={{ width: `${Math.round(completenessScore * 100)}%` }} />
-                        </span>
-                      </span>
                       <span>Registros válidos: <strong className="text-green-700">{validCount}</strong></span>
                       <span>Registros inválidos: <strong className="text-red-500">{errorCount}</strong></span>
+                      {bizSummary.productos > 0 && <span>Productos: <strong className="text-gray-800">{bizSummary.productos}</strong></span>}
+                      {bizSummary.lotes > 0 && <span>Lotes: <strong className="text-gray-800">{bizSummary.lotes}</strong></span>}
+                      {bizSummary.trazables > 0 && <span>Traza-bles: <strong className="text-gray-800">{bizSummary.trazables}</strong></span>}
+                      {bizSummary.pesoTotal > 0 && <span>Peso total: <strong className="text-gray-800">{bizSummary.pesoTotal} kg</strong></span>}
                     </div>
                     {missingHeaders.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
@@ -847,66 +429,31 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                         ))}
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Block 6: Built Operational Records */}
-              <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 sm:px-5 py-3 sm:py-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-violet-100 border border-violet-200 flex items-center justify-center shrink-0 mt-0.5">
-                    <FileText className="w-4.5 h-4.5 text-violet-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-violet-800">REGISTROS OPERACIONALES CONSTRUIDOS</p>
-                    <p className="text-xs text-violet-600 mt-1">
-                      {builtRecords.length} registro(s) construido(s) con herencia de metadata y resolución de tipos.
-                    </p>
-                    {builtRecords.length > 0 && (
-                      <div className="mt-3 space-y-2 max-h-[40dvh] overflow-y-auto">
-                        {builtRecords.slice(0, 25).map((rec, idx) => {
-                          const displayFields = canonicalFields.filter(f => String(rec[f] ?? '').trim() !== '');
-                          return (
-                            <div key={idx} className="rounded-xl border border-violet-200/70 bg-white px-3 py-2.5 text-xs">
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="font-bold text-violet-800">Registro #{idx + 1}</span>
-                                <span className={[
-                                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
-                                  rec._completeness >= 80 ? 'bg-green-100 text-green-700' : rec._completeness >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700',
-                                ].join(' ')}>
-                                  {rec._completeness}%
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-1">
-                                {displayFields.map(f => (
-                                  <div key={f} className="flex items-center gap-1">
-                                    <span className="font-medium text-gray-500">{getFieldLabel(contract, f)}:</span>
-                                    <span className="text-gray-800 truncate">{String(rec[f] ?? '')}</span>
-                                  </div>
-                                ))}
-                              </div>
-                              {rec._missingFields?.length > 0 && (
-                                <div className="mt-1.5 flex flex-wrap gap-1">
-                                  {rec._missingFields.map(f => (
-                                    <span key={f} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-red-50 text-red-500 rounded text-[9px] font-medium border border-red-100">
-                                      {getFieldLabel(contract, f)} <span className="text-red-300">(faltante)</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                    <div className="space-y-2 mt-3 pt-3 border-t border-gray-200/80 text-xs">
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="font-bold text-gray-700 w-36 shrink-0">Campos detectados:</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Producto</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Cliente</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Lote</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">✓ Cantidad</span>
                       </div>
-                    )}
-                    {builtRecords.length === 0 && (
-                      <p className="text-xs text-violet-500 italic mt-2">No se pudieron construir registros a partir del documento.</p>
-                    )}
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="font-bold text-gray-700 w-36 shrink-0">Campos calculados:</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">✓ Peso</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">✓ Fecha despacho</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">✓ Temperatura</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="font-bold text-gray-700 w-36 shrink-0">Campos predeterminados:</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">✓ Conductor</span>
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">✓ Estado</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Human Validation: normalized records table */}
+              {/* Block 5: Human Validation */}
               <div className="rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -939,10 +486,13 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                               className="w-4 h-4 rounded border-gray-300 text-primary" />
                           </th>
                           <th className="p-2 sm:p-3 w-16">#</th>
-                          <th className="p-2 sm:p-3 w-20 text-center">Validación</th>
+                          <th className="p-2 sm:p-3 w-20 text-center">Val.</th>
                           {displayFields.map(f => (
                             <th key={f} className="p-2 sm:p-3">{getFieldLabel(contract, f)}</th>
                           ))}
+                          {showComputed && <th className="p-2 sm:p-3 text-[10px]">Peso U.</th>}
+                          {showComputed && <th className="p-2 sm:p-3 text-[10px]">Peso T.</th>}
+                          {showComputed && <th className="p-2 sm:p-3 text-[10px]">Traz.</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -977,30 +527,16 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                               const val = row[f] ?? '';
                               return (
                                 <td key={f} className="p-1 sm:p-2">
-                                  {type === 'date' ? (
-                                    <input type="date" value={typeof val === 'string' ? val.slice(0, 10) : ''}
-                                      onChange={e => updateCell(row._rowIndex, f, e.target.value)}
-                                      className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                      disabled={!row._included} />
-                                  ) : type === 'time' ? (
-                                    <input type="time" value={val}
-                                      onChange={e => updateCell(row._rowIndex, f, e.target.value)}
-                                      className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                      disabled={!row._included} />
-                                  ) : type === 'number' ? (
-                                    <input type="number" step="any" value={val}
-                                      onChange={e => updateCell(row._rowIndex, f, e.target.value)}
-                                      className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                      disabled={!row._included} />
-                                  ) : (
-                                    <input type="text" value={val}
-                                      onChange={e => updateCell(row._rowIndex, f, e.target.value)}
-                                      className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                      disabled={!row._included} />
-                                  )}
+                                  <input type={type} value={val}
+                                    onChange={e => updateCell(row._rowIndex, f, e.target.value)}
+                                    className="w-full px-2 py-1.5 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm font-medium text-gray-900 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    disabled={!row._included} />
                                 </td>
                               );
                             })}
+                              {showComputed && <td className="p-1 sm:p-2 text-xs text-gray-600">{row._pesoUnitario ?? '—'}</td>}
+                              {showComputed && <td className="p-1 sm:p-2 text-xs text-gray-600">{row._pesoTotal ?? '—'}</td>}
+                              {showComputed && <td className="p-1 sm:p-2 text-xs text-center">{row._trazable ? <span className="text-green-600 font-bold">✓</span> : '—'}</td>}
                           </tr>
                         ))}
                       </tbody>
@@ -1047,7 +583,6 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <p className="text-xs text-gray-500">
             {phase === 'preview'
