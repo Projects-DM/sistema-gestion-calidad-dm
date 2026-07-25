@@ -1,4 +1,14 @@
 const LOT_PATTERN = /L\s*26\s*-\s*(\d{1,3})/gi;
+const BASE_TRAZABLES = ['PECHUGA', 'POLLO'];
+const GRAMAJE_PATTERN = /\d+\s*X\s*\d+/i;
+
+function esTrazable(producto) {
+  if (!producto) return false;
+  const p = producto.toUpperCase();
+  const tieneBase = BASE_TRAZABLES.some(kw => p.includes(kw));
+  if (!tieneBase) return false;
+  return GRAMAJE_PATTERN.test(p);
+}
 
 export function normalizeLote(raw) {
   if (!raw) return null;
@@ -35,6 +45,7 @@ export function resolveDocumentLotes(rows) {
   const freqs = extractLotesFromRows(rows);
   const dominante = findDominantLote(freqs);
   return rows.map(row => {
+    if (!esTrazable(row.producto)) return { ...row, lote: null };
     const raw = row.lote || '';
     const m = LOT_PATTERN.exec(String(raw));
     LOT_PATTERN.lastIndex = 0;
