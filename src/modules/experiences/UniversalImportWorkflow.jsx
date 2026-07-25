@@ -2,6 +2,8 @@ import { useState, useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import { parseDocument, analyzeDocumentStructure } from '../../services/import/index.js';
 import { normalizeOperationalData, mapOperationalRecordToPersistence, validatePersistencePayload } from '../../services/import/operationalDataExtractionLayer.js';
+import { resolveOperationalDefaults } from '../../services/import/operationalDefaultsResolver.js';
+import { resolveDocumentLotes } from '../../services/import/lotResolutionEngine.js';
 import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function getFieldLabel(contract, field) {
@@ -88,6 +90,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
         fieldNormalizers: contract?.documentContract?.fieldNormalizers || {},
       });
       if (!result?.rows?.length) throw new Error('No se pudieron extraer registros del archivo.');
+      result.rows = resolveDocumentLotes(result.rows);
       const unknown = computeUnknownHeaders(parsedDoc.rawHeaders, result.matchedHeaders);
       const rows = result.rows.map((r, i) => {
         const { allErrors, complianceIssues } = evaluateRecord(r, contract);
@@ -116,7 +119,8 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     const included = rows.filter(r => r._included);
     if (!included.length) return;
     const persistenceRecords = included.map(({ _rowIndex, _included, _errors, _compliance, ...record }) => {
-      const payload = mapOperationalRecordToPersistence(record);
+      const enriched = resolveOperationalDefaults(record);
+      const payload = mapOperationalRecordToPersistence(enriched);
       const validationErrors = validatePersistencePayload(payload);
       return { payload, validationErrors, original: record };
     });
