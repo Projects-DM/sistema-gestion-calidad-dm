@@ -396,7 +396,7 @@ export function resolveOperationalFields(record = {}) {
   const hora = record.hora || record.horaDoc || '10:30';
   const cliente = record.cliente || record._cliente || '';
   const producto = record.producto || record.cleanProducto || '';
-  const lote = record.lote || 'L26-175';
+  const lote = record.lote || '';
   const cantidad = toNumber(record.cantidad || record.cantidad_bolsas || 1) || 1;
 
   const weights = calculateProductWeight(producto, cantidad);

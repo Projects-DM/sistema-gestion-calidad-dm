@@ -31,8 +31,14 @@ function inferirPeso(producto, cantidad) {
   return undefined;
 }
 
+function calcularBolsas(peso) {
+  if (!peso || Number(peso) <= 0) return 1;
+  return Number(peso) <= 5 ? 1 : 2;
+}
+
 export function resolveOperationalDefaults(record) {
   const r = record || {};
+  const pesoCalculado = r.peso ?? inferirPeso(r.producto, r.cantidad) ?? '';
 
   return {
     fecha: r.fecha ?? r.fechaDespacho ?? format(new Date(), 'yyyy-MM-dd'),
@@ -40,8 +46,8 @@ export function resolveOperationalDefaults(record) {
     cliente: r.cliente ?? '',
     producto: r.producto ?? '',
     lote: r.lote ?? null,
-    cantidad: 1,
-    peso: r.peso ?? inferirPeso(r.producto, r.cantidad) ?? '',
+    cantidad: calcularBolsas(pesoCalculado),
+    peso: pesoCalculado,
     temperatura: resolverTemperatura(r.producto),
     destino: r.destino || 'SIN DEFINIR',
     placa: r.placa || 'NO ASIGNADA',
