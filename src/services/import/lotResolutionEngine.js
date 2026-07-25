@@ -1,4 +1,4 @@
-const LOT_PATTERN = /L\s*26\s*-\s*(\d{1,3})/gi;
+const LOT_PATTERN = /L:?\s*26[\s:-]?\s*(\d{1,3})/gi;
 const BASE_TRAZABLES = ['PECHUGA', 'POLLO'];
 const GRAMAJE_PATTERN = /\d+\s*X\s*\d+/i;
 
