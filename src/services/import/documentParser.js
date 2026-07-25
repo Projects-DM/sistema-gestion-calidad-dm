@@ -163,6 +163,9 @@ export async function parseDocument(file) {
     sheetNames: parsed.sheetNames || null,
     activeSheet: parsed.activeSheet || null,
     documentSegments: null,
+    documentPattern: null,
+    documentRecords: [],
+    documentAnatomy: null,
     parserDiagnostics,
   };
 }

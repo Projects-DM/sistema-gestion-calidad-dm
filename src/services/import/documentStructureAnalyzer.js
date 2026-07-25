@@ -124,9 +124,11 @@ function segmentDocument(rows, sections, discoveredMetadata) {
       const row = sectionRows[i] || [];
       for (let j = 0; j < row.length - 1; j++) {
         const label = String(row[j] ?? '').trim().toLowerCase();
+        const value = String(row[j + 1] ?? '').trim();
+        if (!value || isFormatPlaceholder(value)) continue;
         for (const group of KNOWN_META_LABELS) {
           if (group.some(g => g === label || label.startsWith(g))) {
-            sectionMeta[group[0]] = String(row[j + 1] ?? '').trim();
+            sectionMeta[group[0]] = value;
           }
         }
       }
@@ -280,6 +282,17 @@ function normalizeLabel(str) {
   return str.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function isFormatPlaceholder(v) {
+  const s = String(v ?? '').trim().toLowerCase().replace(/\s+/g, '');
+  if (!s) return false;
+  if (s === 'dd/mm/aaaa' || s === 'dd-mm-aaaa' || s === 'ddmmaaaa') return true;
+  if (s === 'aaaa/mm/dd' || s === 'aaaa-mm-dd' || s === 'aaaammdd') return true;
+  if (s === '--:--' || s === '--:-----' || s === '--:----') return true;
+  if (s === 'hh:mm' || s === 'hh:mm:ss') return true;
+  if (/^_+$/.test(s)) return true;
+  return false;
+}
+
 function extractAllMetadata(rows) {
   const meta = {};
   for (let i = 0; i < Math.min(rows.length, 50); i++) {
@@ -292,17 +305,19 @@ function extractAllMetadata(rows) {
         if (group.some(g => norm === g || norm.startsWith(g) || norm.includes(g))) {
           const value = String(row[j + 1] ?? '').trim();
           const valueNext = String(row[j + 2] ?? '').trim();
-          if (value && !value.endsWith(':') && !group.includes(normalizeLabel(value))) {
+          if (value && !value.endsWith(':') && !group.includes(normalizeLabel(value)) && !isFormatPlaceholder(value)) {
             meta[group[0]] = value;
-          } else if (valueNext && !valueNext.endsWith(':') && !group.includes(normalizeLabel(valueNext))) {
+          } else if (valueNext && !valueNext.endsWith(':') && !group.includes(normalizeLabel(valueNext)) && !isFormatPlaceholder(valueNext)) {
             meta[group[0]] = valueNext;
           }
         }
       }
       if (norm.endsWith(':') && j + 1 < row.length) {
-        const key = norm.replace(/:$/, '').trim();
         const val = String(row[j + 1] ?? '').trim();
-        if (key && val) meta[key] = val;
+        if (val && !isFormatPlaceholder(val)) {
+          const key = norm.replace(/:$/, '').trim();
+          if (key) meta[key] = val;
+        }
       }
     }
   }
@@ -410,6 +425,21 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
     recordConfidence,
   };
 
+  const documentAnatomy = analyzeDocumentAnatomy({ rows, segments: documentSegments, sections, discoveredMetadata });
+  const operationalRegion = resolveOperationalRegion({ anatomy: documentAnatomy });
+  const operationalRows = operationalRegion ? rows.slice(operationalRegion.startRow, operationalRegion.endRow + 1) : [];
+  const operationalHeaders = detectOperationalHeaders({ rows, operationalRegion });
+  const documentPattern = recognizeDocumentPattern({ rawRows: operationalRows.length ? operationalRows : rows, rawHeaders, structureAnalysis: { stats, signals: { tabularScore: tabular, semiStructuredScore: semi, columnStdDev: Math.round(stats.stdDev * 10) / 10, avgColumns: Math.round(stats.avgCols * 10) / 10, labelRatio: Math.round(labelRatio * 100) / 100, sparseFirstRow: sparseFirst, sectionHeaderCount: sectionHeaders, emptyRowCount: emptyRows, dataDensity: Math.round(density * 100) / 100, sequentialFirstCol: sequential }, sections: mappedSections, documentSegments, relationshipModel, tableBlock: tableBlockInfo }, operationalRegion });
+
+  const anatomyConfidence = operationalRegion ? 100 : 0;
+  const pipelineConfidence = Math.round(
+    ((analysisDiagnostics.confidence || 0) * 100 * 0.15 +
+     anatomyConfidence * 0.20 +
+     (operationalRegion ? 100 : 0) * 0.25 +
+     (documentPattern?.confidence || 0) * 0.25 +
+     (documentSummary?.recordConfidence || 0) * 0.15)
+  ) / 100;
+
   return {
     documentType: isSemi ? 'SEMI_STRUCTURED' : 'TABULAR',
     confidence: Math.round(confidence * 100) / 100,
@@ -440,5 +470,313 @@ export function analyzeDocumentStructure({ rawRows, rawHeaders, textContent, fil
     relationshipModel,
     analysisDiagnostics,
     segmentationDiagnostics,
+    documentPattern,
+    documentAnatomy,
+    operationalRegion,
+    operationalHeaders,
+    pipelineConfidence,
+  };
+}
+
+export function analyzeDocumentAnatomy({ rows, segments, sections, discoveredMetadata }) {
+  const regions = [];
+
+  const segs = segments || {};
+  const metaKeys = Object.keys(discoveredMetadata || {});
+
+  const metadataRows = metaKeys.length > 0 ? (segs?.operationalSection?.rows?.length > 0 ? Math.min(segs.operationalSection.rows.length, 18) : 0) : 0;
+  const opRows = segs?.operationalSection?.rows?.length || 0;
+  const finRows = segs?.financialSection?.rows?.length || 0;
+  const admRows = segs?.administrativeSection?.rows?.length || 0;
+
+  if (rows.length === 0) return { regions: [], totalRegions: 0 };
+
+  let currentStart = 0;
+
+  if (metaKeys.length > 0 && opRows > 0) {
+    const metaEnd = Math.min(currentStart + metadataRows, rows.length - 1);
+    if (metaEnd >= currentStart) {
+      regions.push({ type: 'metadata', startRow: currentStart, endRow: metaEnd, processable: false, containsRecords: false });
+      currentStart = metaEnd + 1;
+    }
+  }
+
+  if (opRows > 0) {
+    const opEnd = Math.min(currentStart + opRows - 1, rows.length - 1);
+    if (opEnd >= currentStart) {
+      regions.push({ type: 'operational', startRow: currentStart, endRow: opEnd, processable: true, containsRecords: true });
+      currentStart = opEnd + 1;
+    }
+  }
+
+  if (finRows > 0) {
+    const finEnd = Math.min(currentStart + finRows - 1, rows.length - 1);
+    if (finEnd >= currentStart) {
+      regions.push({ type: 'financial', startRow: currentStart, endRow: finEnd, processable: false, containsRecords: false });
+      currentStart = finEnd + 1;
+    }
+  }
+
+  if (admRows > 0) {
+    const admEnd = Math.min(currentStart + admRows - 1, rows.length - 1);
+    if (admEnd >= currentStart) {
+      regions.push({ type: 'administrative', startRow: currentStart, endRow: admEnd, processable: false, containsRecords: false });
+      currentStart = admEnd + 1;
+    }
+  }
+
+  if (currentStart < rows.length) {
+    regions.push({ type: 'footer', startRow: currentStart, endRow: rows.length - 1, processable: false, containsRecords: false });
+  }
+
+  const totalRowsAccounted = regions.reduce((s, r) => s + (r.endRow - r.startRow + 1), 0);
+  if (totalRowsAccounted < rows.length) {
+    regions.push({ type: 'mixed', startRow: totalRowsAccounted, endRow: rows.length - 1, processable: false, containsRecords: false });
+  }
+
+  return { regions, totalRegions: regions.length };
+}
+
+export function resolveOperationalRegion({ anatomy }) {
+  if (!anatomy?.regions) return null;
+  const region = anatomy.regions.find(r => r.type === 'operational' && r.containsRecords);
+  if (!region) return null;
+  return {
+    startRow: region.startRow,
+    endRow: region.endRow,
+    rowCount: region.endRow - region.startRow + 1,
+    containsRecords: true,
+    confidence: 100,
+  };
+}
+
+export function detectOperationalHeaders({ rows, operationalRegion }) {
+  if (!operationalRegion || !rows?.length) {
+    return { headers: [], headerRow: -1, columnCount: 0, confidence: 0 };
+  }
+
+  const regionRows = rows.slice(operationalRegion.startRow, operationalRegion.endRow + 1);
+  if (!regionRows.length) return { headers: [], headerRow: -1, columnCount: 0, confidence: 0 };
+
+  for (let i = 0; i < Math.min(regionRows.length, 5); i++) {
+    const row = regionRows[i] || [];
+    const nonEmpty = row.filter(c => String(c ?? '').trim() !== '');
+    if (nonEmpty.length >= 2) {
+      const labelEndings = nonEmpty.filter(c => String(c).trim().endsWith(':')).length;
+      const isLabelRow = labelEndings >= Math.ceil(nonEmpty.length / 2);
+      if (!isLabelRow) {
+        const allShort = nonEmpty.every(c => String(c).trim().length < 40);
+        const confidence = allShort ? Math.min(80 + nonEmpty.length * 3, 98) : 60;
+        return {
+          headers: nonEmpty.map(c => String(c).trim()),
+          headerRow: operationalRegion.startRow + i,
+          columnCount: nonEmpty.length,
+          confidence,
+        };
+      }
+    }
+  }
+
+  return { headers: [], headerRow: -1, columnCount: 0, confidence: 0 };
+}
+
+function countFilledCells(row) {
+  return row.filter(c => String(c ?? '').trim() !== '').length;
+}
+
+function detectGroupCycle(rows, maxCycle = 6) {
+  if (rows.length < maxCycle * 2) return null;
+  const fillCounts = rows.slice(0, 60).map(r => countFilledCells(r));
+  for (let cycle = 2; cycle <= maxCycle; cycle++) {
+    let matches = 0;
+    for (let i = 0; i < fillCounts.length - cycle; i++) {
+      if (fillCounts[i] === fillCounts[i + cycle]) matches++;
+    }
+    const rate = matches / (fillCounts.length - cycle);
+    if (rate > 0.65) return { cycle, confidence: rate };
+  }
+  return null;
+}
+
+function detectGroupDelimiters(rows) {
+  const groups = [];
+  let start = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const c = countFilledCells(rows[i]);
+    if (c >= 3 && start === -1) start = i;
+    else if (c <= 2 && start !== -1) {
+      if (i - start >= 2) groups.push({ startRow: start, endRow: i - 1, rowCount: i - start });
+      start = -1;
+    }
+  }
+  if (start !== -1 && rows.length - start >= 2) groups.push({ startRow: start, endRow: rows.length - 1, rowCount: rows.length - start });
+  return groups;
+}
+
+function hasSequentialNumbers(rows) {
+  let seqCount = 0;
+  for (let i = 1; i < Math.min(rows.length, 30); i++) {
+    const a = parseInt(rows[i - 1]?.[0], 10);
+    const b = parseInt(rows[i]?.[0], 10);
+    if (!isNaN(a) && !isNaN(b) && b === a + 1) seqCount++;
+  }
+  return seqCount >= 5;
+}
+
+export function recognizeDocumentPattern({ rawRows, rawHeaders, structureAnalysis, operationalRegion }) {
+  const rows = rawRows || [];
+  if (!rows.length) return { type: 'TABULAR', confidence: 0, recordPattern: null, documentGroups: [], repeatingStructures: [], documentSections: [] };
+  const regionOffset = operationalRegion?.startRow || 0;
+
+  const signals = structureAnalysis?.signals || {};
+  const sections = structureAnalysis?.sections || [];
+  const segments = structureAnalysis?.documentSegments || {};
+  const relModel = structureAnalysis?.relationshipModel || {};
+  const tableBlock = structureAnalysis?.tableBlock;
+  const stats = { avgCols: signals.avgColumns || 0, stdDev: signals.columnStdDev || 0, totalRows: rows.length };
+
+  const hasMultipleSections = sections.length > 1;
+  const hasMetadata = signals.labelRatio > 0.15;
+  const hasTableHeaders = tableBlock && tableBlock.headers && tableBlock.headers.length >= 2;
+  const opsRows = segments?.operationalSection?.rows?.length || 0;
+  const finRows = segments?.financialSection?.rows?.length || 0;
+  const admRows = segments?.administrativeSection?.rows?.length || 0;
+  const hasDiverseContent = finRows > 0 || admRows > 0;
+  const isSingleColumn = stats.avgCols <= 2.5;
+  const hasRepeating = (relModel?.repeatingFields?.length || 0) > 0;
+  const hasShared = Object.keys(relModel?.sharedFields || {}).length > 0;
+
+  const groupCycle = detectGroupCycle(rows);
+  const groupDelimiters = detectGroupDelimiters(rows);
+  const sequential = hasSequentialNumbers(rows);
+  const density = signals.dataDensity || 0;
+
+  const candidates = [];
+
+  // ERP_EXPORT: single column, label:value pairs, or single-column sequential data
+  if (isSingleColumn && (signals.labelRatio > 0.2 || sequential)) {
+    const erpConf = Math.round((signals.labelRatio * 50 + (sequential ? 30 : 0) + (stats.avgCols <= 2 ? 20 : 0)) * 100) / 100;
+    candidates.push({ type: 'ERP_EXPORT', confidence: Math.min(erpConf, 99) });
+  }
+
+  // HIERARCHICAL: shared fields + repeating fields, moderate columns
+  if (hasShared && hasRepeating && opsRows > 0) {
+    const hierConf = Math.round(((hasShared ? 30 : 0) + (hasRepeating ? 30 : 0) + (opsRows > 5 ? 20 : 0) + (density > 0.4 ? 20 : 0)) * 100) / 100;
+    candidates.push({ type: 'HIERARCHICAL', confidence: Math.min(hierConf, 99) });
+  }
+
+  // REPEATING_GROUP: detected cycle or group delimiters with multi-row groups
+  if (groupCycle || (groupDelimiters.length > 0 && groupDelimiters.some(g => g.rowCount > 1))) {
+    const cycle = groupCycle?.cycle || 1;
+    const cycleConf = groupCycle ? groupCycle.confidence * 60 : 0;
+    const delimConf = groupDelimiters.filter(g => g.rowCount > 1).length * 20;
+    candidates.push({ type: 'REPEATING_GROUP', confidence: Math.min(Math.round((cycleConf + delimConf + (density > 0.3 ? 20 : 0)) * 100) / 100, 99) });
+  }
+
+  // TABULAR: consistent columns, good headers, high density
+  if (hasTableHeaders || (stats.stdDev < 0.8 && stats.avgCols >= 3 && density > 0.5)) {
+    const tabConf = Math.round(((hasTableHeaders ? 30 : 0) + (stats.stdDev < 0.8 ? 25 : 0) + (density > 0.5 ? 25 : 0) + (stats.avgCols >= 3 ? 20 : 0)) * 100) / 100;
+    candidates.push({ type: 'TABULAR', confidence: Math.min(tabConf, 99) });
+  }
+
+  // MULTI_TABLE: multiple table regions detected
+  if (hasMultipleSections && sections.filter(s => s.type === 'data_table').length >= 2) {
+    const mtConf = Math.round((sections.filter(s => s.type === 'data_table').length * 25 + (hasDiverseContent ? 20 : 0) + 20) * 100) / 100;
+    candidates.push({ type: 'MULTI_TABLE', confidence: Math.min(mtConf, 95) });
+  }
+
+  // MIXED_DOCUMENT: has metadata + table + other sections
+  if (hasMetadata && hasDiverseContent && (hasTableHeaders || stats.avgCols >= 3)) {
+    const mixConf = Math.round(((hasMetadata ? 25 : 0) + (hasDiverseContent ? 30 : 0) + (hasTableHeaders ? 25 : 0) + 20) * 100) / 100;
+    candidates.push({ type: 'MIXED_DOCUMENT', confidence: Math.min(mixConf, 95) });
+  }
+
+  candidates.sort((a, b) => b.confidence - a.confidence);
+
+  if (candidates.length === 0) {
+    candidates.push({ type: 'TABULAR', confidence: 30 });
+  }
+
+  const best = candidates[0];
+
+  // Build recordPattern (offsets are relative to the full document when region is provided)
+  let recordStartsAt = -1;
+  let recordEndsAt = -1;
+  let recordSize = 1;
+  let estimatedRecords = 0;
+
+  if (best.type === 'TABULAR' && tableBlock) {
+    recordStartsAt = tableBlock.startRow + regionOffset;
+    recordEndsAt = tableBlock.endRow + regionOffset;
+    recordSize = tableBlock.columns || Math.round(stats.avgCols);
+    estimatedRecords = tableBlock.rows?.length || rows.length;
+  } else if (best.type === 'REPEATING_GROUP' && groupCycle) {
+    recordSize = groupCycle.cycle;
+    estimatedRecords = Math.floor(rows.length / recordSize);
+    recordStartsAt = regionOffset;
+    recordEndsAt = regionOffset + rows.length - 1;
+  } else if (best.type === 'REPEATING_GROUP' && groupDelimiters.length > 0) {
+    recordStartsAt = groupDelimiters[0].startRow + regionOffset;
+    recordEndsAt = groupDelimiters[groupDelimiters.length - 1].endRow + regionOffset;
+    estimatedRecords = groupDelimiters.length;
+  } else if (best.type === 'HIERARCHICAL') {
+    recordStartsAt = regionOffset;
+    recordEndsAt = regionOffset + rows.length - 1;
+    recordSize = (relModel?.repeatingFields?.length || 1) + Object.keys(relModel?.sharedFields || {}).length;
+    estimatedRecords = relModel?.estimatedRecords || rows.length;
+  } else if (best.type === 'ERP_EXPORT') {
+    recordStartsAt = regionOffset;
+    recordEndsAt = regionOffset + rows.length - 1;
+    recordSize = Math.round(stats.avgCols);
+    estimatedRecords = Math.ceil(rows.length / 5);
+  } else {
+    recordStartsAt = regionOffset;
+    recordEndsAt = regionOffset + rows.length - 1;
+    recordSize = Math.round(stats.avgCols) || 1;
+    estimatedRecords = rows.length;
+  }
+
+  // Build documentGroups
+  const documentGroups = [];
+  if (best.type === 'MULTI_TABLE' || best.type === 'MIXED_DOCUMENT') {
+    for (const sec of sections) {
+      documentGroups.push({ startRow: sec.startRow, endRow: sec.endRow, type: sec.type || 'data_table', rowCount: sec.rowCount });
+    }
+  } else if (best.type === 'REPEATING_GROUP' && groupDelimiters.length > 0) {
+    for (const g of groupDelimiters) {
+      documentGroups.push({ startRow: g.startRow, endRow: g.endRow, type: 'group', rowCount: g.rowCount });
+    }
+  }
+
+  // Build repeatingStructures
+  const repeatingStructures = [];
+  if (best.type === 'REPEATING_GROUP' && groupCycle) {
+    repeatingStructures.push({ cycle: groupCycle.cycle, confidence: Math.round(groupCycle.confidence * 100), estimatedGroups: estimatedRecords });
+  }
+
+  // Build documentSections
+  const documentSections = [];
+  if (segments?.operationalSection?.rows?.length > 0) {
+    documentSections.push({ type: 'operational', rowCount: segments.operationalSection.rows.length });
+  }
+  if (segments?.administrativeSection?.rows?.length > 0) {
+    documentSections.push({ type: 'administrative', rowCount: segments.administrativeSection.rows.length });
+  }
+  if (segments?.financialSection?.rows?.length > 0) {
+    documentSections.push({ type: 'financial', rowCount: segments.financialSection.rows.length });
+  }
+
+  return {
+    type: best.type,
+    confidence: Math.round(best.confidence * 100) / 100,
+    recordPattern: {
+      recordStartsAt,
+      recordEndsAt,
+      recordSize,
+      estimatedRecords: Math.max(estimatedRecords, 1),
+    },
+    documentGroups,
+    repeatingStructures,
+    documentSections,
   };
 }

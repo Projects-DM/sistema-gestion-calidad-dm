@@ -195,16 +195,24 @@ export function normalizeOperationalData({ parsedDocument, contract, structureAn
     return record;
   });
 
-  const LABEL_KEYWORDS = ['cliente:', 'vendedor', 'fecha:', 'factura:', 'nit:', 'tel:', 'direccion', 'total', 'subtotal', 'vuelto', 'saldo', 'descuento', 'cancelado', 'neto', 'iva', 'retencion', 'banco', 'consignar', 'resolucion', 'gracias', '----'];
+  const LABEL_KEYWORDS = ['cliente:', 'vendedor', 'fecha:', 'factura:', 'nit:', 'tel:', 'direccion', 'total', 'subtotal', 'vuelto', 'saldo', 'descuento', 'cancelado', 'neto', 'iva', 'retencion', 'banco', 'consignar', 'resolucion', 'gracias', '----', 'destino'];
+  const ADDRESS_PREFIXES = ['cll ', 'cr ', 'calle ', 'avenida ', 'carrera ', 'ce ', 'diagonal ', 'autopista ', 'torre ', 'km '];
+  const HEADER_LABELS = ['descripcion', 'lote', 'cant.', 'cant'];
+
   const hasData = rows.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
+
   const filtered = hasData.filter(r => {
     const prodField = canonicalFields.find(f => f === 'producto' || f === 'descripcion');
     const prodVal = prodField ? String(r[prodField] ?? '').trim().toLowerCase() : '';
     if (!prodVal) return false;
+    if (HEADER_LABELS.includes(prodVal)) return false;
     const colonCount = (prodVal.match(/:/g) || []).length;
     if (colonCount > 0 && prodVal.length < 20) return false;
     if (LABEL_KEYWORDS.some(kw => prodVal.startsWith(kw) || prodVal.includes(kw))) return false;
     if (!isNaN(Number(prodVal.replace(/[,.]/g, ''))) && prodVal.replace(/[,.]/g, '').length > 2) return false;
+    if (ADDRESS_PREFIXES.some(p => prodVal.startsWith(p))) return false;
+    if (/\d{7,}/.test(prodVal) && /[-–]/.test(prodVal)) return false;
+    if (prodVal.replace(/[^a-záéíóúñ]/g, '').length < 2) return false;
     return true;
   });
   const matchedCount = Object.values(matchedHeaders).filter(Boolean).length;
@@ -299,6 +307,77 @@ export function buildOperationalRecords({ operationalDocumentModel, contract, re
 }
 
 
+
+export function buildDocumentRecords({ rawRows, rawHeaders, documentPattern, operationalRegion }) {
+  const allRows = rawRows || [];
+  const pattern = documentPattern || {};
+
+  const rows = operationalRegion && allRows.length
+    ? allRows.slice(operationalRegion.startRow, operationalRegion.endRow + 1)
+    : allRows;
+
+  if (!rows.length) return { records: [], totalRecords: 0 };
+
+  const records = [];
+
+  if (pattern.type === 'TABULAR' || pattern.type === 'MULTI_TABLE' || pattern.type === 'MIXED_DOCUMENT') {
+    const startRow = pattern.recordPattern?.recordStartsAt || 0;
+    const endRow = pattern.recordPattern?.recordEndsAt || (rows.length - 1);
+    for (let i = startRow; i <= endRow && i < rows.length; i++) {
+      const row = rows[i] || [];
+      if (row.some(c => String(c ?? '').trim() !== '')) {
+        records.push({ rawRecord: row.map(c => String(c ?? '').trim()), pattern: pattern.type, recordIndex: records.length });
+      }
+    }
+  } else if (pattern.type === 'REPEATING_GROUP') {
+    const cycle = pattern.repeatingStructures?.[0]?.cycle || pattern.recordPattern?.recordSize || 1;
+    for (let i = 0; i + cycle <= rows.length; i += cycle) {
+      const group = rows.slice(i, i + cycle);
+      const rawRecord = [];
+      for (const row of group) {
+        for (const cell of row) {
+          if (String(cell ?? '').trim()) rawRecord.push(String(cell).trim());
+        }
+      }
+      records.push({ rawRecord, pattern: 'REPEATING_GROUP', recordIndex: records.length, groupStartRow: i, groupSize: cycle });
+    }
+  } else if (pattern.type === 'HIERARCHICAL') {
+    const startRow = pattern.recordPattern?.recordStartsAt || 0;
+    for (let i = startRow; i < rows.length; i++) {
+      const row = rows[i] || [];
+      if (row.some(c => String(c ?? '').trim() !== '')) {
+        records.push({ rawRecord: row.map(c => String(c ?? '').trim()), pattern: 'HIERARCHICAL', recordIndex: records.length });
+      }
+    }
+  } else if (pattern.type === 'ERP_EXPORT') {
+    let current = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const filled = row.filter(c => String(c ?? '').trim() !== '');
+      if (filled.length === 0 && current.length > 0) {
+        records.push({ rawRecord: [...current], pattern: 'ERP_EXPORT', recordIndex: records.length });
+        current = [];
+      } else if (filled.length > 0) {
+        for (const cell of row) {
+          const v = String(cell ?? '').trim();
+          if (v) current.push(v);
+        }
+      }
+    }
+    if (current.length > 0) {
+      records.push({ rawRecord: [...current], pattern: 'ERP_EXPORT', recordIndex: records.length });
+    }
+  } else {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || [];
+      if (row.some(c => String(c ?? '').trim() !== '')) {
+        records.push({ rawRecord: row.map(c => String(c ?? '').trim()), pattern: pattern.type || 'TABULAR', recordIndex: records.length });
+      }
+    }
+  }
+
+  return { records, totalRecords: records.length };
+}
 
 export function buildOperationalDocumentModel({ parsedDocument, structureAnalysis }) {
   const { rawRows } = parsedDocument || {};
