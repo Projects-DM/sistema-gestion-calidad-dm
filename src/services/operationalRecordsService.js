@@ -43,6 +43,16 @@ function applyFieldMappingToRow(row, reverseMapping) {
   return result;
 }
 
+function stripInternalKeys(r) {
+  if (!r) return r;
+  const clean = {};
+  for (const [k, v] of Object.entries(r)) {
+    if (k.startsWith('_')) continue;
+    clean[k] = v === undefined ? null : v;
+  }
+  return clean;
+}
+
 export function createOperationalRecordsService(tableName, { prefix = 'REC', fieldMapping, displayFields } = {}) {
   const revMapping = fieldMapping
     ? Object.fromEntries(Object.entries(fieldMapping).map(([k, v]) => [v, k]))
@@ -95,7 +105,7 @@ export function createOperationalRecordsService(tableName, { prefix = 'REC', fie
       const sb = getSupabaseClient();
       if (!sb) throw new Error('Supabase no configurado');
       if (!records?.length) return [];
-      const payloads = records.map((r) => applyFieldMapping(r, fieldMapping));
+      const payloads = records.map((r) => stripInternalKeys(applyFieldMapping(r, fieldMapping)));
       const chunkSize = 200;
       const acc = [];
       for (let i = 0; i < payloads.length; i += chunkSize) {

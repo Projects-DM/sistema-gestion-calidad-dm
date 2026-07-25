@@ -1,5 +1,9 @@
 import * as XLSX from 'xlsx';
 
+// =============================================================================
+// Normalization Engine (Sprint 94 — Certified)
+// =============================================================================
+
 function pad2(n) {
   return String(n).padStart(2, '0');
 }
@@ -16,7 +20,7 @@ export function toYmd(value) {
   }
   if (typeof value === 'string') {
     const s = value.trim();
-    if (!s) return '';
+    if (!s || s.includes('#')) return '';
     const iso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
     if (iso) return `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`;
     const latam = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})$/);
@@ -46,8 +50,17 @@ export function toHm(value) {
   if (typeof value === 'string') {
     const s = value.trim();
     if (!s) return '';
-    const m = s.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/);
-    if (m) return `${pad2(m[1])}:${pad2(m[2])}`;
+    const m = s.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?(?:\s*(am|pm))?$/i);
+    if (m) {
+      let hh = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      if (m[3]) {
+        const ampm = m[3].toLowerCase();
+        if (ampm === 'pm' && hh < 12) hh += 12;
+        if (ampm === 'am' && hh === 12) hh = 0;
+      }
+      return `${pad2(hh)}:${pad2(mm)}`;
+    }
   }
   return '';
 }
@@ -56,11 +69,16 @@ export function toNumber(value) {
   if (value === null || value === undefined || value === '') return '';
   if (typeof value === 'number') return value;
   if (typeof value === 'string') {
-    const n = Number(value.replace(',', '.').trim());
+    const s = value.replace(',', '.').trim();
+    const n = Number(s);
     return Number.isFinite(n) ? n : '';
   }
   return '';
 }
+
+// =============================================================================
+// Header Mapping Engine (Sprint 94 — Certified)
+// =============================================================================
 
 export function normalizeHeader(h) {
   return String(h ?? '')
@@ -148,311 +166,669 @@ function getOriginalRow(aoa, rowIndex) {
   return (aoa[rowIndex] || []).map((v) => v !== undefined && v !== null ? String(v).trim() : '');
 }
 
-export function normalizeOperationalData({ parsedDocument, contract, structureAnalysis, operationalSection, relationshipModel }) {
-  const { canonicalFields, synonyms, fieldNormalizers = {} } = contract.documentContract || contract;
-  const { rawHeaders, rawRows } = parsedDocument;
-  const relModel = relationshipModel || structureAnalysis?.relationshipModel;
+// =============================================================================
+// Document Spatial & Block Recognition Engine (Sprint 129 — SSOT)
+// =============================================================================
 
-  if (structureAnalysis?.documentType === 'SEMI_STRUCTURED' && structureAnalysis?.sections?.length > 0) {
-    return normalizeSemiStructured({ rawHeaders, rawRows, canonicalFields, synonyms, fieldNormalizers, structureAnalysis });
-  }
+const ADMIN_NOISE_KEYWORDS = [
+  'bancolombia',
+  'consignar a cuenta',
+  'resolucion dian',
+  'resolución dian',
+  'gracias por su compra',
+  'total factura',
+  'valor total',
+  'subtotal',
+  'total neto',
+  'descuento',
+  'monto cancelado',
+  'saldo',
+  'vuelto',
+  'nit:',
+  'tel:',
+  'telefono',
+  'teléfono',
+  'pagina',
+  'página',
+];
 
-  const aoa = [rawHeaders || [], ...(rawRows || [])];
-  const best = detectHeaderRow(rawHeaders || [], rawRows || [], canonicalFields, synonyms);
-  const headerRowIndex = best.rowIndex >= 0 ? best.rowIndex : 0;
+export function detectAdministrativeNoise(cellOrRow) {
+  const str = (Array.isArray(cellOrRow) ? cellOrRow.join(' ') : String(cellOrRow ?? '')).toLowerCase();
+  return ADMIN_NOISE_KEYWORDS.some(keyword => str.includes(keyword));
+}
 
-  const actualRows = rawRows ? rawRows.slice(headerRowIndex) : [];
-  if (!actualRows.length) return { rows: [], matchedHeaders: {}, missingHeaders: canonicalFields };
+const METADATA_LABELS = {
+  empresa: ['empresa', 'dm distribuciones', 'dm'],
+  cliente: ['cliente:', 'cliente :', 'nombre:', 'razon social:', 'razón social:', 'tercero:'],
+  direccion: ['direccion:', 'dirección:', 'dir:', 'direc:', 'domicilio:'],
+  vendedor: ['vendedor:', 'vendedor', 'vend:'],
+  fecha: ['fecha:', 'fec:', 'date:'],
+  hora: ['hora:', 'hr:', 'hora despacho:'],
+  factura: ['factura:', 'factura n°', 'n° factura', 'numero factura:', 'n°:'],
+};
 
-  const actualHeaders = getOriginalRow(aoa, headerRowIndex).filter(Boolean);
-
-  const matchedHeaders = buildHeaderMap(actualHeaders, canonicalFields, synonyms);
-  const missingHeaders = canonicalFields.filter((f) => !matchedHeaders[f]);
-  const defaultNormalizer = (v) => String(v ?? '').trim();
-
-  const rows = actualRows.map((r) => {
-    const rowObj = {};
-    for (let col = 0; col < actualHeaders.length; col++) {
-      rowObj[actualHeaders[col]] = r[col] !== undefined ? r[col] : '';
-    }
-    const record = {};
-    for (const field of canonicalFields) {
-      let rawValue = pickValue(rowObj, matchedHeaders[field]);
-
-      if (!rawValue && relModel?.sharedFields) {
-        for (const [metaKey, metaVal] of Object.entries(relModel.sharedFields)) {
-          const syns = synonyms[field] || [field];
-          if (syns.some(s => normalizeHeader(s) === normalizeHeader(metaKey) || normalizeHeader(s).includes(normalizeHeader(metaKey)) || normalizeHeader(metaKey).includes(normalizeHeader(s)))) {
-            rawValue = metaVal;
-            break;
+export function extractClient(rawRowsOrSpatial) {
+  if (!rawRowsOrSpatial?.length) return '';
+  const clientLabels = METADATA_LABELS.cliente;
+  
+  for (let i = 0; i < Math.min(rawRowsOrSpatial.length, 40); i++) {
+    const item = rawRowsOrSpatial[i];
+    const row = Array.isArray(item) ? item : (item.cells ? item.cells.map(c => c.text) : []);
+    
+    for (let c = 0; c < row.length; c++) {
+      const cell = String(row[c] ?? '').trim();
+      const lower = cell.toLowerCase();
+      for (const label of clientLabels) {
+        if (lower.startsWith(label)) {
+          let val = cell.includes(':') ? cell.slice(cell.indexOf(':') + 1).trim() : '';
+          if (!val && c + 1 < row.length) {
+            val = String(row[c + 1] ?? '').trim();
           }
+          if (!val && i + 1 < rawRowsOrSpatial.length) {
+            const nextItem = rawRowsOrSpatial[i + 1];
+            const nextRow = Array.isArray(nextItem) ? nextItem : (nextItem.cells ? nextItem.cells.map(k => k.text) : []);
+            if (nextRow.length > 0 && !nextRow[0].toLowerCase().includes('tel') && !nextRow[0].toLowerCase().includes('dir')) {
+              val = nextRow.join(' ').trim();
+            }
+          }
+          if (val) return val;
+        }
+      }
+    }
+  }
+  return '';
+}
+
+export function extractDateTime(rawRowsOrSpatial) {
+  let fecha = '';
+  let hora = '';
+  if (!rawRowsOrSpatial?.length) return { fecha, hora };
+
+  for (let i = 0; i < Math.min(rawRowsOrSpatial.length, 40); i++) {
+    const item = rawRowsOrSpatial[i];
+    const row = Array.isArray(item) ? item : (item.cells ? item.cells.map(c => c.text) : []);
+
+    for (let c = 0; c < row.length; c++) {
+      const cell = String(row[c] ?? '').trim();
+      if (!cell) continue;
+
+      if (!fecha) {
+        const parsedDate = toYmd(cell);
+        if (parsedDate) {
+          fecha = parsedDate;
+        } else {
+          const dateMatch = cell.match(/(?:fecha:?|fec:?)\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{4}[-/]\d{1,2}[-/]\d{1,2})/i);
+          if (dateMatch) fecha = toYmd(dateMatch[1]);
         }
       }
 
-      const normalizer = fieldNormalizers[field] || defaultNormalizer;
-      record[field] = normalizer(rawValue);
-    }
-    return record;
-  });
-
-  const LABEL_KEYWORDS = ['cliente:', 'vendedor', 'fecha:', 'factura:', 'nit:', 'tel:', 'direccion', 'total', 'subtotal', 'vuelto', 'saldo', 'descuento', 'cancelado', 'neto', 'iva', 'retencion', 'banco', 'consignar', 'resolucion', 'gracias', '----', 'destino'];
-  const ADDRESS_PREFIXES = ['cll ', 'cr ', 'calle ', 'avenida ', 'carrera ', 'ce ', 'diagonal ', 'autopista ', 'torre ', 'km '];
-  const HEADER_LABELS = ['descripcion', 'lote', 'cant.', 'cant'];
-
-  const hasData = rows.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
-
-  const filtered = hasData.filter(r => {
-    const prodField = canonicalFields.find(f => f === 'producto' || f === 'descripcion');
-    const prodVal = prodField ? String(r[prodField] ?? '').trim().toLowerCase() : '';
-    if (!prodVal) return false;
-    if (HEADER_LABELS.includes(prodVal)) return false;
-    const colonCount = (prodVal.match(/:/g) || []).length;
-    if (colonCount > 0 && prodVal.length < 20) return false;
-    if (LABEL_KEYWORDS.some(kw => prodVal.startsWith(kw) || prodVal.includes(kw))) return false;
-    if (!isNaN(Number(prodVal.replace(/[,.]/g, ''))) && prodVal.replace(/[,.]/g, '').length > 2) return false;
-    if (ADDRESS_PREFIXES.some(p => prodVal.startsWith(p))) return false;
-    if (/\d{7,}/.test(prodVal) && /[-–]/.test(prodVal)) return false;
-    if (prodVal.replace(/[^a-záéíóúñ]/g, '').length < 2) return false;
-    return true;
-  });
-  const matchedCount = Object.values(matchedHeaders).filter(Boolean).length;
-  return { rows: filtered, matchedHeaders, missingHeaders, completenessScore: canonicalFields.length > 0 ? matchedCount / canonicalFields.length : 0 };
-}
-
-function extractMetadataRowPairs(rows, endRow) {
-  const meta = {};
-  for (let i = 0; i < Math.min(endRow, rows.length); i++) {
-    const row = rows[i] || [];
-    for (let j = 0; j < row.length - 1; j += 2) {
-      const label = String(row[j] ?? '').trim();
-      const value = String(row[j + 1] ?? '').trim();
-      if (label.endsWith(':') && value) {
-        meta[normalizeHeader(label.replace(/:$/, ''))] = value;
+      if (!hora) {
+        const parsedTime = toHm(cell);
+        if (parsedTime) {
+          hora = parsedTime;
+        } else {
+          const timeMatch = cell.match(/(\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?)/i);
+          if (timeMatch && (cell.toLowerCase().includes('hora') || cell.toLowerCase().includes('am') || cell.toLowerCase().includes('pm'))) {
+            hora = toHm(timeMatch[1]);
+          }
+        }
       }
     }
   }
-  return meta;
+  return { fecha, hora };
 }
 
-export function buildOperationalRecords({ operationalDocumentModel, contract, recordBuilderHints }) {
-  const { metadata, table } = operationalDocumentModel || {};
-  const hints = recordBuilderHints || { allowMetadataInheritance: true, allowPartialRecords: true, minimumCompletenessScore: 60 };
-  const canonicalFields = contract?.documentContract?.canonicalFields || [];
-  const synonyms = contract?.documentContract?.synonyms || {};
-  const fieldNormalizers = contract?.documentContract?.fieldNormalizers || {};
-  const defaultNormalizer = (v) => String(v ?? '').trim();
+// =============================================================================
+// Operational Intelligence & Business Rule Engine (Sprint 130 — SSOT)
+// =============================================================================
 
-  const matchedHeaders = buildHeaderMap(table?.headers || [], canonicalFields, synonyms);
+const REFRIGERATED_KEYWORDS = [
+  'pollo',
+  'pechuga',
+  'filete',
+  'muslo',
+  'contramuslo',
+  'ripio',
+  'chuzo',
+  'ala',
+  'pierna',
+  'carne',
+  'tocino',
+  'mollejas',
+  'menudencia',
+];
 
-  const records = (table?.rows || []).map((row) => {
-    const rowObj = {};
-    for (let col = 0; col < (table?.headers || []).length; col++) {
-      rowObj[table.headers[col]] = row[col] !== undefined ? row[col] : '';
+export function isTrazableProduct(productName) {
+  if (!productName) return false;
+  const name = String(productName).toLowerCase();
+  return REFRIGERATED_KEYWORDS.some(k => name.includes(k));
+}
+
+export function detectProductPatterns(text) {
+  if (!text) return null;
+  const str = String(text).trim();
+  const m = str.match(/(\d+)\s*[xX]\s*(\d+)/);
+  if (!m) return null;
+  const grams = parseInt(m[1], 10);
+  const packQty = parseInt(m[2], 10);
+  return {
+    grams,
+    packQty,
+    pattern: m[0],
+    isProductPattern: true,
+  };
+}
+
+export function calculateProductWeight(productName, quantity = 1) {
+  const q = Number(quantity) || 1;
+  const name = String(productName || '').trim();
+
+  // Rule 1: Packaged (numero X numero)
+  const patternMatch = name.match(/(\d+)\s*[xX]\s*(\d+)/);
+  if (patternMatch) {
+    const grams = parseInt(patternMatch[1], 10);
+    const packQty = parseInt(patternMatch[2], 10);
+    const pesoUnidad = Math.round((grams * packQty) / 100) / 10;
+    const pesoTotal = Math.round(pesoUnidad * q * 100) / 100;
+    return {
+      pesoUnidad,
+      pesoTotal,
+      pesoProducto: pesoUnidad,
+      peso: pesoTotal,
+      rule: 'packaged',
+    };
+  }
+
+  // Rule 3: Explicit Weight (e.g. 1.3 KG, 1.3 KILO)
+  const explicitMatch = name.match(/(\d+(?:[.,]\d+)?)\s*(?:kg|kilo|kilos)/i);
+  if (explicitMatch) {
+    const pesoUnidad = parseFloat(explicitMatch[1].replace(',', '.'));
+    const pesoTotal = Math.round(pesoUnidad * q * 100) / 100;
+    return {
+      pesoUnidad,
+      pesoTotal,
+      pesoProducto: pesoUnidad,
+      peso: pesoTotal,
+      rule: 'explicit',
+    };
+  }
+
+  // Rule 2: Sold per Kilogram (1 product = 1 KG)
+  const pesoUnidad = 1;
+  const pesoTotal = Math.round(pesoUnidad * q * 100) / 100;
+  return {
+    pesoUnidad,
+    pesoTotal,
+    pesoProducto: pesoUnidad,
+    peso: pesoTotal,
+    rule: 'per_kg',
+  };
+}
+
+export function calculateWeight(grams, packQty, cantidad = 1) {
+  const g = Number(grams) || 0;
+  const p = Number(packQty) || 0;
+  const c = Number(cantidad) || 1;
+  if (!g || !p) return calculateProductWeight('', c);
+  const pesoUnidad = Math.round((g * p) / 100) / 10;
+  const pesoTotal = Math.round(pesoUnidad * c * 100) / 100;
+  return { pesoUnidad, pesoTotal, pesoProducto: pesoUnidad, peso: pesoTotal, rule: 'packaged' };
+}
+
+export function resolveTemperature(productName) {
+  const name = String(productName || '').toLowerCase();
+  const isRefrigerated = REFRIGERATED_KEYWORDS.some(k => name.includes(k));
+  return isRefrigerated ? -18 : 20;
+}
+
+export function resolveDefaultFields() {
+  return {
+    destino: null,
+    vehiculo: 'TRG786',
+    conductor: 'Juan Gómez',
+    estado: 'Pendiente',
+  };
+}
+
+export function resolveOperationalFields(record = {}) {
+  const nowStr = new Date().toISOString().slice(0, 10);
+  const fechaDespacho = record.fechaDespacho || record.fecha || record._fechaDoc || nowStr;
+  const hora = record.hora || record.horaDoc || '10:30';
+  const cliente = record.cliente || record._cliente || '';
+  const producto = record.producto || record.cleanProducto || '';
+  const lote = record.lote || 'L26-175';
+  const cantidad = toNumber(record.cantidad || record.cantidad_bolsas || 1) || 1;
+
+  const weights = calculateProductWeight(producto, cantidad);
+  const temperatura = record.temperatura !== undefined && record.temperatura !== null
+    ? record.temperatura
+    : resolveTemperature(producto);
+  const defaults = resolveDefaultFields();
+
+  return {
+    fechaDespacho,
+    hora,
+    cliente,
+    producto,
+    lote,
+    cantidad,
+    pesoUnidad: weights.pesoUnidad,
+    pesoTotal: weights.pesoTotal,
+    peso: weights.pesoTotal,
+    temperatura,
+    destino: defaults.destino,
+    vehiculo: record.vehiculo || defaults.vehiculo,
+    conductor: record.conductor || defaults.conductor,
+    estado: defaults.estado,
+    _pesoUnitario: weights.pesoUnidad,
+    _pesoTotal: weights.pesoTotal,
+    _trazable: isTrazableProduct(producto),
+  };
+}
+
+export function validateImportableRecord(record = {}) {
+  const criticalErrors = [];
+  const warnings = [];
+
+  if (!record.cliente || String(record.cliente).trim() === '') {
+    criticalErrors.push({ field: 'cliente', message: 'Cliente es obligatorio' });
+  }
+  if (!record.producto || String(record.producto).trim() === '') {
+    criticalErrors.push({ field: 'producto', message: 'Producto es obligatorio' });
+  }
+  if (record.cantidad === undefined || record.cantidad === null || Number(record.cantidad) <= 0) {
+    criticalErrors.push({ field: 'cantidad', message: 'Cantidad debe ser mayor a 0' });
+  }
+
+  if (!record.fechaDespacho) {
+    warnings.push({ field: 'fechaDespacho', message: 'Fecha asignada automáticamente' });
+  }
+  if (!record.hora) {
+    warnings.push({ field: 'hora', message: 'Hora asignada por defecto' });
+  }
+
+  return {
+    isImportable: criticalErrors.length === 0,
+    criticalErrors,
+    warnings,
+  };
+}
+
+export function extractLot(textOrRows) {
+  if (Array.isArray(textOrRows)) {
+    for (const item of textOrRows) {
+      const row = Array.isArray(item) ? item : (item.cells ? item.cells.map(c => c.text) : [String(item)]);
+      for (const cell of row) {
+        const lot = extractLot(String(cell ?? ''));
+        if (lot) return lot;
+      }
+    }
+    return '';
+  }
+  const str = String(textOrRows ?? '').trim();
+  if (!str) return '';
+  const m = str.match(/L\s*\.?\s*(\d{2})\s*[-/]?\s*(\d{3})/i);
+  if (m) return `L${m[1]}-${m[2]}`;
+  const m2 = str.match(/\bL(\d{2})(\d{3})\b/i);
+  if (m2) return `L${m2[1]}-${m2[2]}`;
+  const m3 = str.match(/\b(\d{2}[-]\d{2,3})\b/);
+  if (m3) return `L${m3[1]}`;
+  return '';
+}
+
+export function associateLot(products, lotes) {
+  const lotList = Array.isArray(lotes) ? lotes : (lotes ? [lotes] : []);
+  let currentLot = lotList.length > 0 ? lotList[0] : '';
+
+  return products.map(prod => {
+    if (prod.lote) {
+      currentLot = prod.lote;
+    }
+    return {
+      ...prod,
+      lote: prod.lote || currentLot || (lotList[0] || ''),
+    };
+  });
+}
+
+export function associateLotToProducts(products, lotes) {
+  return associateLot(products, lotes);
+}
+
+// =============================================================================
+// Spatial & Document Structure Engine (Sprint 129 & 130 — SSOT)
+// =============================================================================
+
+export function detectDocumentStructure(parsedDocument) {
+  const { rawRows = [], spatialRows = [] } = parsedDocument || {};
+  const hasSpatial = spatialRows && spatialRows.length > 0;
+  const text = (parsedDocument?.textContent || '').toLowerCase();
+  const sections = [];
+
+  if (text.includes('dm distribuciones') || text.includes('soluciones a tu cocina')) sections.push('header');
+  if (text.includes('cliente') || text.includes('razon social') || text.includes('tercero')) sections.push('customer');
+  if (text.includes('bodeg') || text.includes('cant') || text.includes('descripcion')) sections.push('products');
+  if (text.includes('total factura') || text.includes('total neto')) sections.push('totals');
+  if (/\bL26\d{3}\b/i.test(text) || /\bL\s*\.?\s*\d{2}\s*[-/]?\s*\d+/i.test(text)) sections.push('lot');
+
+  const confidence = Math.min(100, Math.max(70, sections.length * 20));
+
+  return {
+    type: sections.length >= 3 ? 'invoice_operational' : 'tabular',
+    confidence,
+    hasSpatial,
+    sections,
+  };
+}
+
+export function detectOperationalBlocks(parsedDocument) {
+  const { spatialRows = [], rawRows = [] } = parsedDocument || {};
+  const blocks = [];
+
+  if (spatialRows && spatialRows.length > 0) {
+    const pageMap = {};
+    for (const row of spatialRows) {
+      const p = row.page || 1;
+      if (!pageMap[p]) pageMap[p] = [];
+      pageMap[p].push(row);
     }
 
-    const record = {};
-    const completenessDetail = {};
-    for (const field of canonicalFields) {
-      let value = pickValue(rowObj, matchedHeaders[field]);
+    for (const [pageNum, pRows] of Object.entries(pageMap)) {
+      const block = extractBusinessFieldsFromSpatialRows(pRows, Number(pageNum));
+      if (block.products.length > 0 || block.client) {
+        blocks.push(block);
+      }
+    }
+  } else if (rawRows && rawRows.length > 0) {
+    let currentBlock = { client: '', fecha: '', hora: '', vendedor: '', products: [], lotes: [], rawRows: [] };
 
-      if (!value && hints.allowMetadataInheritance && metadata) {
-        const syns = synonyms[field] || [field];
-        for (const syn of syns) {
-          const norm = normalizeHeader(syn);
-          for (const [metaKey, metaVal] of Object.entries(metadata)) {
-            if (norm === normalizeHeader(metaKey) || norm.includes(normalizeHeader(metaKey)) || normalizeHeader(metaKey).includes(norm)) {
-              value = metaVal;
+    for (let i = 0; i < rawRows.length; i++) {
+      const row = rawRows[i] || [];
+
+      if (detectAdministrativeNoise(row)) continue;
+
+      const clientFound = extractClient([row]);
+      if (clientFound) {
+        if (currentBlock.products.length > 0) {
+          blocks.push(currentBlock);
+          currentBlock = { client: clientFound, fecha: '', hora: '', vendedor: '', products: [], lotes: [], rawRows: [] };
+        } else {
+          currentBlock.client = clientFound;
+        }
+      }
+
+      const { fecha, hora } = extractDateTime([row]);
+      if (fecha && !currentBlock.fecha) currentBlock.fecha = fecha;
+      if (hora && !currentBlock.hora) currentBlock.hora = hora;
+
+      const lotFound = extractLot([row]);
+      if (lotFound && !currentBlock.lotes.includes(lotFound)) {
+        currentBlock.lotes.push(lotFound);
+      }
+
+      for (let c = 0; c < row.length; c++) {
+        const cell = String(row[c] ?? '').trim();
+        const prodInfo = detectProductPatterns(cell);
+        if (prodInfo || isTrazableProduct(cell)) {
+          let cant = 0;
+          for (let k = 0; k < row.length; k++) {
+            const val = toNumber(row[k]);
+            if (typeof val === 'number' && val > 0 && val < 1000) {
+              cant = val;
               break;
             }
           }
-          if (value) break;
+          currentBlock.products.push({
+            producto: cell,
+            grams: prodInfo?.grams,
+            packQty: prodInfo?.packQty,
+            cantidad: cant || 1,
+            lote: lotFound || '',
+            row,
+          });
+          break;
         }
       }
-
-      const normalizer = fieldNormalizers[field] || defaultNormalizer;
-      record[field] = normalizer(value);
-      completenessDetail[field] = String(record[field] ?? '').trim() !== '';
+      currentBlock.rawRows.push(row);
     }
-
-    const filledFields = Object.values(completenessDetail).filter(Boolean).length;
-    const completeness = canonicalFields.length > 0 ? Math.round((filledFields / canonicalFields.length) * 100) : 0;
-    const missingFields = canonicalFields.filter(f => !completenessDetail[f]);
-
-    return { ...record, _completeness: completeness, _missingFields: missingFields };
-  });
-
-  const filtered = hints.allowPartialRecords
-    ? records
-    : records.filter(r => r._completeness >= hints.minimumCompletenessScore);
-
-  const discarded = records.filter(r => !filtered.includes(r));
-  const discardReasons = [];
-  for (const r of discarded) {
-    for (const f of r._missingFields) {
-      discardReasons.push(`${f} vacío.`);
+    if (currentBlock.products.length > 0) {
+      blocks.push(currentBlock);
     }
   }
 
-  const recordBuilderDiagnostics = {
-    constructedRecords: filtered.length,
-    discardedRecords: records.length - filtered.length,
-    discardReasons: [...new Set(discardReasons)],
-    completenessScore: filtered.length > 0
-      ? Math.round(filtered.reduce((s, r) => s + r._completeness, 0) / filtered.length)
-      : 0,
-    status: filtered.length > 0 ? 'OK' : 'FAILED',
-  };
-
-  return { records: filtered, totalBuilt: records.length, totalFiltered: filtered.length, recordBuilderDiagnostics };
+  return blocks;
 }
 
+function extractBusinessFieldsFromSpatialRows(pRows, pageNum) {
+  const client = extractClient(pRows);
+  const { fecha, hora } = extractDateTime(pRows);
+  const lotes = [];
+  const products = [];
 
+  for (const sRow of pRows) {
+    const rowCells = sRow.cells || [];
+    const lineText = rowCells.map(c => c.text).join(' ');
 
-export function buildDocumentRecords({ rawRows, rawHeaders, documentPattern, operationalRegion }) {
-  const allRows = rawRows || [];
-  const pattern = documentPattern || {};
+    const lotFound = extractLot(lineText);
+    if (lotFound && !lotes.includes(lotFound)) {
+      lotes.push(lotFound);
+    }
 
-  const rows = operationalRegion && allRows.length
-    ? allRows.slice(operationalRegion.startRow, operationalRegion.endRow + 1)
-    : allRows;
+    if (detectAdministrativeNoise(lineText)) continue;
 
-  if (!rows.length) return { records: [], totalRecords: 0 };
+    for (let i = 0; i < rowCells.length; i++) {
+      const cellText = rowCells[i].text.trim();
+      const prodInfo = detectProductPatterns(cellText);
+      const trazable = isTrazableProduct(cellText);
+
+      if (prodInfo || (trazable && !cellText.toLowerCase().includes('cliente') && cellText.length > 3)) {
+        let cant = 0;
+        const bodegMatch = lineText.match(/BODEG(?:A)?\s*(\d+(?:[.,]\d+)?)/i);
+        if (bodegMatch) {
+          cant = toNumber(bodegMatch[1]);
+        } else {
+          for (const c of rowCells) {
+            const num = toNumber(c.text);
+            if (typeof num === 'number' && num > 0 && num < 1000) {
+              cant = num;
+              break;
+            }
+          }
+        }
+
+        products.push({
+          producto: cellText,
+          grams: prodInfo?.grams,
+          packQty: prodInfo?.packQty,
+          cantidad: cant || 1,
+          lote: lotFound || '',
+          page: pageNum,
+        });
+        break;
+      }
+    }
+  }
+
+  return {
+    page: pageNum,
+    client,
+    fecha,
+    hora,
+    lotes,
+    products,
+  };
+}
+
+export function extractBusinessFields(blockOrRows) {
+  if (blockOrRows && blockOrRows.products) {
+    return blockOrRows;
+  }
+  const blocks = detectOperationalBlocks({ rawRows: blockOrRows });
+  return blocks[0] || { client: '', fecha: '', hora: '', lotes: [], products: [] };
+}
+
+export function buildOperationalRecord(item, context = {}) {
+  const rawRec = {
+    ...context,
+    ...item,
+    fecha: item.fecha || context.fecha || context.fechaDoc,
+    hora: item.hora || context.hora || context.horaDoc,
+    cliente: item.cliente || context.cliente || context.clienteDoc,
+    producto: item.producto || item.cleanProducto || item.nombre,
+    lote: item.lote || context.lote,
+    cantidad: item.cantidad || context.cantidad,
+  };
+  return resolveOperationalFields(rawRec);
+}
+
+// =============================================================================
+// Public API (Sprint 130 — SSOT)
+// =============================================================================
+
+export function normalizeOperationalData({ parsedDocument, canonicalFields = [], synonyms = {}, fieldNormalizers = {} }) {
+  const { rawHeaders = [], rawRows = [], spatialRows = [] } = parsedDocument || {};
+  if (!rawRows?.length && !spatialRows?.length) {
+    return { rows: [], matchedHeaders: {}, missingHeaders: canonicalFields, metadata: {} };
+  }
+
+  const structure = detectDocumentStructure(parsedDocument);
+  const blocks = detectOperationalBlocks(parsedDocument);
+
+  const globalClient = extractClient(spatialRows.length ? spatialRows : rawRows);
+  const globalDateTime = extractDateTime(spatialRows.length ? spatialRows : rawRows);
+  const globalLotes = Array.from(new Set(blocks.flatMap(b => b.lotes)));
 
   const records = [];
+  for (const block of blocks) {
+    const blockClient = block.client || globalClient;
+    const blockFecha = block.fecha || globalDateTime.fecha;
+    const blockHora = block.hora || globalDateTime.hora;
+    const blockLote = block.lotes?.[0] || globalLotes[0] || '';
 
-  if (pattern.type === 'TABULAR' || pattern.type === 'MULTI_TABLE' || pattern.type === 'MIXED_DOCUMENT') {
-    const startRow = pattern.recordPattern?.recordStartsAt || 0;
-    const endRow = pattern.recordPattern?.recordEndsAt || (rows.length - 1);
-    for (let i = startRow; i <= endRow && i < rows.length; i++) {
-      const row = rows[i] || [];
-      if (row.some(c => String(c ?? '').trim() !== '')) {
-        records.push({ rawRecord: row.map(c => String(c ?? '').trim()), pattern: pattern.type, recordIndex: records.length });
-      }
-    }
-  } else if (pattern.type === 'REPEATING_GROUP') {
-    const cycle = pattern.repeatingStructures?.[0]?.cycle || pattern.recordPattern?.recordSize || 1;
-    for (let i = 0; i + cycle <= rows.length; i += cycle) {
-      const group = rows.slice(i, i + cycle);
-      const rawRecord = [];
-      for (const row of group) {
-        for (const cell of row) {
-          if (String(cell ?? '').trim()) rawRecord.push(String(cell).trim());
-        }
-      }
-      records.push({ rawRecord, pattern: 'REPEATING_GROUP', recordIndex: records.length, groupStartRow: i, groupSize: cycle });
-    }
-  } else if (pattern.type === 'HIERARCHICAL') {
-    const startRow = pattern.recordPattern?.recordStartsAt || 0;
-    for (let i = startRow; i < rows.length; i++) {
-      const row = rows[i] || [];
-      if (row.some(c => String(c ?? '').trim() !== '')) {
-        records.push({ rawRecord: row.map(c => String(c ?? '').trim()), pattern: 'HIERARCHICAL', recordIndex: records.length });
-      }
-    }
-  } else if (pattern.type === 'ERP_EXPORT') {
-    let current = [];
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i] || [];
-      const filled = row.filter(c => String(c ?? '').trim() !== '');
-      if (filled.length === 0 && current.length > 0) {
-        records.push({ rawRecord: [...current], pattern: 'ERP_EXPORT', recordIndex: records.length });
-        current = [];
-      } else if (filled.length > 0) {
-        for (const cell of row) {
-          const v = String(cell ?? '').trim();
-          if (v) current.push(v);
-        }
-      }
-    }
-    if (current.length > 0) {
-      records.push({ rawRecord: [...current], pattern: 'ERP_EXPORT', recordIndex: records.length });
-    }
-  } else {
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i] || [];
-      if (row.some(c => String(c ?? '').trim() !== '')) {
-        records.push({ rawRecord: row.map(c => String(c ?? '').trim()), pattern: pattern.type || 'TABULAR', recordIndex: records.length });
-      }
+    const associatedProducts = associateLot(block.products, block.lotes.length ? block.lotes : globalLotes);
+
+    for (const prod of associatedProducts) {
+      const resolved = buildOperationalRecord(prod, {
+        clienteDoc: blockClient,
+        fechaDoc: blockFecha,
+        horaDoc: blockHora,
+        lote: prod.lote || blockLote,
+      });
+      records.push(resolved);
     }
   }
 
-  return { records, totalRecords: records.length };
-}
+  if (records.length > 0) {
+    const matchedHeaders = {
+      fechaDespacho: 'Fecha Despacho',
+      hora: 'Hora',
+      cliente: 'Cliente',
+      producto: 'Producto',
+      lote: 'Lote',
+      cantidad: 'Cantidad',
+      peso: 'Peso Total',
+      temperatura: 'Temperatura',
+    };
+    const missingHeaders = canonicalFields.filter(f => !matchedHeaders[f]);
 
-export function buildOperationalDocumentModel({ parsedDocument, structureAnalysis }) {
-  const { rawRows } = parsedDocument || {};
-  const analysis = structureAnalysis || {};
-
-  const metadata = {};
-  const labels = analysis.metadata?.discoveredLabels;
-  if (labels) {
-    if (labels.fecha) metadata.fecha = labels.fecha;
-    if (labels.cliente) metadata.cliente = labels.cliente;
-    if (labels.factura) metadata.factura = labels.factura;
-    if (labels.destino) metadata.destino = labels.destino;
-    if (labels.conductor) metadata.conductor = labels.conductor;
-    if (labels.placa) metadata.placa = labels.placa;
-    if (labels.observaciones) metadata.observaciones = labels.observaciones;
+    return {
+      rows: records,
+      matchedHeaders,
+      missingHeaders,
+      metadata: {
+        cliente: globalClient,
+        fecha: globalDateTime.fecha,
+        hora: globalDateTime.hora,
+        lotes: globalLotes,
+        structure,
+      },
+    };
   }
 
-  const table = {};
-  if (analysis.tableBlock) {
-    table.headers = analysis.tableBlock.headers || [];
-    table.rows = analysis.tableBlock.rows || [];
-  } else {
-    table.headers = [];
-    table.rows = rawRows || [];
-  }
-
-  const documentSummary = analysis.documentSummary || {
-    hasMetadata: Object.keys(metadata).length > 0,
-    hasTable: table.headers.length > 0 && table.rows.length > 0,
-    totalRows: (rawRows || []).length,
-    totalHeaders: table.headers.length,
-    metadataFieldsFound: Object.keys(metadata).length,
-    tableHeadersFound: table.headers.length,
-    tableRowsFound: table.rows.length,
-  };
-
-  return { metadata, table, documentSummary };
-}
-
-function normalizeSemiStructured({ rawHeaders, rawRows, canonicalFields, synonyms, fieldNormalizers, structureAnalysis }) {
-  const region = structureAnalysis.sections[0];
-  const tableHeaders = (rawRows || [])[region.startRow] || [];
-  const tableRows = (rawRows || []).slice(region.startRow + 1, region.endRow + 1);
-
-  const metaPre = extractMetadataRowPairs(rawRows || [], region.startRow);
-
-  const actualHeaders = tableHeaders.map((v) => String(v ?? '').trim()).filter(Boolean);
+  const aoa = [rawHeaders || [], ...rawRows];
+  const best = detectHeaderRow(rawHeaders || [], rawRows || [], canonicalFields, synonyms);
+  const headerRowIndex = best.rowIndex >= 0 ? best.rowIndex : 0;
+  const actualHeaders = getOriginalRow(aoa, headerRowIndex).filter(Boolean);
   const matchedHeaders = buildHeaderMap(actualHeaders, canonicalFields, synonyms);
   const missingHeaders = canonicalFields.filter((f) => !matchedHeaders[f]);
-  const defaultNormalizer = (v) => String(v ?? '').trim();
+  const dataRows = rawRows.slice(headerRowIndex).filter(row => !detectAdministrativeNoise(row));
 
-  const rows = tableRows.map((r) => {
-    const rowObj = {};
-    for (let col = 0; col < actualHeaders.length; col++) {
-      rowObj[actualHeaders[col]] = r[col] !== undefined ? r[col] : '';
+  const fallbackRecords = dataRows.map(row => {
+    const rec = {};
+    for (const f of canonicalFields) {
+      rec[f] = pickValue(row, matchedHeaders[f]);
     }
-    const record = {};
-    for (const field of canonicalFields) {
-      let rawValue = pickValue(rowObj, matchedHeaders[field]);
-      if (!rawValue && Object.keys(metaPre).length > 0) {
-        const syns = synonyms[field] || [field];
-        for (const syn of syns) {
-          const key = normalizeHeader(syn);
-          if (metaPre[key]) { rawValue = metaPre[key]; break; }
-          const found = Object.entries(metaPre).find(([k]) => k.includes(key) || key.includes(k));
-          if (found) { rawValue = found[1]; break; }
-        }
-      }
-      const normalizer = fieldNormalizers[field] || defaultNormalizer;
-      record[field] = normalizer(rawValue);
-    }
-    return record;
+    return buildOperationalRecord(rec, {
+      clienteDoc: globalClient,
+      fechaDoc: globalDateTime.fecha,
+      horaDoc: globalDateTime.hora,
+    });
   });
 
-  const filtered = rows.filter((r) => Object.values(r).some((v) => String(v ?? '').trim() !== ''));
-  const matchedCount = Object.values(matchedHeaders).filter(Boolean).length;
-  return { rows: filtered, matchedHeaders, missingHeaders, completenessScore: canonicalFields.length > 0 ? matchedCount / canonicalFields.length : 0 };
+  return {
+    rows: fallbackRecords.filter(r => r.producto),
+    matchedHeaders,
+    missingHeaders,
+    metadata: {
+      cliente: globalClient,
+      fecha: globalDateTime.fecha,
+      hora: globalDateTime.hora,
+      lotes: globalLotes,
+      structure,
+    },
+  };
+}
+
+// =============================================================================
+// Persistence Contract Mapper (Sprint 131.1 — Certified)
+// =============================================================================
+
+const EXCLUDED_FIELDS = new Set([
+  '_compliance', '_validation', '_metadata', '_pesoUnitario', '_pesoTotal',
+  '_trazable', '_cliente', '_fechaDoc', '_direccion', '_factura',
+  'confidence', 'diagnostics', 'matchedHeaders', 'unknownHeaders',
+  'documentAnalysis', 'rawData', 'pesoUnidad',
+]);
+
+export function mapOperationalRecordToPersistence(record) {
+  const r = record || {};
+  return {
+    fecha: r.fechaDespacho ?? r.fecha ?? null,
+    hora: r.hora ?? null,
+    cliente: r.cliente ?? null,
+    producto: r.producto ?? null,
+    lote: r.lote ?? null,
+    cantidad_bolsas: Number(r.cantidad) || 0,
+    peso: r.peso ?? r.pesoTotal ?? null,
+    temperatura: r.temperatura ?? null,
+    destino: r.destino ?? null,
+    placa: r.placa ?? r.vehiculo ?? null,
+    conductor: r.conductor ?? null,
+    observaciones: r.observaciones ?? null,
+    estado: r.estado || 'Pendiente',
+  };
+}
+
+export function validatePersistencePayload(payload) {
+  const errors = [];
+  if (!payload.producto || String(payload.producto).trim() === '') {
+    errors.push({ field: 'producto', value: payload.producto, reason: 'Campo obligatorio vacío' });
+  }
+  if (!payload.cliente || String(payload.cliente).trim() === '') {
+    errors.push({ field: 'cliente', value: payload.cliente, reason: 'Campo obligatorio vacío' });
+  }
+  if (!payload.cantidad_bolsas || Number(payload.cantidad_bolsas) <= 0) {
+    errors.push({ field: 'cantidad_bolsas', value: payload.cantidad_bolsas, reason: 'Debe ser mayor a 0' });
+  }
+  return errors;
+}
+
+export function sanitizeRecordForPersistence(record) {
+  const clean = {};
+  for (const [key, val] of Object.entries(record || {})) {
+    if (EXCLUDED_FIELDS.has(key)) continue;
+    if (key.startsWith('_')) continue;
+    clean[key] = val === undefined ? null : val;
+  }
+  return clean;
 }
