@@ -48,6 +48,7 @@ getFlowOrchestrator();
  * @property {object} documentMappingHints — { preferMetadata, preferTables, minimumTableColumns }
  * @property {object} recordBuilderHints — { allowMetadataInheritance, allowPartialRecords, minimumCompletenessScore }
  * @property {object} documentSegmentationHints — { allowCommercialInformation, allowFinancialInformation, allowAdministrativeInformation, preferOperationalInformation }
+ * @property {object} documentPatternHints — { preferredPatterns, allowMixedDocuments, minimumPatternConfidence }
  * @property {object} exportRules      — future
  * @property {number} defaultOrder     — default display order within the tab
  * @property {Function} resolveComponent — lazy component resolver () => Promise<{ default: React.Component }>
@@ -84,6 +85,11 @@ function registerExperience(descriptor) {
       allowFinancialInformation: false,
       allowAdministrativeInformation: false,
       preferOperationalInformation: true,
+    },
+    documentPatternHints: descriptor.documentPatternHints ?? {
+      preferredPatterns: ['TABULAR', 'REPEATING_GROUP'],
+      allowMixedDocuments: true,
+      minimumPatternConfidence: 60,
     },
     auditRules: descriptor.auditRules ?? {
       trackCompliance: true,
@@ -135,6 +141,7 @@ function getExperienceContract(experienceKey) {
     documentMappingHints: exp.documentMappingHints,
     recordBuilderHints: exp.recordBuilderHints,
     documentSegmentationHints: exp.documentSegmentationHints,
+    documentPatternHints: exp.documentPatternHints,
     experienceKey: exp.experienceKey,
   };
 }

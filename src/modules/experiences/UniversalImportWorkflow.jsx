@@ -1,7 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, X, CheckCircle2, AlertTriangle, Eye, Pencil, ExternalLink, ShieldAlert, FileText } from 'lucide-react';
 import { parseDocument, analyzeDocumentStructure } from '../../services/import/index.js';
-import { normalizeOperationalData, buildOperationalDocumentModel, buildOperationalRecords } from '../../services/import/operationalDataExtractionLayer.js';
+import { normalizeOperationalData, buildOperationalDocumentModel, buildOperationalRecords, buildDocumentRecords } from '../../services/import/operationalDataExtractionLayer.js';
 import { evaluateRecord } from '../../core/capabilities/experiences/rules/UniversalOperationalRulesEngine.js';
 
 function getFieldLabel(contract, field) {
@@ -53,6 +53,11 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
   const [completenessScore, setCompletenessScore] = useState(0);
   const [builtRecords, setBuiltRecords] = useState([]);
   const [recordBuilderDiag, setRecordBuilderDiag] = useState(null);
+  const [documentPattern, setDocumentPattern] = useState(null);
+  const [documentRecords, setDocumentRecords] = useState([]);
+  const [documentAnatomy, setDocumentAnatomy] = useState(null);
+  const [operationalRegion, setOperationalRegion] = useState(null);
+  const [operationalHeaders, setOperationalHeaders] = useState(null);
 
   const canonicalFields = contract?.documentContract?.canonicalFields || [];
   const tableFields = getTableFields(contract);
@@ -83,6 +88,13 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
       const recResult = buildOperationalRecords({ operationalDocumentModel: docModel, contract, recordBuilderHints: contract?.recordBuilderHints });
       setBuiltRecords(recResult.records || []);
       setRecordBuilderDiag(recResult.recordBuilderDiagnostics || null);
+      const docPattern = analysis?.documentPattern;
+      setDocumentPattern(docPattern);
+      setDocumentAnatomy(analysis?.documentAnatomy || null);
+      setOperationalRegion(analysis?.operationalRegion || null);
+      setOperationalHeaders(analysis?.operationalHeaders || null);
+      const docRecResult = buildDocumentRecords({ rawRows: parsedDoc.rawRows, rawHeaders: parsedDoc.rawHeaders, documentPattern: docPattern, operationalRegion: analysis?.operationalRegion });
+      setDocumentRecords(docRecResult.records || []);
       const segments = analysis?.documentSegments;
       const relModel = analysis?.relationshipModel;
       const result = normalizeOperationalData({ parsedDocument: parsedDoc, contract, structureAnalysis: analysis, operationalSection: segments?.operationalSection, relationshipModel: relModel });
@@ -132,6 +144,11 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     setCompletenessScore(0);
     setBuiltRecords([]);
     setRecordBuilderDiag(null);
+    setDocumentPattern(null);
+    setDocumentRecords([]);
+    setDocumentAnatomy(null);
+    setOperationalRegion(null);
+    setOperationalHeaders(null);
   };
 
   const handleClose = () => {
@@ -458,6 +475,194 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                 </div>
               </div>
 
+              {/* Block 1.83: Document Anatomy Layer */}
+              <div className="rounded-2xl border border-orange-200 bg-orange-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-orange-100 border border-orange-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-orange-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-orange-800">ANATOMÍA DOCUMENTAL</p>
+                    {documentAnatomy?.regions?.length > 0 ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-xs font-bold text-orange-700 uppercase">Regiones: <span className="normal-case font-bold text-orange-900">{documentAnatomy.totalRegions}</span></span>
+                          {operationalRegion && (
+                            <span className="text-xs font-bold text-orange-700 uppercase">Región operacional: <span className="normal-case font-bold text-orange-900">filas {operationalRegion.startRow}–{operationalRegion.endRow} ({operationalRegion.rowCount} filas)</span></span>
+                          )}
+                        </div>
+                        <div className="border-t border-orange-200/50 pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {documentAnatomy.regions.map((r, i) => (
+                              <div key={i} className={[
+                                'flex flex-col px-3 py-2 rounded-lg border text-xs',
+                                r.processable ? 'bg-green-50 border-green-200' : r.type === 'operational' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200',
+                              ].join(' ')}>
+                                <span className="font-bold text-gray-700 uppercase text-[10px]">{r.type}</span>
+                                <span className="text-gray-500">filas {r.startRow}–{r.endRow}</span>
+                                <div className="flex gap-2 mt-0.5">
+                                  <span className={r.processable ? 'text-green-600 font-medium' : 'text-gray-400'}>{r.processable ? 'procesable' : 'no procesable'}</span>
+                                  <span className={r.containsRecords ? 'text-green-600 font-medium' : 'text-gray-400'}>{r.containsRecords ? 'contiene registros' : 'sin registros'}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-orange-500 italic mt-2">Analizando anatomía documental...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 1.84: Operational Headers Detected */}
+              <div className="rounded-2xl border border-lime-200 bg-lime-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-lime-100 border border-lime-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-lime-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-lime-800">HEADERS OPERACIONALES DETECTADOS</p>
+                    {operationalHeaders?.headers?.length > 0 ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-xs font-bold text-lime-700 uppercase">Fila: <span className="normal-case font-bold text-lime-900">{operationalHeaders.headerRow}</span></span>
+                          <span className="text-xs font-bold text-lime-700 uppercase">Columnas: <span className="normal-case font-bold text-lime-900">{operationalHeaders.columnCount}</span></span>
+                          <span className="text-xs font-bold text-lime-700 uppercase">Confianza: <span className="normal-case font-bold text-lime-900">{operationalHeaders.confidence}%</span></span>
+                        </div>
+                        <div className="border-t border-lime-200/50 pt-2 flex flex-wrap gap-1.5">
+                          {operationalHeaders.headers.map((h, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-white text-lime-700 rounded text-[10px] font-mono font-medium border border-lime-200/70">
+                              {h}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-lime-500 italic mt-2">No se detectaron headers operacionales.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 1.85: Document Pattern Detected */}
+              <div className="rounded-2xl border border-purple-200 bg-purple-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-purple-100 border border-purple-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-purple-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-purple-800">PATRÓN DOCUMENTAL DETECTADO</p>
+                    {documentPattern ? (
+                      <div className="mt-3 space-y-3">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1">
+                          <span className="text-xs font-bold text-purple-700 uppercase">Tipo: <span className="normal-case font-bold text-purple-900">{documentPattern.type}</span></span>
+                          <span className="text-xs font-bold text-purple-700 uppercase">Confianza: <span className="normal-case font-bold text-purple-900">{documentPattern.confidence}%</span></span>
+                        </div>
+                        {documentPattern.recordPattern && (
+                          <div className="border-t border-purple-200/50 pt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-purple-600 uppercase">Inicio registro</span>
+                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.recordStartsAt}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-purple-600 uppercase">Fin registro</span>
+                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.recordEndsAt}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-purple-600 uppercase">Tamaño patrón</span>
+                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.recordSize}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold text-purple-600 uppercase">Registros estimados</span>
+                              <span className="text-lg font-bold text-purple-800">{documentPattern.recordPattern.estimatedRecords}</span>
+                            </div>
+                          </div>
+                        )}
+                        {documentPattern.documentGroups?.length > 0 && (
+                          <div className="border-t border-purple-200/50 pt-2">
+                            <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Agrupaciones detectadas ({documentPattern.documentGroups.length})</p>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {documentPattern.documentGroups.map((g, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100/70 text-purple-600 rounded text-[10px] font-medium border border-purple-200/50">
+                                  filas {g.startRow}–{g.endRow} ({g.rowCount} filas)
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {documentPattern.documentSections?.length > 0 && (
+                          <div className="border-t border-purple-200/50 pt-2">
+                            <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Secciones detectadas ({documentPattern.documentSections.length})</p>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {documentPattern.documentSections.map((s, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100/70 text-purple-600 rounded text-[10px] font-medium border border-purple-200/50">
+                                  {s.type}: {s.rowCount} filas
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {documentPattern.repeatingStructures?.length > 0 && (
+                          <div className="border-t border-purple-200/50 pt-2">
+                            <p className="text-xs font-bold text-purple-700 uppercase tracking-wider">Estructuras repetitivas</p>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {documentPattern.repeatingStructures.map((rs, i) => (
+                                <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100/70 text-purple-600 rounded text-[10px] font-medium border border-purple-200/50">
+                                  ciclo: {rs.cycle} filas, confianza: {rs.confidence}%
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-purple-500 italic mt-2">Analizando patrón documental...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Block 1.86: Document Records Detected */}
+              <div className="rounded-2xl border border-pink-200 bg-pink-50 px-4 sm:px-5 py-3 sm:py-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-pink-100 border border-pink-200 flex items-center justify-center shrink-0 mt-0.5">
+                    <FileText className="w-4.5 h-4.5 text-pink-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-pink-800">REGISTROS DOCUMENTALES DETECTADOS</p>
+                    <p className="text-xs text-pink-600 mt-1">
+                      {documentRecords.length} registro(s) documental(es) sin mapeo operacional todavía.
+                    </p>
+                    {documentRecords.length > 0 && (
+                      <div className="mt-3 space-y-2 max-h-[40dvh] overflow-y-auto">
+                        {documentRecords.slice(0, 25).map((rec, idx) => (
+                          <div key={idx} className="rounded-xl border border-pink-200/70 bg-white px-3 py-2.5 text-xs">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="font-bold text-pink-800">Registro documental #{rec.recordIndex + 1}</span>
+                              <span className="inline-flex items-center px-2 py-0.5 bg-pink-100 text-pink-600 rounded-full text-[10px] font-medium">
+                                {rec.pattern}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-x-2 gap-y-1">
+                              {rec.rawRecord.map((cell, ci) => (
+                                <span key={ci} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-700 rounded border border-gray-100 font-mono text-[10px]">
+                                  {cell}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {documentRecords.length === 0 && (
+                      <p className="text-xs text-pink-500 italic mt-2">No se detectaron registros documentales.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Block 1.9: Import Pipeline Diagnostics */}
               <div className="rounded-2xl border border-gray-200 bg-white px-4 sm:px-5 py-3 sm:py-4">
                 <div className="flex items-start gap-3">
@@ -471,9 +676,13 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
                         { label: 'Parser', status: parsedDoc?.parserDiagnostics?.parserStatus || 'FAILED', detail: parsedDoc?.parserDiagnostics ? `${parsedDoc.parserDiagnostics.totalRows} filas, ${parsedDoc.parserDiagnostics.totalCharacters} caracteres` : 'Sin datos' },
                         { label: 'Analyzer', status: structureAnalysis?.analysisDiagnostics?.status || 'FAILED', detail: structureAnalysis?.analysisDiagnostics ? `${structureAnalysis.analysisDiagnostics.metadataFound} metadata, ${structureAnalysis.analysisDiagnostics.tablesFound} tablas` : 'Sin datos' },
                         { label: 'Segmentation', status: structureAnalysis?.segmentationDiagnostics?.status || 'FAILED', detail: structureAnalysis?.segmentationDiagnostics ? `${structureAnalysis.segmentationDiagnostics.operationalRows} ops / ${structureAnalysis.segmentationDiagnostics.administrativeRows} adm / ${structureAnalysis.segmentationDiagnostics.financialRows} fin` : 'Sin datos' },
+                        { label: 'Anatomy', status: documentAnatomy?.regions?.length > 0 ? 'OK' : 'WARNING', detail: documentAnatomy ? `${documentAnatomy.totalRegions} regiones` : 'Sin detectar' },
+                        { label: 'Headers', status: operationalHeaders?.headers?.length > 0 ? 'OK' : 'WARNING', detail: operationalHeaders ? `${operationalHeaders.headers.length} headers (confianza ${operationalHeaders.confidence}%)` : 'Sin detectar' },
                         { label: 'Relationship', status: structureAnalysis?.relationshipModel?.estimatedRecords > 0 ? 'OK' : 'WARNING', detail: structureAnalysis?.relationshipModel ? `${Object.keys(structureAnalysis.relationshipModel.sharedFields).length} compartidos, ${structureAnalysis.relationshipModel.repeatingFields.length} repetitivos` : 'Sin datos' },
                         { label: 'Record Builder', status: recordBuilderDiag?.status || 'FAILED', detail: recordBuilderDiag ? `${recordBuilderDiag.constructedRecords} construidos, ${recordBuilderDiag.discardedRecords} descartados` : 'Sin datos' },
+                        { label: 'Pattern', status: documentPattern ? 'OK' : 'WARNING', detail: documentPattern ? `${documentPattern.type} (${documentPattern.confidence}% confianza)` : 'Sin detectar' },
                         { label: 'Validation', status: rows.filter(r => r._included).length > 0 ? 'OK' : rows.length > 0 ? 'WARNING' : 'FAILED', detail: `${rows.filter(r => r._included).length} válidos, ${rows.filter(r => r._errors?.length).length} inválidos` },
+                        { label: 'Pipeline', status: structureAnalysis?.pipelineConfidence > 0.5 ? 'OK' : 'WARNING', detail: `Confianza: ${Math.round((structureAnalysis?.pipelineConfidence || 0) * 100)}%` },
                       ].map((stage, i) => {
                         const statusColor = stage.status === 'OK' ? 'bg-green-100 text-green-700 border-green-200' : stage.status === 'WARNING' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-red-100 text-red-700 border-red-200';
                         return (
