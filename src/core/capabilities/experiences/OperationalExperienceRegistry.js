@@ -248,6 +248,10 @@ registerExperience({
     { field: 'peso', operator: 'greaterThan', value: 5000, severity: 'info', message: 'Peso superior a 5000 kg — verificar límite vehículo' },
     { field: 'estado', operator: 'equals', value: 'pendiente', severity: 'info', message: 'Despacho pendiente de procesar' },
   ],
+  defaultVehicleConfiguration: {
+    placa: 'TRG786',
+    conductor: 'Juan Gómez',
+  },
   automationRules: [
     { field: 'fecha', action: 'setCurrentDate' },
     { field: 'hora', action: 'setCurrentTime' },
