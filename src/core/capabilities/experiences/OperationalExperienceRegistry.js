@@ -173,7 +173,7 @@ registerExperience({
     supportsHumanValidation: true,
   },
   ui: {
-    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad', 'temperatura', 'destino', 'conductor', 'estado'],
+    tableFields: ['fecha', 'hora', 'cliente', 'producto', 'lote', 'cantidad', 'peso', 'temperatura', 'destino', 'placa', 'conductor', 'estado'],
     fieldDisplay: {
       fecha: { label: 'Fecha Despacho' },
       hora: { label: 'Hora' },

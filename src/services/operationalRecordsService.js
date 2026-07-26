@@ -23,7 +23,7 @@ function applyFieldMapping(record, mapping) {
       } else if (typeof val === 'number') {
         result[dbField] = numOrNull(val);
       } else {
-        result[dbField] = val ?? null;
+        result[dbField] = val ?? result[dbField] ?? null;
       }
       delete result[canonical];
     }
