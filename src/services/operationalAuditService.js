@@ -66,6 +66,8 @@ export const auditRuleExecution = (args) => logEvent({ ...args, eventType: 'rule
 export const auditFlowStep = (args) => logEvent({ ...args, eventType: 'flow_step' });
 export const auditApproval = (args) => logEvent({ ...args, eventType: 'record_approved' });
 export const auditClosure = (args) => logEvent({ ...args, eventType: 'record_closed' });
+export const auditBatchDelete = (args) => logEvent({ ...args, eventType: 'bulk_delete' });
+export const auditBatchUpdate = (args) => logEvent({ ...args, eventType: 'bulk_update' });
 
 export const OperationalAuditService = {
   logEvent,
@@ -81,4 +83,6 @@ export const OperationalAuditService = {
   auditFlowStep,
   auditApproval,
   auditClosure,
+  auditBatchDelete,
+  auditBatchUpdate,
 };

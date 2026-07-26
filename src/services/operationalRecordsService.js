@@ -43,6 +43,8 @@ function applyFieldMappingToRow(row, reverseMapping) {
   return result;
 }
 
+const BATCH_CHUNK_SIZE = 200;
+
 function stripInternalKeys(r) {
   if (!r) return r;
   const clean = {};
@@ -101,15 +103,48 @@ export function createOperationalRecordsService(tableName, { prefix = 'REC', fie
       return true;
     },
 
+    async deleteBatch(ids) {
+      const sb = getSupabaseClient();
+      if (!sb) throw new Error('Supabase no configurado');
+      if (!ids?.length) return [];
+      const acc = [];
+      for (let i = 0; i < ids.length; i += BATCH_CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + BATCH_CHUNK_SIZE);
+        const { data, error } = await sb.from(tableName).delete().in('id', chunk);
+        if (error) throw error;
+        if (data) acc.push(...data);
+      }
+      return acc;
+    },
+
+    async updateBatch(ids, record) {
+      const sb = getSupabaseClient();
+      if (!sb) throw new Error('Supabase no configurado');
+      if (!ids?.length) return [];
+      const payload = { ...applyFieldMapping(record, fieldMapping), updated_at: new Date().toISOString() };
+      const acc = [];
+      for (let i = 0; i < ids.length; i += BATCH_CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + BATCH_CHUNK_SIZE);
+        const { data, error } = await sb.from(tableName).update(payload).in('id', chunk).select('*');
+        if (error) throw error;
+        acc.push(...(data || []).map(r => ({
+          ...applyFieldMappingToRow(r, revMapping),
+          id: r.id,
+          displayId: displayId(r.id, prefix),
+          created_at: r.created_at,
+        })));
+      }
+      return acc;
+    },
+
     async insertBatch(records) {
       const sb = getSupabaseClient();
       if (!sb) throw new Error('Supabase no configurado');
       if (!records?.length) return [];
       const payloads = records.map((r) => stripInternalKeys(applyFieldMapping(r, fieldMapping)));
-      const chunkSize = 200;
       const acc = [];
-      for (let i = 0; i < payloads.length; i += chunkSize) {
-        const chunk = payloads.slice(i, i + chunkSize);
+      for (let i = 0; i < payloads.length; i += BATCH_CHUNK_SIZE) {
+        const chunk = payloads.slice(i, i + BATCH_CHUNK_SIZE);
         const { data, error } = await sb.from(tableName).insert(chunk).select('*');
         if (error) throw error;
         acc.push(...(data || []).map((r) => ({

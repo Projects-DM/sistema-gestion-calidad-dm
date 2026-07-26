@@ -189,99 +189,79 @@ export class OperationalExperienceLifecycleOrchestrator {
 
   async bulkUpdateStatus(ids, newStatus, user) {
     if (!ids?.length) throw new Error('No hay registros seleccionados');
-    // Sprint 132.1 — CERTIFIED: solo permite estados operacionales del usuario.
     const allowedStatuses = ['pendiente', 'en_proceso', 'completado'];
     if (!allowedStatuses.includes(newStatus)) {
       return { success: false, errors: [{ field: 'estado', message: `Estado '${newStatus}' no es un estado operacional válido. Solo se permiten: ${allowedStatuses.join(', ')}` }], action: 'validation_failed' };
     }
-    const results = [];
-    for (const id of ids) {
-      const record = { estado: newStatus };
-      const updated = await this._service.update(id, record);
-      OperationalAuditService.auditUpdate({ experienceKey: this.experienceKey, recordId: id, eventData: { bulkStatusChange: newStatus }, user });
-      results.push(updated);
-    }
-    OperationalEventBus.publish('RECORDS_STATUS_UPDATED', { experienceKey: this.experienceKey, count: results.length, newStatus, action: 'bulk_status_updated' });
-    return { success: true, count: results.length, records: results, action: 'bulk_status_updated' };
+    const updated = await this._service.updateBatch(ids, { estado: newStatus });
+    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'bulk_status_updated', newStatus, count: updated.length, ids }, user });
+    OperationalEventBus.publish('RECORDS_STATUS_UPDATED', { experienceKey: this.experienceKey, count: updated.length, newStatus, action: 'bulk_status_updated' });
+    return { success: true, count: updated.length, records: updated, action: 'bulk_status_updated' };
   }
 
   async bulkDelete(ids, user) {
     if (!ids?.length) throw new Error('No hay registros seleccionados');
-    for (const id of ids) {
-      await this._service.delete(id);
-      OperationalAuditService.auditDelete({ experienceKey: this.experienceKey, recordId: id, user });
-    }
-    // Sprint 132.1 — CERTIFIED: EventBus.publish en bulk delete.
-    OperationalEventBus.publish('RECORDS_BULK_DELETED', { experienceKey: this.experienceKey, count: ids.length, action: 'bulk_deleted' });
-    return { success: true, count: ids.length, action: 'bulk_deleted' };
+    const deleted = await this._service.deleteBatch(ids);
+    OperationalAuditService.auditBatchDelete({ experienceKey: this.experienceKey, recordId: null, eventData: { count: deleted.length, ids }, user });
+    OperationalEventBus.publish('RECORDS_BULK_DELETED', { experienceKey: this.experienceKey, count: deleted.length, action: 'bulk_deleted' });
+    return { success: true, count: deleted.length, action: 'bulk_deleted' };
   }
 
-  // Sprint 132.1 — CERTIFIED: el Orchestrator valida canApprove antes de persistir.
-  // El UI Runtime ya no es la única línea de defensa — el Orchestrator es la autoridad.
   async approveRecords(ids, user, recordsMap = {}) {
     if (!ids?.length) throw new Error('No hay registros seleccionados');
-    const invalid = [];
-    const results = [];
-    for (const id of ids) {
+    const invalid = ids.filter(id => {
       const record = recordsMap[id];
-      if (record && !canApprove(record, this.contract)) {
-        invalid.push(id);
-        continue;
-      }
-      const updated = await this._service.update(id, { estado: 'approved' });
-      OperationalAuditService.auditApproval({ experienceKey: this.experienceKey, recordId: id, eventData: { action: 'approved' }, user });
-      results.push(updated);
-    }
+      return record && !canApprove(record, this.contract);
+    });
     if (invalid.length > 0) {
       return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no cumplen los requisitos para aprobación (score < 100% o inconsistencias).` }], invalidIds: invalid, action: 'validation_failed' };
     }
-    OperationalEventBus.publish('RECORDS_APPROVED', { experienceKey: this.experienceKey, count: results.length, action: 'approved' });
-    return { success: true, count: results.length, records: results, action: 'approved' };
+    const validIds = ids.filter(id => {
+      const record = recordsMap[id];
+      return !record || canApprove(record, this.contract);
+    });
+    const updated = await this._service.updateBatch(validIds, { estado: 'approved' });
+    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'approved', count: updated.length, ids: validIds }, user });
+    OperationalEventBus.publish('RECORDS_APPROVED', { experienceKey: this.experienceKey, count: updated.length, action: 'approved' });
+    return { success: true, count: updated.length, records: updated, action: 'approved' };
   }
 
-  // Sprint 132.1 — CERTIFIED: el Orchestrator valida canClose antes de persistir.
   async closeRecords(ids, user, recordsMap = {}) {
     if (!ids?.length) throw new Error('No hay registros seleccionados');
-    const invalid = [];
-    const results = [];
-    for (const id of ids) {
+    const invalid = ids.filter(id => {
       const record = recordsMap[id];
-      if (record && !canClose(record, this.contract)) {
-        invalid.push(id);
-        continue;
-      }
-      const updated = await this._service.update(id, { estado: 'cerrado' });
-      OperationalAuditService.auditClosure({ experienceKey: this.experienceKey, recordId: id, eventData: { action: 'closed' }, user });
-      results.push(updated);
-    }
+      return record && !canClose(record, this.contract);
+    });
     if (invalid.length > 0) {
       return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no están aprobados. Solo registros con estado 'approved' pueden cerrarse.` }], invalidIds: invalid, action: 'validation_failed' };
     }
-    OperationalEventBus.publish('RECORDS_CLOSED', { experienceKey: this.experienceKey, count: results.length, action: 'closed' });
-    return { success: true, count: results.length, records: results, action: 'closed' };
+    const validIds = ids.filter(id => {
+      const record = recordsMap[id];
+      return !record || canClose(record, this.contract);
+    });
+    const updated = await this._service.updateBatch(validIds, { estado: 'cerrado' });
+    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'closed', count: updated.length, ids: validIds }, user });
+    OperationalEventBus.publish('RECORDS_CLOSED', { experienceKey: this.experienceKey, count: updated.length, action: 'closed' });
+    return { success: true, count: updated.length, records: updated, action: 'closed' };
   }
 
-  // Sprint 132.1 — CERTIFIED: el Orchestrator valida canReopen antes de persistir.
-  // Destino certificado: 'en_proceso' — nunca 'validated' (estado interno del Readiness Engine).
   async reopenRecords(ids, user, recordsMap = {}) {
     if (!ids?.length) throw new Error('No hay registros seleccionados');
-    const invalid = [];
-    const results = [];
-    for (const id of ids) {
+    const invalid = ids.filter(id => {
       const record = recordsMap[id];
-      if (record && !canReopen(record, this.contract)) {
-        invalid.push(id);
-        continue;
-      }
-      const updated = await this._service.update(id, { estado: 'en_proceso' });
-      OperationalAuditService.auditUpdate({ experienceKey: this.experienceKey, recordId: id, eventData: { action: 'reopened', targetState: 'en_proceso' }, user });
-      results.push(updated);
-    }
+      return record && !canReopen(record, this.contract);
+    });
     if (invalid.length > 0) {
       return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no pueden reabrirse. Solo registros con estado 'approved' o 'cerrado' pueden reabrirse.` }], invalidIds: invalid, action: 'validation_failed' };
     }
-    OperationalEventBus.publish('RECORDS_REOPENED', { experienceKey: this.experienceKey, count: results.length, action: 'reopened' });
-    return { success: true, count: results.length, records: results, action: 'reopened' };
+    const validIds = ids.filter(id => {
+      const record = recordsMap[id];
+      return !record || canReopen(record, this.contract);
+    });
+    const updated = await this._service.updateBatch(validIds, { estado: 'en_proceso' });
+    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'reopened', targetState: 'en_proceso', count: updated.length, ids: validIds }, user });
+    OperationalEventBus.publish('RECORDS_REOPENED', { experienceKey: this.experienceKey, count: updated.length, action: 'reopened' });
+    return { success: true, count: updated.length, records: updated, action: 'reopened' };
   }
 
   destroy() {
