@@ -8,6 +8,7 @@ import UniversalOperationalDashboard from './UniversalOperationalDashboard';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { OperationalExperienceLifecycleOrchestrator } from '../../core/capabilities/experiences/OperationalExperienceLifecycleOrchestrator.js';
 import { computeCompletionScore, detectDuplicates, detectInconsistencies, getReadinessState, canApprove, canClose, canReopen } from '../../core/capabilities/experiences/OperationalDataCompletion.js';
+import Pagination from '../../components/Pagination.jsx';
 
 function getFieldLabel(field, contract) {
   return contract.ui?.fieldDisplay?.[field]?.label
@@ -74,6 +75,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [filters, setFilters] = useState({});
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [timelineRecord, setTimelineRecord] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
@@ -107,6 +110,10 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     load();
     return () => { cancelled = true; };
   }, [ready]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filters, activeView]);
 
   useEffect(() => {
     if (!ready || !isFormOpen) return;
@@ -456,6 +463,13 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     return result;
   }, [records, activeView, searchTerm, filters, viewFilters, canonicalFields]);
 
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(filteredRecords.length / pageSize)), [filteredRecords, pageSize]);
+
+  const paginatedRecords = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRecords.slice(start, start + pageSize);
+  }, [filteredRecords, page, pageSize]);
+
   const allFilteredSelected = useMemo(() => {
     if (filteredRecords.length === 0) return false;
     return filteredRecords.every(r => selectedIds.has(r.id));
@@ -695,7 +709,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
               </button>
             </div>
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span><strong>{filteredRecords.length}</strong> de <strong>{records.length}</strong> registros</span>
+              <span><strong>{(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filteredRecords.length)}</strong> de <strong>{filteredRecords.length}</strong> registros</span>
               {selectedIds.size > 0 && (
                 <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold">{selectedIds.size} seleccionados</span>
               )}
@@ -792,7 +806,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                     {searchTerm || activeView !== 'all' ? 'Sin resultados.' : `No hay registros. Cree uno o importe.`}
                   </td></tr>
                 ) : (
-                  filteredRecords.map((record) => (
+                  paginatedRecords.map((record) => (
                     <tr key={record.id} className={`hover:bg-primary/[0.02] transition-colors group ${isIncomplete(record) ? 'bg-amber-50/30' : ''}`}>
                       <td className="p-4 pl-6">
                         <input type="checkbox" checked={selectedIds.has(record.id)}
@@ -866,6 +880,9 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
               </tbody>
             </table>
           </div>
+
+          <Pagination page={page} totalPages={totalPages} totalRecords={filteredRecords.length} pageSize={pageSize}
+            onPageChange={setPage} onPageSizeChange={v => { setPageSize(v); setPage(1); }} />
         </div>
       )}
 
