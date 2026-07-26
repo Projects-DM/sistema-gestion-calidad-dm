@@ -116,9 +116,11 @@ export function getReadinessState(record, contract) {
   const { score, errors } = computeCompletionScore(record, contract);
   const inconsistencies = detectInconsistencies(record, contract);
 
-  if (record.estado === 'cerrado' || record.estado === 'closed') return 'closed';
+  // Sprint 132.1 — CERTIFIED: solo los 5 estados persistentes son evaluados aquí.
+  // 'closed' y 'listo' eran sinónimos huérfanos — eliminados. Solo 'cerrado' y 'approved' son reales.
+  if (record.estado === 'cerrado') return 'closed';
   if (record.estado === 'approved') return 'approved';
-  if (record.estado === 'ready' || record.estado === 'listo') return 'ready';
+  if (record.estado === 'ready') return 'ready';
   if (inconsistencies.length > 0) return 'inconsistent';
   if (errors.length > 0) return 'pending_completion';
   if (score < 100) return 'draft';
