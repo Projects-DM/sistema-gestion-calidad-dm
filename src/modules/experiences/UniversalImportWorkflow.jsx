@@ -119,7 +119,7 @@ export default function UniversalImportWorkflow({ open, onClose, onImported, con
     const included = rows.filter(r => r._included);
     if (!included.length) return;
     const persistenceRecords = included.map(({ _rowIndex, _included, _errors, _compliance, ...record }) => {
-      const enriched = resolveOperationalDefaults(record);
+      const enriched = resolveOperationalDefaults(record, contract);
       const payload = mapOperationalRecordToPersistence(enriched);
       const validationErrors = validatePersistencePayload(payload);
       return { payload, validationErrors, original: record };

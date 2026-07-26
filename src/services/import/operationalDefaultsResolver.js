@@ -33,11 +33,12 @@ function inferirPeso(producto, cantidad) {
 
 function calcularBolsas(peso) {
   if (!peso || Number(peso) <= 0) return 1;
-  return Number(peso) <= 5 ? 1 : 2;
+  return Math.ceil(Number(peso) / 5);
 }
 
-export function resolveOperationalDefaults(record) {
+export function resolveOperationalDefaults(record, config = {}) {
   const r = record || {};
+  const vehicleConfig = config.defaultVehicleConfiguration || {};
   const pesoCalculado = r.peso ?? inferirPeso(r.producto, r.cantidad) ?? '';
 
   return {
@@ -49,9 +50,9 @@ export function resolveOperationalDefaults(record) {
     cantidad: calcularBolsas(pesoCalculado),
     peso: pesoCalculado,
     temperatura: resolverTemperatura(r.producto),
-    destino: r.destino || 'SIN DEFINIR',
-    placa: r.placa || 'NO ASIGNADA',
-    conductor: r.conductor || 'Juan Gomez',
+    destino: r.destino || vehicleConfig.destino || 'SIN DEFINIR',
+    placa: r.placa || r.vehiculo || vehicleConfig.placa || 'NO ASIGNADA',
+    conductor: r.conductor || vehicleConfig.conductor || 'Juan Gomez',
     observaciones: r.observaciones || 'IMPORTACION PDF',
     estado: r.estado || 'Pendiente',
   };
