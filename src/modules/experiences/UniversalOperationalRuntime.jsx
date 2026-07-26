@@ -807,7 +807,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                   </td></tr>
                 ) : (
                   paginatedRecords.map((record) => (
-                    <tr key={record.id} className={`hover:bg-primary/[0.02] transition-colors group ${isIncomplete(record) ? 'bg-amber-50/30' : ''}`}>
+                    <tr key={record.id} className={`hover:bg-primary/[0.02] transition-colors ${isIncomplete(record) ? 'bg-amber-50/30' : ''}`}>
                       <td className="p-4 pl-6">
                         <input type="checkbox" checked={selectedIds.has(record.id)}
                           onChange={() => toggleSelect(record.id)}
@@ -858,18 +858,20 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                           </td>
                         );
                       })}
-                      <td className="p-4 pr-6 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <td className="p-4 pr-6 text-right">
+                        <div className="flex flex-wrap gap-1.5 justify-end">
                           <RoleGate allowedRoles={['administrador', 'calidad', 'operativo']}>
                             <button onClick={() => handleEdit(record)}
-                              className="p-1.5 text-gray-400 hover:text-primary bg-white border border-gray-200 rounded-lg shadow-sm" title="Editar">
-                              <Edit2 className="w-4 h-4" />
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-primary bg-gray-50 hover:bg-primary/5 border border-gray-200 rounded-lg transition-colors" title="Editar">
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Editar</span>
                             </button>
                           </RoleGate>
                           <RoleGate allowedRoles={['administrador', 'calidad', 'operativo']}>
                             <button onClick={() => handleDelete(record.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-600 bg-white border border-gray-200 rounded-lg shadow-sm" title="Eliminar">
-                              <Trash2 className="w-4 h-4" />
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:text-red-600 bg-gray-50 hover:bg-red-50 border border-gray-200 rounded-lg transition-colors" title="Eliminar">
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Eliminar</span>
                             </button>
                           </RoleGate>
                         </div>
