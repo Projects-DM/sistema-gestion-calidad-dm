@@ -252,7 +252,13 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       return;
     }
     try {
-      const result = await orchestratorRef.current.approveRecords(Array.from(selectedIds), auditUser);
+      // Sprint 132.1 — CERTIFIED: se pasa el recordsMap para que el Orchestrator valide canApprove internamente.
+      const recordsMap = Object.fromEntries(selected.map(r => [r.id, r]));
+      const result = await orchestratorRef.current.approveRecords(Array.from(selectedIds), auditUser, recordsMap);
+      if (!result.success) {
+        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'Error al aprobar.' });
+        return;
+      }
       const updatedIds = new Set(result.records.map(r => r.id));
       setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
       setSelectedIds(new Set());
@@ -271,7 +277,13 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       return;
     }
     try {
-      const result = await orchestratorRef.current.closeRecords(Array.from(selectedIds), auditUser);
+      // Sprint 132.1 — CERTIFIED: se pasa el recordsMap para que el Orchestrator valide canClose internamente.
+      const recordsMap = Object.fromEntries(selected.map(r => [r.id, r]));
+      const result = await orchestratorRef.current.closeRecords(Array.from(selectedIds), auditUser, recordsMap);
+      if (!result.success) {
+        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'Error al cerrar.' });
+        return;
+      }
       const updatedIds = new Set(result.records.map(r => r.id));
       setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
       setSelectedIds(new Set());
@@ -290,7 +302,14 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       return;
     }
     try {
-      const result = await orchestratorRef.current.reopenRecords(Array.from(selectedIds), auditUser);
+      // Sprint 132.1 — CERTIFIED: se pasa el recordsMap para que el Orchestrator valide canReopen internamente.
+      // El destino es 'en_proceso' (nunca 'validated' — estado interno del Readiness Engine).
+      const recordsMap = Object.fromEntries(selected.map(r => [r.id, r]));
+      const result = await orchestratorRef.current.reopenRecords(Array.from(selectedIds), auditUser, recordsMap);
+      if (!result.success) {
+        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'Error al reabrir.' });
+        return;
+      }
       const updatedIds = new Set(result.records.map(r => r.id));
       setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
       setSelectedIds(new Set());
@@ -811,12 +830,15 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                             isEstado ? 'font-semibold' : 'text-gray-900'
                           }`}>
                             {isEstado ? (
+                              // Sprint 132.1 — CERTIFIED: badge solo para los 5 estados persistentes.
+                              // 'rechazado' eliminado — estado huérfano que nunca se genera.
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
                                 val === 'completado' ? 'bg-green-100 text-green-800' :
                                 val === 'en_proceso' ? 'bg-blue-100 text-blue-800' :
                                 val === 'pendiente' || !val ? 'bg-yellow-100 text-yellow-800' :
-                                val === 'rechazado' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
+                                val === 'approved' ? 'bg-emerald-100 text-emerald-800' :
+                                val === 'cerrado' ? 'bg-gray-200 text-gray-700' :
+                                'bg-gray-100 text-gray-600'
                               }`}>{val || 'pendiente'}</span>
                             ) : detectInputType(f, contract) === 'date' ? String(val ?? '').slice(0, 10) : String(val ?? '')}
                           </td>

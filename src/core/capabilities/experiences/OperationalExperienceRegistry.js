@@ -186,7 +186,10 @@ registerExperience({
       destino: { label: 'Destino' },
       placa: { label: 'Vehículo / Placa' },
       conductor: { label: 'Conductor' },
-      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado', 'draft', 'validated', 'ready', 'approved', 'cerrado'] },
+      // Sprint 132.1 — CERTIFIED: solo estados operacionales del usuario.
+      // draft/validated/ready son computados (Readiness Engine) — nunca deben persistirse.
+      // approved/cerrado son controlados exclusivamente por botones con validación de precondición.
+      estado: { label: 'Estado', options: ['pendiente', 'en_proceso', 'completado'] },
       observaciones: { label: 'Observaciones' },
       signature_estado: { label: 'Firma Conductor', options: ['pending', 'signed'] },
     },
