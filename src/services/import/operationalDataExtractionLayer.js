@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { LOT_PATTERN } from './lotResolutionEngine.js';
 
 // =============================================================================
 // Normalization Engine (Sprint 94 — Certified)
@@ -467,12 +468,9 @@ export function extractLot(textOrRows) {
   }
   const str = String(textOrRows ?? '').trim();
   if (!str) return '';
-  const m = str.match(/L\s*\.?\s*(\d{2})\s*[-/]?\s*(\d{3})/i);
-  if (m) return `L${m[1]}-${m[2]}`;
-  const m2 = str.match(/\bL(\d{2})(\d{3})\b/i);
-  if (m2) return `L${m2[1]}-${m2[2]}`;
-  const m3 = str.match(/\b(\d{2}[-]\d{2,3})\b/);
-  if (m3) return `L${m3[1]}`;
+  const m = LOT_PATTERN.exec(str);
+  LOT_PATTERN.lastIndex = 0;
+  if (m) return `L26${m[1]}`;
   return '';
 }
 
@@ -509,7 +507,9 @@ export function detectDocumentStructure(parsedDocument) {
   if (text.includes('cliente') || text.includes('razon social') || text.includes('tercero')) sections.push('customer');
   if (text.includes('bodeg') || text.includes('cant') || text.includes('descripcion')) sections.push('products');
   if (text.includes('total factura') || text.includes('total neto')) sections.push('totals');
-  if (/\bL26\d{3}\b/i.test(text) || /\bL\s*\.?\s*\d{2}\s*[-/]?\s*\d+/i.test(text)) sections.push('lot');
+  LOT_PATTERN.lastIndex = 0;
+  if (LOT_PATTERN.test(text)) sections.push('lot');
+  LOT_PATTERN.lastIndex = 0;
 
   const confidence = Math.min(100, Math.max(70, sections.length * 20));
 
