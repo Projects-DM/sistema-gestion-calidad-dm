@@ -111,6 +111,10 @@ export class ModuleAdministrationApplicationService {
           return await this._handleGetModule(request, context);
         case ModuleAdministrationQuery.GET_MODULE_CONFIGURATION:
           return await this._handleGetModuleConfiguration(request, context);
+        case ModuleAdministrationQuery.GET_MODULES_FORM_COUNTS:
+          return await this._handleGetModulesFormCounts(request, context);
+        case ModuleAdministrationQuery.GET_MODULES_REPOSITORY_COUNTS:
+          return await this._handleGetModulesRepositoryCounts(request, context);
 
         // Write operations
         case ModuleAdministrationOperation.CREATE_MODULE:
@@ -251,6 +255,46 @@ export class ModuleAdministrationApplicationService {
 
     return createApplicationResult({
       data: { ...module, forms: formsWithFields },
+      correlationId: request.correlationId,
+    });
+  }
+
+  /**
+   * GET_MODULES_FORM_COUNTS — Batch counts of forms per module.
+   * @private
+   */
+  async _handleGetModulesFormCounts(request, context) {
+    const moduleIds = request.payload?.moduleIds;
+    if (!Array.isArray(moduleIds)) {
+      return createApplicationFailure({
+        code: ApplicationErrorCode.VALIDATION_FAILED,
+        message: 'payload.moduleIds must be an array of module IDs',
+        metadata: { operation: request.operation },
+      });
+    }
+    const counts = await dynamicService.getModulesFormCounts(moduleIds);
+    return createApplicationResult({
+      data: counts,
+      correlationId: request.correlationId,
+    });
+  }
+
+  /**
+   * GET_MODULES_REPOSITORY_COUNTS — Batch counts of repositories per module slug.
+   * @private
+   */
+  async _handleGetModulesRepositoryCounts(request, context) {
+    const slugs = request.payload?.slugs;
+    if (!Array.isArray(slugs)) {
+      return createApplicationFailure({
+        code: ApplicationErrorCode.VALIDATION_FAILED,
+        message: 'payload.slugs must be an array of module slugs',
+        metadata: { operation: request.operation },
+      });
+    }
+    const counts = await dynamicService.getModulesRepositoryCounts(slugs);
+    return createApplicationResult({
+      data: counts,
       correlationId: request.correlationId,
     });
   }

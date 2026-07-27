@@ -63,6 +63,12 @@ export const ModuleAdministrationQuery = Object.freeze({
 
   /** Get the configuration (forms, fields) of a module */
   GET_MODULE_CONFIGURATION: 'GET_MODULE_CONFIGURATION',
+
+  /** Get batch form counts for multiple modules */
+  GET_MODULES_FORM_COUNTS: 'GET_MODULES_FORM_COUNTS',
+
+  /** Get batch repository counts for multiple module slugs */
+  GET_MODULES_REPOSITORY_COUNTS: 'GET_MODULES_REPOSITORY_COUNTS',
 });
 
 /**
