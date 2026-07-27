@@ -5,7 +5,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_modules')
-      .select('id, name, slug, created_at')
+      .select('id, name, slug, state, icon, color, visible, description, created_at')
       .eq('is_active', true)
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -73,6 +73,37 @@ export const dynamicService = {
       .single();
     if (error) throw error;
     return data;
+  },
+
+  async getModulesFormCounts(moduleIds) {
+    if (!moduleIds || moduleIds.length === 0) return {};
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_forms')
+      .select('module_id')
+      .eq('is_active', true)
+      .in('module_id', moduleIds);
+    if (error) throw error;
+    const counts = {};
+    for (const f of (data || [])) {
+      counts[f.module_id] = (counts[f.module_id] || 0) + 1;
+    }
+    return counts;
+  },
+
+  async getModulesRepositoryCounts(slugs) {
+    if (!slugs || slugs.length === 0) return {};
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('sgc_document_repositories')
+      .select('module_slug')
+      .in('module_slug', slugs);
+    if (error) throw error;
+    const counts = {};
+    for (const r of (data || [])) {
+      counts[r.module_slug] = (counts[r.module_slug] || 0) + 1;
+    }
+    return counts;
   },
 
   async getFormFields(formId) {

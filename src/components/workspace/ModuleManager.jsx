@@ -9,7 +9,6 @@ import { createApplicationRequest } from '../../core/applicationLayer/common/con
 import { createApplicationContext } from '../../core/applicationLayer/common/contracts/ApplicationContext.js';
 import { dispatchModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import { useAuth } from '../../hooks/useAuth.js';
-import { getSupabaseClient } from '../../lib/supabase.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -55,8 +54,7 @@ export default function ModuleManager() {
   const [selectedModule, setSelectedModule] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const modulesRef = useRef([]);
-  modulesRef.current = modules;
+  const moduleLoadRef = useRef(0);
 
   const columns = useMemo(
     () => [
@@ -78,33 +76,27 @@ export default function ModuleManager() {
     const mods = modsResult.success !== false ? (modsResult.data || []) : [];
     const adminModules = mods.filter((m) => !CORE_PROTECTED_SLUGS.includes(m.slug));
     setModules(adminModules);
+    return adminModules;
+  };
 
-    const formsMap = {};
-    const reposMap = {};
-    await Promise.all(
-      adminModules.map(async (m) => {
-        const configResult = await appService.execute(
-          createApplicationRequest({ operation: 'GET_MODULE_CONFIGURATION', target: m.id }),
-          appContext
-        );
-        formsMap[m.id] = configResult.success !== false
-          ? (configResult.data?.forms?.length || 0)
-          : 0;
+  const refreshCounts = async (adminModules) => {
+    if (!adminModules || adminModules.length === 0) return;
+    const moduleIds = adminModules.map(m => m.id);
+    const slugs = adminModules.map(m => m.slug);
 
-        const sb = getSupabaseClient();
-        if (sb) {
-          const { count } = await sb
-            .from('sgc_document_repositories')
-            .select('*', { count: 'exact', head: true })
-            .eq('module_slug', m.slug);
-          reposMap[m.slug] = count || 0;
-        } else {
-          reposMap[m.slug] = 0;
-        }
-      })
-    );
-    setFormsByModuleId(formsMap);
-    setReposByModuleSlug(reposMap);
+    const [formsResult, reposResult] = await Promise.all([
+      appService.execute(
+        createApplicationRequest({ operation: 'GET_MODULES_FORM_COUNTS', payload: { moduleIds } }),
+        appContext
+      ),
+      appService.execute(
+        createApplicationRequest({ operation: 'GET_MODULES_REPOSITORY_COUNTS', payload: { slugs } }),
+        appContext
+      ),
+    ]);
+
+    setFormsByModuleId(formsResult.success !== false ? (formsResult.data || {}) : {});
+    setReposByModuleSlug(reposResult.success !== false ? (reposResult.data || {}) : {});
   };
 
   useEffect(() => {
@@ -114,7 +106,12 @@ export default function ModuleManager() {
       try {
         setLoading(true);
         setError(null);
-        await refreshModules();
+        const adminModules = await refreshModules();
+        if (cancelled) return;
+        setLoading(false);
+        if (adminModules.length > 0) {
+          await refreshCounts(adminModules);
+        }
       } catch (e) {
         if (cancelled) return;
         setError(e);
@@ -126,6 +123,26 @@ export default function ModuleManager() {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  const handleSelectModule = async (module) => {
+    const loadId = ++moduleLoadRef.current;
+    try {
+      const configResult = await appService.execute(
+        createApplicationRequest({ operation: 'GET_MODULE_CONFIGURATION', target: module.id }),
+        appContext
+      );
+      if (loadId !== moduleLoadRef.current) return;
+      if (configResult.success !== false && configResult.data) {
+        setSelectedModule(configResult.data);
+      } else {
+        setSelectedModule(module);
+      }
+    } catch {
+      if (loadId === moduleLoadRef.current) {
+        setSelectedModule(module);
+      }
+    }
+  };
 
   const handleDelete = async (moduleId, moduleName, moduleSlug) => {
     const formsCount = formsByModuleId[moduleId] ?? 0;
@@ -157,8 +174,11 @@ export default function ModuleManager() {
       );
 
       if (result.success) {
-        await refreshModules();
+        const adminModules = await refreshModules();
         dispatchModuleChange('delete');
+        if (adminModules.length > 0) {
+          await refreshCounts(adminModules);
+        }
         setSelectedModule(null);
       } else {
         alert(result.error?.message || 'Error eliminando módulo');
@@ -168,12 +188,28 @@ export default function ModuleManager() {
     }
   };
 
+  const handleSavedAndRefresh = async (updatedModule) => {
+    if (updatedModule?.id) {
+      setIsEditing(false);
+      const adminModules = await refreshModules();
+      if (adminModules.length > 0) {
+        await refreshCounts(adminModules);
+      }
+      handleSelectModule(updatedModule);
+    } else {
+      setIsEditing(false);
+    }
+  };
+
   if (isCreating) {
     return (
       <CreateModuleWizard
         onCreated={async () => {
           setIsCreating(false);
-          await refreshModules();
+          const adminModules = await refreshModules();
+          if (adminModules.length > 0) {
+            await refreshCounts(adminModules);
+          }
         }}
         onCancel={() => setIsCreating(false)}
       />
@@ -187,16 +223,7 @@ export default function ModuleManager() {
           module={selectedModule}
           formsCount={formsByModuleId[selectedModule?.id] ?? 0}
           onCancel={() => setIsEditing(false)}
-          onSaved={async (updatedModule) => {
-            if (updatedModule?.id) {
-              setIsEditing(false);
-              await refreshModules();
-              const refreshedSelected = modulesRef.current.find((m) => m.id === updatedModule.id);
-              if (refreshedSelected) setSelectedModule(refreshedSelected);
-            } else {
-              setIsEditing(false);
-            }
-          }}
+          onSaved={handleSavedAndRefresh}
           onDelete={async () => {
             await handleDelete(selectedModule.id, getModuleField(selectedModule, ['name']), getModuleField(selectedModule, ['slug']));
             setIsEditing(false);
@@ -288,7 +315,7 @@ export default function ModuleManager() {
                               <div className="flex justify-end gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedModule(m)}
+                                  onClick={() => handleSelectModule(m)}
                                   className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
                                   title="Ver detalle"
                                 >
