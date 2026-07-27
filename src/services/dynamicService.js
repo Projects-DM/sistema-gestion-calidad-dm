@@ -5,7 +5,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_modules')
-      .select('*')
+      .select('id, name, slug, created_at')
       .eq('is_active', true)
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -16,7 +16,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_modules')
-      .select('*')
+      .select('id, name, slug, icon, color, order_index')
       .eq('is_active', true)
       .eq('visible', true)
       .order('order_index', { ascending: true });
@@ -56,7 +56,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_forms')
-      .select('*')
+      .select('id, name, slug, module_id, engine_type, description, roles_allowed, created_at')
       .eq('module_id', moduleId)
       .eq('is_active', true)
       .order('created_at', { ascending: true });
@@ -68,7 +68,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_forms')
-      .select('*')
+      .select('id, name, slug, module_id, engine_type, roles_allowed, description')
       .eq('slug', slug)
       .single();
     if (error) throw error;

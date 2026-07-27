@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
@@ -67,12 +67,14 @@ export default function Configuration() {
       const mods = modsResult.success !== false ? (modsResult.data || []) : [];
       setModules(mods.filter((m) => m.slug !== 'configuracion'));
       
-      const allForms = [];
-      for (const m of mods) {
-        const modForms = await dynamicService.getFormsByModule(m.id);
-        allForms.push(...modForms.map(f => ({...f, module_name: m.name})));
-      }
-      setForms(allForms);
+      const formsResults = await Promise.all(
+        mods.map(m =>
+          dynamicService.getFormsByModule(m.id).then(modForms =>
+            modForms.map(f => ({...f, module_name: m.name}))
+          )
+        )
+      );
+      setForms(formsResults.flat());
     } catch (error) {
       console.error('Error loading config data:', error);
     } finally {
@@ -198,6 +200,10 @@ export default function Configuration() {
     }
   };
 
+  const formsTableData = useMemo(() => forms, [forms]);
+
+  const modulesOptions = useMemo(() => modules, [modules]);
+
   if (rol !== 'administrador') {
     return <div className="p-8 text-center text-red-500">Acceso denegado. Se requiere rol de administrador.</div>;
   }
@@ -305,7 +311,7 @@ export default function Configuration() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
                   >
                     <option value="">Selecciona un módulo...</option>
-                    {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {modulesOptions.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
 
@@ -402,7 +408,7 @@ export default function Configuration() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {forms.map(form => (
+                    {formsTableData.map(form => (
                       <tr key={form.id} className="hover:bg-gray-50/50">
                         <td className="px-6 py-4 max-w-[260px]">
                           <p className="font-bold text-gray-900 truncate">{form.name}</p>
@@ -445,7 +451,7 @@ export default function Configuration() {
                         </td>
                       </tr>
                     ))}
-                    {forms.length === 0 && (
+                    {formsTableData.length === 0 && (
                       <tr>
                         <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
                           No hay formularios configurados aún.
@@ -471,7 +477,7 @@ export default function Configuration() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
                   >
                     <option value="">Selecciona un módulo...</option>
-                    {modules.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {modulesOptions.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
                 </div>
 
