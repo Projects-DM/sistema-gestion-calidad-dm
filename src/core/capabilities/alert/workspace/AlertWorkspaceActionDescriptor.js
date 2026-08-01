@@ -1,31 +1,31 @@
 /**
  * AlertWorkspaceActionDescriptor
  *
- * Sprint 181 (iteración 2) — Describes a navigation action. Describes
- * ONLY, never executes.
+ * Sprint 182-R — The OFFICIAL contract between the Workspace and the
+ * existing engines.
+ *
+ * Describes navigation ONLY. Executes absolutely nothing, never
+ * navigates, never imports Router, never consults engines.
  */
 
 export function buildActionDescriptor(alert, navigation) {
   if (!alert || !navigation || navigation.navigable !== true) {
     return Object.freeze({
       action: null,
-      target: null,
+      resourceType: null,
+      resourceId: null,
+      moduleId: null,
+      metadata: Object.freeze({}),
       reasons: ['not-navigable'],
     });
   }
 
-  const target = Object.freeze({
-    moduleId: alert.moduleId || alert.module || null,
-    source: alert.source,
-    resourceKey: alert.formId || alert.recordType || alert.documentType || alert.documentId || null,
-    recordId: alert.recordId || null,
-  });
-
   return Object.freeze({
     action: navigation.action,
-    target,
-    engine: navigation.target,
-    label: navigation.label,
+    resourceType: navigation.resourceType,
+    resourceId: navigation.resourceId,
+    moduleId: navigation.moduleId,
+    metadata: navigation.metadata || Object.freeze({}),
     reasons: [],
   });
 }
