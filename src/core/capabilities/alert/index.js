@@ -73,6 +73,10 @@ import { DecisionContextContract as DecisionContextContractV2 } from './decision
 import { buildDecisionContext } from './decision-context/DecisionContextBuilder.js';
 import { requestDecisionContext } from './decision-context/index.js';
 import { DECISION_CONTEXT_BOUNDARY } from './decision-context/DecisionContextBoundary.js';
+import { PolicyEvaluationContract as PolicyEvaluationContractV2 } from './policy-evaluation/PolicyEvaluationContract.js';
+import { buildPolicyContext } from './policy-evaluation/PolicyContextBuilder.js';
+import { requestPolicyEvaluation } from './policy-evaluation/index.js';
+import { POLICY_EVALUATION_BOUNDARY } from './policy-evaluation/PolicyEvaluationBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -130,6 +134,9 @@ export const AlertCapability = Object.freeze({
   decisionContext: requestDecisionContext,
   decisionContextBuilder: buildDecisionContext,
   decisionContextBoundary: DECISION_CONTEXT_BOUNDARY,
+  policyEvaluation: requestPolicyEvaluation,
+  policyContextBuilder: buildPolicyContext,
+  policyEvaluationBoundary: POLICY_EVALUATION_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -155,6 +162,7 @@ export const AlertCapability = Object.freeze({
     runtimeExposure: RuntimeExposureContract,
     eventConsumption: EventConsumptionContractV2,
     decisionContext: DecisionContextContractV2,
+    policyEvaluation: PolicyEvaluationContractV2,
     validator: ContractValidator,
   }),
 });
