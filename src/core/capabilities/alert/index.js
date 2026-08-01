@@ -110,6 +110,9 @@ import { OPERATIONAL_CONFIGURATION_BOUNDARY } from './operational-configuration/
 import { AlertRuntimeVisibilityContract } from './runtime-visibility/index.js';
 import { requestRuntimeVisibility } from './runtime-visibility/index.js';
 import { RUNTIME_VISIBILITY_BOUNDARY } from './runtime-visibility/RuntimeVisibilityBoundary.js';
+import { AlertWorkspaceContract } from './workspace/AlertWorkspaceContract.js';
+import { requestWorkspace } from './workspace/index.js';
+import { WORKSPACE_BOUNDARY } from './workspace/WorkspaceBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -195,6 +198,8 @@ export const AlertCapability = Object.freeze({
   operationalConfigurationBoundary: OPERATIONAL_CONFIGURATION_BOUNDARY,
   runtimeVisibility: requestRuntimeVisibility,
   runtimeVisibilityBoundary: RUNTIME_VISIBILITY_BOUNDARY,
+  workspace: requestWorkspace,
+  workspaceBoundary: WORKSPACE_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -229,6 +234,7 @@ export const AlertCapability = Object.freeze({
     runtimeConsumption: AlertRuntimeConsumptionContract,
     operationalConfiguration: AlertConfigurationContract,
     runtimeVisibility: AlertRuntimeVisibilityContract,
+    workspace: AlertWorkspaceContract,
     validator: ContractValidator,
   }),
 });
