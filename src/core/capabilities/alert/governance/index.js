@@ -7,6 +7,9 @@
  * evolution. READ ONLY.
  */
 
+import { CAPABILITY_IDENTITY } from './CapabilityIdentity.js';
+import { REGISTRY_COMPATIBILITY } from './RegistryCompatibility.js';
+
 export const AlertGovernance = Object.freeze({
   key: 'governance',
   name: 'Alert Governance Traceability',
@@ -24,5 +27,8 @@ export const AlertGovernance = Object.freeze({
     capabilityEvolution: true,
   }),
 });
+
+export { CAPABILITY_IDENTITY } from './CapabilityIdentity.js';
+export { REGISTRY_COMPATIBILITY } from './RegistryCompatibility.js';
 
 export default AlertGovernance;
