@@ -77,6 +77,12 @@ import { PolicyEvaluationContract as PolicyEvaluationContractV2 } from './policy
 import { buildPolicyContext } from './policy-evaluation/PolicyContextBuilder.js';
 import { requestPolicyEvaluation } from './policy-evaluation/index.js';
 import { POLICY_EVALUATION_BOUNDARY } from './policy-evaluation/PolicyEvaluationBoundary.js';
+import { ResponsePreparationContract } from './response-preparation/ResponsePreparationContract.js';
+import { buildResponseContext } from './response-preparation/ResponseContextBuilder.js';
+import { requestResponsePreparation } from './response-preparation/index.js';
+import { RESPONSE_PREPARATION_BOUNDARY } from './response-preparation/ResponsePreparationBoundary.js';
+import { requestOperationalFlow } from './operational-flow/index.js';
+import { OPERATIONAL_BOUNDARY } from './operational-flow/OperationalBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -137,6 +143,11 @@ export const AlertCapability = Object.freeze({
   policyEvaluation: requestPolicyEvaluation,
   policyContextBuilder: buildPolicyContext,
   policyEvaluationBoundary: POLICY_EVALUATION_BOUNDARY,
+  responsePreparation: requestResponsePreparation,
+  responseContextBuilder: buildResponseContext,
+  responsePreparationBoundary: RESPONSE_PREPARATION_BOUNDARY,
+  operationalFlow: requestOperationalFlow,
+  operationalBoundary: OPERATIONAL_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -163,6 +174,7 @@ export const AlertCapability = Object.freeze({
     eventConsumption: EventConsumptionContractV2,
     decisionContext: DecisionContextContractV2,
     policyEvaluation: PolicyEvaluationContractV2,
+    responsePreparation: ResponsePreparationContract,
     validator: ContractValidator,
   }),
 });
