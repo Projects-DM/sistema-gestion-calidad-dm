@@ -47,6 +47,18 @@ import { INTEGRATION_COMPATIBILITY } from './integrations/IntegrationCompatibili
 import { INTEGRATION_BOUNDARY } from './integrations/IntegrationBoundary.js';
 import { INTEGRATION_DEPENDENCY_MODEL } from './integrations/IntegrationDependencyModel.js';
 import { IntegrationContract } from './integrations/IntegrationContract.js';
+import { ECOSYSTEM_COMPATIBILITY } from './ecosystem/EcosystemCompatibility.js';
+import { ECOSYSTEM_BOUNDARY } from './ecosystem/EcosystemBoundary.js';
+import { CAPABILITY_ALIGNMENT_MODEL } from './ecosystem/CapabilityAlignmentModel.js';
+import { PlatformDependencyContract } from './ecosystem/PlatformDependencyContract.js';
+import { ArchitectureCertificationContract } from './governance-certification/ArchitectureCertificationContract.js';
+import { GOVERNANCE_VALIDATION_MODEL } from './governance-certification/GovernanceValidationModel.js';
+import { CAPABILITY_MATURITY_MODEL } from './governance-certification/CapabilityMaturityModel.js';
+import { CERTIFICATION_BOUNDARY } from './governance-certification/CertificationBoundary.js';
+import { ControlledActivationService, requestActivation } from './activation-runtime/ControlledActivationService.js';
+import { validateActivation } from './activation-runtime/ActivationValidator.js';
+import { decideActivation } from './activation-runtime/ActivationDecision.js';
+import { ACTIVATION_RUNTIME_BOUNDARY } from './activation-runtime/ActivationRuntimeBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -87,6 +99,14 @@ export const AlertCapability = Object.freeze({
   integrationCompatibility: INTEGRATION_COMPATIBILITY,
   integrationBoundary: INTEGRATION_BOUNDARY,
   integrationDependencyModel: INTEGRATION_DEPENDENCY_MODEL,
+  ecosystemCompatibility: ECOSYSTEM_COMPATIBILITY,
+  ecosystemBoundary: ECOSYSTEM_BOUNDARY,
+  capabilityAlignmentModel: CAPABILITY_ALIGNMENT_MODEL,
+  governanceValidationModel: GOVERNANCE_VALIDATION_MODEL,
+  capabilityMaturityModel: CAPABILITY_MATURITY_MODEL,
+  certificationBoundary: CERTIFICATION_BOUNDARY,
+  activationRuntime: ControlledActivationService,
+  activationRuntimeBoundary: ACTIVATION_RUNTIME_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -107,6 +127,8 @@ export const AlertCapability = Object.freeze({
     activationValidation: ActivationValidationContract,
     registryRegistration: RegistryRegistrationContract,
     integration: IntegrationContract,
+    platformDependency: PlatformDependencyContract,
+    architectureCertification: ArchitectureCertificationContract,
     validator: ContractValidator,
   }),
 });
