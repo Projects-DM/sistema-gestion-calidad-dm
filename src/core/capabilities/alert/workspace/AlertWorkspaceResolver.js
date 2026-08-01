@@ -1,23 +1,20 @@
 /**
  * AlertWorkspaceResolver
  *
- * Sprint 181 (iteración 2) — Builds the complete Operational Workspace
- * ViewModel from the Runtime Context.
+ * Sprint 182 — Builds the complete Operational Workspace ViewModel
+ * from the Runtime Context.
  *
  * Resolution ONLY. Never queries Supabase, never modifies data.
  */
 
 import { buildAlertWorkspaceCard } from './AlertWorkspaceBuilder.js';
-import { buildOperationalGrouping } from './AlertOperationalGrouping.js';
+import { buildAlertWorkspaceViewModel } from './AlertWorkspaceViewModel.js';
 
 export function resolveAlertWorkspace(request) {
   if (!request) {
     return Object.freeze({
       resolved: false,
-      alerts: [],
-      cards: [],
-      groups: Object.freeze({ byPriority: [], bySource: [] }),
-      empty: true,
+      viewModel: null,
       reasons: ['missing-workspace-context'],
     });
   }
@@ -25,15 +22,16 @@ export function resolveAlertWorkspace(request) {
   const moduleId = request.moduleId || request.module || null;
   const alerts = Array.isArray(request.alerts) ? request.alerts : [];
   const cards = alerts.map((a) => buildAlertWorkspaceCard(a, moduleId));
-  const groups = buildOperationalGrouping(cards);
+  const viewModel = buildAlertWorkspaceViewModel({
+    moduleId,
+    cards,
+  });
 
   return Object.freeze({
     resolved: true,
     moduleId,
-    alerts: Object.freeze(alerts),
     cards: Object.freeze(cards),
-    groups,
-    empty: cards.length === 0,
+    viewModel,
     reasons: [],
   });
 }
