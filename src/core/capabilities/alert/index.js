@@ -59,6 +59,10 @@ import { ControlledActivationService, requestActivation } from './activation-run
 import { validateActivation } from './activation-runtime/ActivationValidator.js';
 import { decideActivation } from './activation-runtime/ActivationDecision.js';
 import { ACTIVATION_RUNTIME_BOUNDARY } from './activation-runtime/ActivationRuntimeBoundary.js';
+import { ControlledRegistryService, requestRegistryRegistration } from './registry-runtime/ControlledRegistryService.js';
+import { validateRegistryRegistration } from './registry-runtime/RegistryRegistrationValidator.js';
+import { decideRegistryRegistration } from './registry-runtime/RegistryDecision.js';
+import { REGISTRY_RUNTIME_BOUNDARY } from './registry-runtime/RegistryRuntimeBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -107,6 +111,8 @@ export const AlertCapability = Object.freeze({
   certificationBoundary: CERTIFICATION_BOUNDARY,
   activationRuntime: ControlledActivationService,
   activationRuntimeBoundary: ACTIVATION_RUNTIME_BOUNDARY,
+  registryRuntime: ControlledRegistryService,
+  registryRuntimeBoundary: REGISTRY_RUNTIME_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
