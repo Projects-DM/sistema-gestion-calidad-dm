@@ -43,6 +43,10 @@ import { ControlledActivationContract } from './activation/ControlledActivationC
 import { ActivationRequestModel } from './activation/ActivationRequestModel.js';
 import { ActivationValidationContract } from './activation/ActivationValidationContract.js';
 import { CONTROLLED_ACTIVATION_BOUNDARY } from './activation/ControlledActivationBoundary.js';
+import { INTEGRATION_COMPATIBILITY } from './integrations/IntegrationCompatibility.js';
+import { INTEGRATION_BOUNDARY } from './integrations/IntegrationBoundary.js';
+import { INTEGRATION_DEPENDENCY_MODEL } from './integrations/IntegrationDependencyModel.js';
+import { IntegrationContract } from './integrations/IntegrationContract.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -80,6 +84,9 @@ export const AlertCapability = Object.freeze({
   activationBoundary: ACTIVATION_BOUNDARY,
   controlledActivationBoundary: CONTROLLED_ACTIVATION_BOUNDARY,
   activationRequestModel: ActivationRequestModel,
+  integrationCompatibility: INTEGRATION_COMPATIBILITY,
+  integrationBoundary: INTEGRATION_BOUNDARY,
+  integrationDependencyModel: INTEGRATION_DEPENDENCY_MODEL,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -99,6 +106,7 @@ export const AlertCapability = Object.freeze({
     controlledActivation: ControlledActivationContract,
     activationValidation: ActivationValidationContract,
     registryRegistration: RegistryRegistrationContract,
+    integration: IntegrationContract,
     validator: ContractValidator,
   }),
 });
