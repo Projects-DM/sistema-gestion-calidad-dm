@@ -51,6 +51,7 @@ export function buildRuntimeCapabilityContext(request) {
       key: 'alerts',
       experience: 'alert-monitoring',
       available: true,
+      runtimeEnabled: true,
     }),
     targets,
     available: true,

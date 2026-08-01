@@ -52,6 +52,7 @@ export function requestRuntimeBinding(request) {
       available: true,
       runtimeEnabled: true,
       targets: context.targets,
+      allowed: true,
     }),
   ];
 
@@ -59,6 +60,8 @@ export function requestRuntimeBinding(request) {
     module: request.moduleId || request.module || null,
     runtimeCapabilities,
     runtimeAvailable: true,
+    runtimeEnabled: true,
+    allowed: true,
     executionEnabled: false,
     executionBlocked: request.executionRequested === true,
     rejected: false,
