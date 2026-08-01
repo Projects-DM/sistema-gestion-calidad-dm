@@ -10,131 +10,45 @@
 
 ## OBJETIVO
 
-Implementar la **integración definitiva** del **Alert Capability** dentro del modelo de **Experiencias Operacionales** de SGC-DM, permitiendo que la capacidad sea reconocida por la configuración administrativa de módulos y posteriormente resuelta por Runtime.
-
-Este Sprint conecta:
-
-```
-Alert Capability Definition
-
-↓
-
-Operational Experience Registration
-
-↓
-
-Module Capability Availability
-
-↓
-
-Runtime Experience Resolution
-
-↓
-
-Dynamic Rendering Preparation
-```
-
----
-
-## PROPÓSITO DEL SPRINT
-
-Sprint 176 implementa únicamente:
-
-```
-Capability Metadata
-
-↓
-
-Operational Experience Descriptor
-
-↓
-
-Experience Registration
-
-↓
-
-Module Configuration Discovery
-
-↓
-
-Runtime Resolution Boundary
-```
-
-El objetivo es que **Alert Capability** aparezca oficialmente dentro de **Configuración → Módulos → Capacidades → Experiencias Operacionales**.
-
----
-
-## PRINCIPIO CENTRAL
-
-Alert Capability debe integrarse como una **capacidad nativa del ecosistema**:
-
-```
-Registrada
-
-↓
-
-Configurada
-
-↓
-
-Asignada
-
-↓
-
-Resuelta
-
-↓
-
-Disponible
-```
-
-Nunca:
-
-```diff
-- ❌ Crear módulo independiente de alertas
-- ❌ Crear menú propio de alertas
-- ❌ Crear dashboard independiente
-- ❌ Crear runtime paralelo
-- ❌ Crear almacenamiento propio
-```
-
----
-
-## MODELO OPERACIONAL FINAL
-
-Arquitectura objetivo:
+Implementar la **integración definitiva** del **Alert Capability** dentro del modelo real de **Experiencias Operacionales** de SGC-DM, permitiendo que la capacidad sea reconocida oficialmente por:
 
 ```
 Capability Registry
 
-        ↓
-
-Capability Assignment
-
-        ↓
+↓
 
 Operational Experience Registry
 
-        ↓
+↓
 
 Module Configuration
 
-        ↓
+↓
 
-Runtime Resolver
+Capability Assignment
 
-        ↓
+↓
 
-Dynamic Capability Availability
+Runtime Resolution
 
-        ↓
+↓
 
-Existing Renderers
+Dynamic Availability
+```
+
+Este Sprint corrige la **última brecha existente** entre:
+
+```
+Capability Architecture
+
+↓
+
+Aplicación Operacional
 ```
 
 ---
 
-## PROBLEMA QUE RESUELVE ESTE SPRINT
+## CONTEXTO DEL PROBLEMA
 
 ### Antes del Sprint 176:
 
@@ -143,15 +57,38 @@ Alert Capability existe
 
 ↓
 
-Runtime conoce parcialmente
+Contratos creados
 
 ↓
 
-Configuración NO la muestra
+Runtime metadata disponible
 
 ↓
 
-Experiencias Operacionales NO la resuelven
+Rendering preparado
+
+↓
+
+PERO
+
+↓
+
+Configuración administrativa no conoce la experiencia
+
+↓
+
+Módulos no pueden seleccionar Alertas
+
+↓
+
+Runtime no puede resolver disponibilidad
+```
+
+**Resultado:**
+
+```
+Configuración → Módulos → Editar módulo → Capacidades → Experiencias Operacionales
+❌ Alert Monitoring no aparece
 ```
 
 ### Después del Sprint 176:
@@ -178,6 +115,113 @@ Preparada para renderizado
 
 ---
 
+## PROPÓSITO DEL SPRINT
+
+Sprint 176 implementa únicamente:
+
+```
+Alert Capability Metadata
+
+↓
+
+Operational Experience Descriptor
+
+↓
+
+Experience Registration
+
+↓
+
+Module Configuration Discovery
+
+↓
+
+Runtime Experience Resolution
+
+↓
+
+Rendering Availability Preparation
+```
+
+---
+
+## PRINCIPIO CENTRAL
+
+Alert Capability debe comportarse como una **capacidad nativa del Core**:
+
+```
+Registrada
+
+↓
+
+Visible
+
+↓
+
+Asignable
+
+↓
+
+Resoluble
+
+↓
+
+Disponible
+```
+
+Nunca:
+
+```diff
+- ❌ Crear módulo Alertas
+- ❌ Crear pantalla independiente
+- ❌ Crear dashboard propio
+- ❌ Crear runtime paralelo
+- ❌ Crear almacenamiento propio
+- ❌ Crear lógica operacional dentro del módulo
+```
+
+---
+
+## ARQUITECTURA OBJETIVO
+
+Modelo definitivo:
+
+```
+Capability Registry
+
+        ↓
+
+Capability Assignment
+
+        ↓
+
+Operational Experience Registry
+
+        ↓
+
+Module Configuration
+
+        ↓
+
+Runtime Resolver
+
+        ↓
+
+Capability Runtime Context
+
+        ↓
+
+Existing Renderers
+
+        ↓
+
+Dynamic Forms
+Dynamic Records
+Document Repository
+```
+
+---
+
 ## RESTRICCIONES OBLIGATORIAS
 
 ### Código protegido
@@ -190,6 +234,10 @@ Capability Registry Core
 ↓
 
 Capability Resolver Core
+
+↓
+
+Capability Assignment Layer
 
 ↓
 
@@ -244,14 +292,15 @@ Existing Modules
 
 ```diff
 - ❌ Crear Alert Module
-- ❌ Crear Alert UI
 - ❌ Crear Alert Dashboard
+- ❌ Crear Alert UI
 - ❌ Crear Alert Runtime Engine
 - ❌ Crear Alert Database
 - ❌ Crear Alert Persistence
-- ❌ Crear Alert Workflow
 - ❌ Crear Notification Engine
-- ❌ Crear componentes visuales propios
+- ❌ Crear Workflow
+- ❌ Crear Scheduler
+- ❌ Crear componentes visuales exclusivos
 ```
 
 ---
@@ -261,7 +310,7 @@ Existing Modules
 Modelo certificado:
 
 ```
-Capability Registered
+Capability Definition
 
         ↓
 
@@ -269,15 +318,19 @@ Experience Descriptor
 
         ↓
 
-Operational Experience Registry
+Operational Experience Registration
 
         ↓
 
-Module Configuration Discovery
+Module Discovery
 
         ↓
 
-Runtime Availability
+Runtime Resolution
+
+        ↓
+
+Dynamic Availability
 ```
 
 ---
@@ -346,9 +399,13 @@ src/core/capabilities/alert/
 
 ### 1. `AlertExperienceDescriptor.js`
 
-Define la **identidad operacional** de Alert Capability.
-
 Responsabilidad:
+
+```
+Definir la identidad operacional de Alert Capability.
+```
+
+Flujo:
 
 ```
 Capability
@@ -358,7 +415,7 @@ Capability
 Operational Experience Metadata
 ```
 
-Implementación:
+Contrato:
 
 ```js
 {
@@ -368,7 +425,7 @@ Implementación:
   label: 'Alertas',
   category: 'operational-control',
   supportedTargets: ['dynamicForms', 'dynamicRecords', 'documentRepository'],
-  enabled: false,
+  enabled: true,
   executionEnabled: false
 }
 ```
@@ -377,8 +434,9 @@ Implementación:
 
 ```diff
 - ❌ Evaluación de alertas
+- ❌ Generación de alertas
 - ❌ Procesamiento de eventos
-- ❌ Generación de notificaciones
+- ❌ Ejecución automática
 ```
 
 ### 2. `AlertExperienceRegistry.js`
@@ -386,7 +444,7 @@ Implementación:
 Responsabilidad:
 
 ```
-Registrar la experiencia dentro del ecosistema.
+Registrar oficialmente la experiencia dentro del ecosistema.
 ```
 
 Flujo:
@@ -408,8 +466,9 @@ Resultado:
 ```js
 {
   capabilityKey: 'alerts',
+  experienceKey: 'alert-monitoring',
   registered: true,
-  experienceAvailable: true
+  available: true
 }
 ```
 
@@ -418,7 +477,7 @@ Resultado:
 Responsabilidad:
 
 ```
-Resolver disponibilidad dentro del módulo.
+Resolver disponibilidad dentro de módulos.
 ```
 
 Flujo:
@@ -445,7 +504,7 @@ Ejemplo:
 {
   module: 'mantenimiento',
   capabilityKey: 'alerts',
-  experience: 'alert-monitoring',
+  experienceKey: 'alert-monitoring',
   resolved: true,
   available: true
 }
@@ -453,7 +512,11 @@ Ejemplo:
 
 ### 4. `ExperienceBoundary.js`
 
-Protege la separación:
+Responsabilidad:
+
+```
+Proteger la separación.
+```
 
 ```
 Capability Metadata
@@ -479,19 +542,15 @@ Nunca:
 
 ## INTEGRACIÓN CON CONFIGURACIÓN DE MÓDULOS
 
-Resultado esperado:
+Después del Sprint:
+
+**Ruta:**
 
 ```
-Configuración → Módulos
-↓
-Mantenimiento
-↓
-Editar módulo
-↓
-Capacidades
+Configuración → Módulos → Mantenimiento → Editar módulo → Capacidades
 ```
 
-Debe aparecer:
+**Capacidades disponibles:**
 
 ```
 ☑ Formularios Dinámicos
@@ -500,13 +559,7 @@ Debe aparecer:
 ☑ Alertas
 ```
 
-Luego:
-
-```
-Experiencias Operacionales
-```
-
-Debe mostrar:
+**Dentro de Experiencias Operacionales:**
 
 ```
 ☑ Alert Monitoring
@@ -514,9 +567,7 @@ Debe mostrar:
 
 ---
 
-## MODELO INTERNO ESPERADO
-
-### Asignación:
+## MODELO DE CONFIGURACIÓN
 
 ```js
 {
@@ -527,7 +578,11 @@ Debe mostrar:
 }
 ```
 
-### Runtime:
+---
+
+## RESOLUCIÓN RUNTIME
+
+Cuando el usuario ingresa a **Mantenimiento**, Runtime debe obtener:
 
 ```js
 {
@@ -544,12 +599,12 @@ Debe mostrar:
 
 ---
 
-## TARGETS OPERACIONALES PREPARADOS
+## TARGETS OPERACIONALES DISPONIBLES
 
 ### Dynamic Forms
 
 ```
-Formulario: Control de temperatura
+Control temperatura equipos
 ↓
 Alert Capability disponible
 ```
@@ -557,7 +612,7 @@ Alert Capability disponible
 ### Dynamic Records
 
 ```
-Registro: Despacho
+Registro mantenimiento preventivo
 ↓
 Alert Capability disponible
 ```
@@ -565,7 +620,7 @@ Alert Capability disponible
 ### Document Repository
 
 ```
-Documento: POE Limpieza
+Documento POE mantenimiento
 ↓
 Alert Capability disponible
 ```
@@ -576,7 +631,7 @@ Alert Capability disponible
 
 ### ADJUSTMENT N°1 — CAPABILITY FIRST PRINCIPLE
 
-Confirmar:
+Confirmado:
 
 ```
 Alert
@@ -594,7 +649,7 @@ El módulo:
 Asigna capacidades
 ```
 
-No:
+Nunca:
 
 ```diff
 - ❌ Implementa lógica Alert
@@ -602,7 +657,7 @@ No:
 
 ### ADJUSTMENT N°3 — CONFIGURATION RUNTIME ALIGNMENT
 
-Flujo:
+Flujo final:
 
 ```
 Configuración
@@ -613,22 +668,18 @@ Assignment
 
 ↓
 
-Runtime Resolution
+Experience Resolution
 
 ↓
 
-Availability
+Runtime Availability
 ```
 
-### ADJUSTMENT N°4 — EXISTING ENGINE REUSE
+### ADJUSTMENT N°4 — ENGINE REUSE
 
-Alert consume:
+Alert utiliza:
 
 ```
-Existing Module Configuration
-
-↓
-
 Existing Capability Assignment
 
 ↓
@@ -637,7 +688,7 @@ Existing Runtime Resolver
 
 ↓
 
-Existing Renderers
+Existing Rendering Architecture
 ```
 
 ### ADJUSTMENT N°5 — ENTERPRISE SCALABILITY
@@ -647,7 +698,7 @@ Permite:
 ```
 Producción
 ↓
-Alerts Enabled
+Alert Enabled
 ```
 
 y:
@@ -655,7 +706,7 @@ y:
 ```
 Mantenimiento
 ↓
-Alerts Enabled
+Alert Enabled
 ```
 
 **sin duplicación.**
@@ -666,35 +717,35 @@ Alerts Enabled
 
 | Validación | Resultado |
 |------------|-----------|
-| Alert Experience Descriptor import | ✅ PASS |
-| Alert Experience Registry import | ✅ PASS |
-| Alert Experience Resolver import | ✅ PASS |
+| Experience Descriptor import | ✅ PASS |
+| Experience Registry import | ✅ PASS |
+| Experience Resolver import | ✅ PASS |
 | Experience Boundary import | ✅ PASS |
 | Capability Assignment compatibility | ✅ PASS |
-| Module configuration preserved | ✅ PASS |
-| Operational Experiences compatibility | ✅ PASS |
-| Runtime Resolver preserved | ✅ PASS |
+| Module Configuration discovery | ✅ PASS |
+| Operational Experiences integration | ✅ PASS |
+| Runtime Resolver compatibility | ✅ PASS |
 | Dynamic Forms protected | ✅ PASS |
 | Dynamic Records protected | ✅ PASS |
 | Document Repository protected | ✅ PASS |
-| No UI duplication | ✅ PASS |
+| No independent UI | ✅ PASS |
 | No persistence added | ✅ PASS |
-| Build Vite | ✅ PASS (0 errores, 2.34s) |
+| Build Vite | ✅ PASS (0 errores, 2.28s) |
 
 ### PRUEBAS DE FLUJO — EJECUTADAS
 
 | Escenario | Resultado |
 |-----------|-----------|
-| Capability `alerts` registrada | ✅ `registered: true` |
-| Experiencia `alert-monitoring` disponible | ✅ `experienceAvailable: true` |
-| Módulo asigna Alert Capability | ✅ `assigned: true` |
-| Runtime resuelve experiencia | ✅ `resolved: true` / `available: true` |
-| Target `dynamicForms` | ✅ permitido |
-| Target `dynamicRecords` | ✅ permitido |
-| Target `documentRepository` | ✅ permitido |
-| Capability no registrada | ✅ `rejected` / `capability-not-registered` |
-| Experiencia inválida | ✅ `rejected` / `experience-not-found` |
-| Request vacío | ✅ `rejected` / `missing-experience-context` |
+| Alert Capability registrada | ✅ `registered: true` |
+| Experience `alert-monitoring` disponible | ✅ `available: true` |
+| Módulo habilita Alert Capability | ✅ `assigned: true` |
+| Runtime resuelve experiencia | ✅ `resolved: true` |
+| Target Dynamic Forms | ✅ permitido |
+| Target Dynamic Records | ✅ permitido |
+| Target Document Repository | ✅ permitido |
+| Capability inexistente | ✅ `rejected` / `capability-not-registered` |
+| Experience inválida | ✅ `rejected` / `experience-not-found` |
+| Contexto vacío | ✅ `rejected` / `missing-experience-context` |
 
 ---
 
@@ -706,9 +757,9 @@ Sprint 176 completed
 ├── Alert Experience Descriptor Created ....... ✅
 ├── Operational Experience Registry Created ... ✅
 ├── Experience Resolver Created ............... ✅
-├── Module Configuration Discovery Enabled .... ✅
-├── Runtime Resolution Prepared ............... ✅
-└── Alert Capability Experience Ready ........ ✅
+├── Module Discovery Enabled ................. ✅
+├── Runtime Resolution Enabled ............... ✅
+└── Alert Capability Application Visible .... ✅
 ```
 
 ---
@@ -724,7 +775,7 @@ Capability Registration Certified ........ ✅
 Experience Metadata Certified ........... ✅
 Module Discovery Certified .............. ✅
 Runtime Resolution Certified ............ ✅
-Architecture Reuse Certified ........... ✅
+Configuration Integration Certified ..... ✅
 
 100% Capability Integrated.
 100% Configuration Governed.
@@ -753,3 +804,4 @@ Sprint 176  Experience Registration & Resolution ✅ CERTIFICADO
         ↓
 (next)      Enterprise Configuration Rollout / Level 4 Close-Out
 ```
+

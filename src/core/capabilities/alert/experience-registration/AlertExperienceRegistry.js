@@ -12,8 +12,9 @@ export function registerAlertExperience(request) {
   if (!request) {
     return Object.freeze({
       capabilityKey: 'alerts',
+      experienceKey: null,
       registered: false,
-      experienceAvailable: false,
+      available: false,
       reasons: ['missing-experience-context'],
     });
   }
@@ -24,8 +25,9 @@ export function registerAlertExperience(request) {
   if (!capabilityRegistered) {
     return Object.freeze({
       capabilityKey: 'alerts',
+      experienceKey: null,
       registered: false,
-      experienceAvailable: false,
+      available: false,
       reasons: ['capability-not-registered'],
     });
   }
@@ -33,17 +35,18 @@ export function registerAlertExperience(request) {
   if (!experienceValid) {
     return Object.freeze({
       capabilityKey: 'alerts',
+      experienceKey: null,
       registered: false,
-      experienceAvailable: false,
+      available: false,
       reasons: ['experience-not-found'],
     });
   }
 
   return Object.freeze({
     capabilityKey: 'alerts',
-    registered: true,
-    experienceAvailable: true,
     experienceKey: 'alert-monitoring',
+    registered: true,
+    available: true,
     module: request.module || null,
     reasons: [],
   });
