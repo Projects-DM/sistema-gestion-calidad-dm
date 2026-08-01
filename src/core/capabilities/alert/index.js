@@ -69,6 +69,10 @@ import { RUNTIME_EXPOSURE_BOUNDARY } from './runtime-exposure/RuntimeExposureBou
 import { EventConsumptionContract as EventConsumptionContractV2 } from './event-consumption/EventConsumptionContract.js';
 import { requestEventConsumption } from './event-consumption/index.js';
 import { EVENT_CONSUMPTION_BOUNDARY } from './event-consumption/EventConsumptionBoundary.js';
+import { DecisionContextContract as DecisionContextContractV2 } from './decision-context/DecisionContextContract.js';
+import { buildDecisionContext } from './decision-context/DecisionContextBuilder.js';
+import { requestDecisionContext } from './decision-context/index.js';
+import { DECISION_CONTEXT_BOUNDARY } from './decision-context/DecisionContextBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -123,6 +127,9 @@ export const AlertCapability = Object.freeze({
   runtimeExposureBoundary: RUNTIME_EXPOSURE_BOUNDARY,
   eventConsumption: requestEventConsumption,
   eventConsumptionBoundary: EVENT_CONSUMPTION_BOUNDARY,
+  decisionContext: requestDecisionContext,
+  decisionContextBuilder: buildDecisionContext,
+  decisionContextBoundary: DECISION_CONTEXT_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -147,6 +154,7 @@ export const AlertCapability = Object.freeze({
     architectureCertification: ArchitectureCertificationContract,
     runtimeExposure: RuntimeExposureContract,
     eventConsumption: EventConsumptionContractV2,
+    decisionContext: DecisionContextContractV2,
     validator: ContractValidator,
   }),
 });
