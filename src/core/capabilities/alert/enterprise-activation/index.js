@@ -1,28 +1,30 @@
 /**
  * Alert Enterprise Activation
  *
- * Sprint 179 — Enterprise Capability Activation & Operational Validation.
+ * Sprint 179 / Audit-1 (SSOT) — Enterprise Capability Activation &
+ * Operational Validation.
  *
  * This module is the NON-INVASIVE bridge between the Alert Capability and
  * the real SGC-DM runtime pipeline:
  *
- *   - Registers the `alerts` package into CapabilityPackageRegistry
- *     (public registerPackage API — Core file untouched).
- *   - Registers the `alert-monitoring` experience into
- *     OperationalExperienceRegistry (public registerExperience API — Core
- *     file untouched).
- *   - Validates that the REAL pipeline now consumes the capability
- *     (listPackages, listExperiences, getExperienceContract, runtime binding).
+ *   - Registers the `alert-monitoring` OPERATIONAL CONFIGURATION EXPERIENCE
+ *     into OperationalExperienceRegistry (public registerExperience API —
+ *     Core file untouched).
+ *   - Sprint 180-R / Audit-1: the capability is EXPERIENCE-ONLY. The
+ *     `alerts` PACKAGE is NOT registered into CapabilityPackageRegistry,
+ *     eliminating the duplicate "Configuración → Alertas" entry. Single
+ *     configuration entry: Experiencias Operacionales → Alert Monitoring.
+ *   - Validates that the REAL pipeline consumes the experience
+ *     (listExperiences, getExperienceContract, runtime binding) and that
+ *     the package catalog remains clean (no `alerts` package).
  *
  * Activation is declarative registration ONLY. Execution stays controlled
  * (executionEnabled: false). The capability never creates UI, runtime,
  * persistence or engines.
  */
 
-import { registerPackage, getPackage, listPackages } from '../../CapabilityPackageRegistry.js';
 import { registerExperience, getExperience, getExperienceContract, listExperiences } from '../../experiences/OperationalExperienceRegistry.js';
 import { requestRuntimeBinding } from '../runtime-binding/index.js';
-import { ALERT_EXPERIENCE_DESCRIPTOR } from '../experience-registration/AlertExperienceDescriptor.js';
 import { AlertEnterpriseActivationContract } from './AlertEnterpriseActivationContract.js';
 import { validateEnterpriseActivation } from './AlertEnterpriseActivationValidator.js';
 import { decideEnterpriseActivation } from './AlertEnterpriseActivationDecision.js';
@@ -32,22 +34,6 @@ export { AlertEnterpriseActivationContract, ENTERPRISE_ACTIVATION_VERSION } from
 export { validateEnterpriseActivation } from './AlertEnterpriseActivationValidator.js';
 export { decideEnterpriseActivation } from './AlertEnterpriseActivationDecision.js';
 export { ENTERPRISE_ACTIVATION_BOUNDARY } from './EnterpriseActivationBoundary.js';
-
-// ---------------------------------------------------------------------------
-// Public descriptor — reused by the real CapabilityPackageRegistry
-// ---------------------------------------------------------------------------
-
-export const ALERT_CAPABILITY_PACKAGE = Object.freeze({
-  packageKey: 'alerts',
-  displayName: 'Alertas',
-  description: 'Monitoreo operacional de alertas del módulo.',
-  category: 'operational-control',
-  icon: 'Bell',
-  defaultOrder: 5,
-  dependencies: [],
-  visibility: 'public',
-  enabledByDefault: false,
-});
 
 // ---------------------------------------------------------------------------
 // Public descriptor — reused by the real OperationalExperienceRegistry
@@ -129,15 +115,8 @@ export const ALERT_OPERATIONAL_EXPERIENCE = Object.freeze({
 });
 
 // ---------------------------------------------------------------------------
-// Registration (idempotent) — via public Core registry APIs
+// Registration (idempotent) — via public Core registry API
 // ---------------------------------------------------------------------------
-
-function registerAlertsPackage() {
-  if (!getPackage('alerts')) {
-    registerPackage(ALERT_CAPABILITY_PACKAGE);
-  }
-  return getPackage('alerts') !== null;
-}
 
 function registerAlertExperience() {
   if (!getExperience('alert-monitoring')) {
@@ -151,13 +130,11 @@ function registerAlertExperience() {
 // ---------------------------------------------------------------------------
 
 export function activateEnterpriseCapability() {
-  const packageRegistered = registerAlertsPackage();
   const experienceRegistered = registerAlertExperience();
 
   return Object.freeze({
     capabilityKey: 'alerts',
     activationMode: 'controlled',
-    packageRegistered,
     experienceRegistered,
     executionEnabled: false,
     boundary: ENTERPRISE_ACTIVATION_BOUNDARY,
@@ -170,10 +147,8 @@ export function activateEnterpriseCapability() {
 // ---------------------------------------------------------------------------
 
 export function validateOperationalConsumption() {
-  const packageKeys = listPackages().map((p) => p.packageKey);
   const experienceKeys = listExperiences().map((e) => e.experienceKey);
 
-  const packageConsumed = packageKeys.includes('alerts');
   const experienceConsumed = experienceKeys.includes('alert-monitoring');
   const experienceContractConsumed = getExperienceContract('alert-monitoring') !== null;
 
@@ -190,10 +165,6 @@ export function validateOperationalConsumption() {
   return Object.freeze({
     capabilityKey: 'alerts',
     pipeline: Object.freeze({
-      capabilityPackageRegistry: Object.freeze({
-        consumed: packageConsumed,
-        packages: packageKeys,
-      }),
       operationalExperienceRegistry: Object.freeze({
         consumed: experienceConsumed,
         experiences: experienceKeys,
@@ -209,7 +180,7 @@ export function validateOperationalConsumption() {
         executionEnabled: binding.executionEnabled,
       }),
     }),
-    consumed: packageConsumed && experienceConsumed && experienceContractConsumed && runtimeConsumed,
+    consumed: experienceConsumed && experienceContractConsumed && runtimeConsumed,
     executionEnabled: false,
   });
 }
@@ -255,7 +226,6 @@ export function requestEnterpriseActivation(request) {
 
   const validation = validateEnterpriseActivation({
     capability: 'alerts',
-    packageRegistered: activation.packageRegistered,
     experienceRegistered: activation.experienceRegistered,
     pipelineConsumption: consumption.consumed,
   });
@@ -267,7 +237,6 @@ export function requestEnterpriseActivation(request) {
     module: request.module || request.moduleId || null,
     decision: decision.decision,
     activated: decision.activated,
-    packageRegistered: activation.packageRegistered,
     experienceRegistered: activation.experienceRegistered,
     pipelineConsumed: consumption.consumed,
     pipeline: consumption.pipeline,
@@ -287,8 +256,10 @@ export default ALERT_ENTERPRISE_ACTIVATION;
 
 // ---------------------------------------------------------------------------
 // Bootstrap side-effect — performed once at module load time.
-// Registers the capability into the real Core registries so the pipeline
-// consumes it from the first app render onward.
+// Registers the Alert Configuration Experience into the real Core
+// registry so the pipeline consumes it from the first app render onward.
+// The `alerts` package is intentionally NOT registered (SSOT: single
+// configuration entry via Experiencias Operacionales).
 // ---------------------------------------------------------------------------
 
 activateEnterpriseCapability();

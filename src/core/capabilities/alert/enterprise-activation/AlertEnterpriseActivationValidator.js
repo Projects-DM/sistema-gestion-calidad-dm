@@ -1,8 +1,15 @@
 /**
  * AlertEnterpriseActivationValidator
  *
- * Sprint 179 — Validates that Enterprise Activation is possible and
- * that the real runtime pipeline is ready to consume the capability.
+ * Sprint 179 / Audit-1 (SSOT) — Validates that Enterprise Activation is
+ * possible and that the real runtime pipeline is ready to consume the
+ * capability.
+ *
+ * Sprint 180-R / Audit-1: the capability is EXPERIENCE-ONLY. Activation
+ * requires ONLY the operational experience to be registered and the
+ * pipeline to be ready. No capability package is required (the `alerts`
+ * package is intentionally not registered to keep a single configuration
+ * entry via Experiencias Operacionales → Alert Monitoring).
  *
  * Validation ONLY. Never registers, never executes.
  */
@@ -33,17 +40,14 @@ export function validateEnterpriseActivation(request) {
   }
 
   const reasons = [];
-  const packageReady = request.packageRegistered === true;
   const experienceReady = request.experienceRegistered === true;
   const pipelineReady = request.pipelineConsumption === true;
 
-  if (!packageReady) reasons.push('capability-package-not-registered');
   if (!experienceReady) reasons.push('operational-experience-not-registered');
   if (!pipelineReady) reasons.push('runtime-pipeline-not-ready');
 
   return Object.freeze({
     capabilityKey: 'alerts',
-    packageRegistered: packageReady,
     experienceRegistered: experienceReady,
     pipelineConsumption: pipelineReady,
     valid: reasons.length === 0,

@@ -1,13 +1,23 @@
 /**
  * AlertDocumentRuntimeAdapter
  *
- * Sprint 180 — Delivers Alert Capability context to the existing
+ * Sprint 180 / Audit-3 — Delivers Alert Capability context to the existing
  * Document Repository engine.
+ *
+ * Audit-2/3: when a configurationDescriptor is present, the adapter derives
+ * status/priority/message from the descriptor rules for the
+ * documentRepository source. Existing engines remain untouched.
  *
  * Integration ONLY. Never creates documents or alert-specific fields.
  */
 
 export const DOCUMENT_CONSUMER_KEY = 'documentRepository';
+
+function descriptorAlertFor(request, source) {
+  const descriptor = request?.configurationDescriptor;
+  const alerts = descriptor && Array.isArray(descriptor.alerts) ? descriptor.alerts : [];
+  return alerts.find((a) => a.source === source) || alerts[0] || null;
+}
 
 export function consumeDocumentAlertContext(request) {
   if (!request) {
@@ -50,11 +60,23 @@ export function consumeDocumentAlertContext(request) {
   }
 
   const days = request.expiryInDays !== undefined ? Number(request.expiryInDays) : null;
+  const descriptorAlert = descriptorAlertFor(request, DOCUMENT_CONSUMER_KEY);
+  const expiring = days !== null && days <= 5;
+
   const alertContext = Object.freeze({
-    status: days !== null && days <= 5 ? 'expiring' : 'valid',
-    message: days !== null && days <= 5
-      ? `Faltan ${days} días para el vencimiento`
-      : 'Documento dentro de vigencia',
+    status: descriptorAlert
+      ? descriptorAlert.priority === 'critical' ? 'critical' : expiring ? 'expiring' : 'attention'
+      : expiring ? 'expiring' : 'valid',
+    message: descriptorAlert
+      ? descriptorAlert.message
+      : expiring ? `Faltan ${days} días para el vencimiento` : 'Documento dentro de vigencia',
+    priority: descriptorAlert ? descriptorAlert.priority : null,
+    priorityLabel: descriptorAlert ? descriptorAlert.priorityLabel : null,
+    icon: descriptorAlert && descriptorAlert.priority === 'critical'
+      ? 'AlertOctagon'
+      : descriptorAlert
+        ? 'AlertTriangle'
+        : 'Bell',
     action: 'view-detail',
   });
 

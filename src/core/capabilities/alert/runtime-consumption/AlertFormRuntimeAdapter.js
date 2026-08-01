@@ -1,13 +1,23 @@
 /**
  * AlertFormRuntimeAdapter
  *
- * Sprint 180 — Delivers Alert Capability context to the existing
+ * Sprint 180 / Audit-3 — Delivers Alert Capability context to the existing
  * Dynamic Forms engine.
+ *
+ * Audit-2/3: when a configurationDescriptor is present, the adapter derives
+ * status/priority/message/icon from the descriptor rules for the
+ * dynamicForms source. Existing engines remain untouched.
  *
  * Integration ONLY. Never creates forms or alert-specific fields.
  */
 
 export const FORM_CONSUMER_KEY = 'dynamicForms';
+
+function descriptorAlertFor(request, source) {
+  const descriptor = request?.configurationDescriptor;
+  const alerts = descriptor && Array.isArray(descriptor.alerts) ? descriptor.alerts : [];
+  return alerts.find((a) => a.source === source) || alerts[0] || null;
+}
 
 export function consumeFormAlertContext(request) {
   if (!request) {
@@ -49,11 +59,24 @@ export function consumeFormAlertContext(request) {
     });
   }
 
+  const descriptorAlert = descriptorAlertFor(request, FORM_CONSUMER_KEY);
+
   const alertContext = Object.freeze({
-    status: request.condition === 'critical' ? 'critical' : 'attention',
-    message: request.condition === 'critical'
-      ? 'Condición crítica detectada'
-      : 'Condición que requiere atención',
+    status: descriptorAlert
+      ? descriptorAlert.priority === 'critical' ? 'critical' : 'attention'
+      : request.condition === 'critical' ? 'critical' : 'attention',
+    message: descriptorAlert
+      ? descriptorAlert.message
+      : request.condition === 'critical'
+        ? 'Condición crítica detectada'
+        : 'Condición que requiere atención',
+    priority: descriptorAlert ? descriptorAlert.priority : null,
+    priorityLabel: descriptorAlert ? descriptorAlert.priorityLabel : null,
+    icon: descriptorAlert && descriptorAlert.priority === 'critical'
+      ? 'AlertOctagon'
+      : descriptorAlert
+        ? 'AlertTriangle'
+        : 'Bell',
     action: 'view-detail',
   });
 
