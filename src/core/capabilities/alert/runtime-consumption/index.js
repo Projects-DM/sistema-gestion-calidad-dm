@@ -13,6 +13,7 @@ import { consumeFormAlertContext, FORM_CONSUMER_KEY } from './AlertFormRuntimeAd
 import { consumeRecordAlertContext, RECORD_CONSUMER_KEY } from './AlertRecordRuntimeAdapter.js';
 import { consumeDocumentAlertContext, DOCUMENT_CONSUMER_KEY } from './AlertDocumentRuntimeAdapter.js';
 import { provideAlertDashboardData, DASHBOARD_CONSUMER_KEY } from './AlertDashboardDataProvider.js';
+import { buildAlertConfigurationDescriptor } from '../operational-configuration/AlertConfigurationDescriptor.js';
 import { RUNTIME_CONSUMPTION_BOUNDARY } from './RuntimeConsumptionBoundary.js';
 
 export { AlertRuntimeConsumptionContract, RUNTIME_CONSUMPTION_VERSION } from './AlertRuntimeConsumptionContract.js';
@@ -66,11 +67,16 @@ export function requestRuntimeConsumption(request) {
     });
   }
 
+  const configurationDescriptor = buildAlertConfigurationDescriptor(request);
+  const consumptionRequest = request.configurationDescriptor
+    ? request
+    : Object.freeze({ ...request, configurationDescriptor });
+
   const engineConsumption = Object.freeze({
-    dynamicForms: consumeFormAlertContext(request),
-    dynamicRecords: consumeRecordAlertContext(request),
-    documentRepository: consumeDocumentAlertContext(request),
-    dashboard: provideAlertDashboardData(request),
+    dynamicForms: consumeFormAlertContext(consumptionRequest),
+    dynamicRecords: consumeRecordAlertContext(consumptionRequest),
+    documentRepository: consumeDocumentAlertContext(consumptionRequest),
+    dashboard: provideAlertDashboardData(consumptionRequest),
   });
 
   const consumed = Object.values(engineConsumption).every((e) => e.consumed === true);
@@ -82,6 +88,7 @@ export function requestRuntimeConsumption(request) {
     consumed,
     module: request.moduleId || request.module || null,
     consumers: resolution.consumers,
+    configurationDescriptor,
     engines: engineConsumption,
     executionEnabled: false,
     executionBlocked: executionRequested,

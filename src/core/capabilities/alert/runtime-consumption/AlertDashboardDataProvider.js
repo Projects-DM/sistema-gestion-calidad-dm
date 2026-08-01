@@ -1,8 +1,11 @@
 /**
  * AlertDashboardDataProvider
  *
- * Sprint 180 — Delivers consolidated alert metrics to the existing
- * Dashboard engine.
+ * Sprint 180 / Audit-4 — Delivers consolidated alert metrics to the
+ * existing Dashboard engine.
+ *
+ * Audit-4: the existing Dashboard reuses this provider. It NEVER creates
+ * a parallel Alert Dashboard and NEVER administers configurations.
  *
  * Provider ONLY. Never creates a dashboard.
  */
@@ -15,6 +18,24 @@ export const EMPTY_ALERT_METRICS = Object.freeze({
   expiringDocuments: 0,
   pendingActions: 0,
 });
+
+function deriveMetricsFromDescriptor(request) {
+  const descriptor = request?.configurationDescriptor;
+  const alerts = descriptor && Array.isArray(descriptor.alerts) ? descriptor.alerts : [];
+  if (alerts.length === 0) return null;
+
+  const activeAlerts = alerts.filter((a) => a.active !== false).length;
+  const criticalAlerts = alerts.filter((a) => a.priority === 'critical' || a.priority === 'high').length;
+  const expiringDocuments = alerts.filter((a) => a.source === 'documentRepository').length;
+  const pendingActions = alerts.filter((a) => a.source === 'dynamicRecords').length;
+
+  return Object.freeze({
+    activeAlerts,
+    criticalAlerts,
+    expiringDocuments,
+    pendingActions,
+  });
+}
 
 export function provideAlertDashboardData(request) {
   if (!request) {
@@ -59,7 +80,7 @@ export function provideAlertDashboardData(request) {
     });
   }
 
-  const metrics = Object.freeze({
+  const metrics = deriveMetricsFromDescriptor(request) || Object.freeze({
     activeAlerts: Number(request.activeAlerts ?? 0),
     criticalAlerts: Number(request.criticalAlerts ?? 0),
     expiringDocuments: Number(request.expiringDocuments ?? 0),

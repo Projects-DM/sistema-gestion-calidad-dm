@@ -1,8 +1,14 @@
 /**
  * AlertEnterpriseActivationContract
  *
- * Sprint 179 — Defines the contract for Enterprise Capability Activation
- * and Operational Validation against the real SGC-DM runtime pipeline.
+ * Sprint 179 / Audit-1 (SSOT) — Defines the contract for Enterprise
+ * Capability Activation and Operational Validation against the real
+ * SGC-DM runtime pipeline.
+ *
+ * Sprint 180-R / Audit-1: the capability is EXPERIENCE-ONLY. The only
+ * activation target is the operational experience. No capability package
+ * is registered (single configuration entry via Experiencias Operacionales
+ * → Alert Monitoring).
  *
  * Activation contract. Never executes alerts, never processes events,
  * never creates storage.
@@ -17,7 +23,6 @@ export const AlertEnterpriseActivationContract = Object.freeze({
   activationMode: 'controlled',
   executionEnabled: false,
   supportedTargets: Object.freeze([
-    'capability-package',
     'operational-experience',
   ]),
 });
