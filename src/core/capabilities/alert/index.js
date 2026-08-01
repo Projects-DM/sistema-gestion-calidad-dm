@@ -94,6 +94,9 @@ import { EXPERIENCE_BOUNDARY } from './experience-registration/ExperienceBoundar
 import { AlertExperienceExposureContract } from './experience-exposure/AlertExperienceExposureContract.js';
 import { requestExperienceExposure } from './experience-exposure/index.js';
 import { EXPERIENCE_EXPOSURE_BOUNDARY } from './experience-exposure/ExperienceExposureBoundary.js';
+import { AlertRuntimeBindingContract } from './runtime-binding/AlertRuntimeBindingContract.js';
+import { requestRuntimeBinding } from './runtime-binding/index.js';
+import { RUNTIME_BINDING_BOUNDARY } from './runtime-binding/RuntimeBindingBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -168,6 +171,8 @@ export const AlertCapability = Object.freeze({
   experienceBoundary: EXPERIENCE_BOUNDARY,
   experienceExposure: requestExperienceExposure,
   experienceExposureBoundary: EXPERIENCE_EXPOSURE_BOUNDARY,
+  runtimeBinding: requestRuntimeBinding,
+  runtimeBindingBoundary: RUNTIME_BINDING_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -197,6 +202,7 @@ export const AlertCapability = Object.freeze({
     responsePreparation: ResponsePreparationContract,
     renderer: AlertCapabilityRendererContract,
     experienceExposure: AlertExperienceExposureContract,
+    runtimeBinding: AlertRuntimeBindingContract,
     validator: ContractValidator,
   }),
 });
