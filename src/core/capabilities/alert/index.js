@@ -32,6 +32,9 @@ import { DecisionContextContract } from './decisions/DecisionContextContract.js'
 import { POLICY_COMPATIBILITY } from './policies/PolicyCompatibility.js';
 import { POLICY_BOUNDARY } from './policies/PolicyBoundary.js';
 import { PolicyEvaluationContract } from './policies/PolicyEvaluationContract.js';
+import { RESPONSE_COMPATIBILITY } from './responses/ResponseCompatibility.js';
+import { RESPONSE_BOUNDARY } from './responses/ResponseBoundary.js';
+import { ResponseDefinitionContract } from './responses/ResponseDefinitionContract.js';
 import {
   CAPABILITY_CONTRACT_BOUNDARY,
   AlertContract,
@@ -59,6 +62,8 @@ export const AlertCapability = Object.freeze({
   decisionBoundary: DECISION_BOUNDARY,
   policyCompatibility: POLICY_COMPATIBILITY,
   policyBoundary: POLICY_BOUNDARY,
+  responseCompatibility: RESPONSE_COMPATIBILITY,
+  responseBoundary: RESPONSE_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
   contractBoundary: CAPABILITY_CONTRACT_BOUNDARY,
   contracts: Object.freeze({
@@ -71,6 +76,7 @@ export const AlertCapability = Object.freeze({
     event: EventConsumptionContract,
     decisionContext: DecisionContextContract,
     policyEvaluation: PolicyEvaluationContract,
+    responseDefinition: ResponseDefinitionContract,
     validator: ContractValidator,
   }),
 });
