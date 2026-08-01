@@ -83,6 +83,10 @@ import { requestResponsePreparation } from './response-preparation/index.js';
 import { RESPONSE_PREPARATION_BOUNDARY } from './response-preparation/ResponsePreparationBoundary.js';
 import { requestOperationalFlow } from './operational-flow/index.js';
 import { OPERATIONAL_BOUNDARY } from './operational-flow/OperationalBoundary.js';
+import { AlertCapabilityRendererContract } from './rendering/AlertCapabilityRendererContract.js';
+import { buildRuntimeDescriptor } from './rendering/AlertRuntimeDescriptor.js';
+import { requestRendering } from './rendering/index.js';
+import { ALERT_RENDERING_BOUNDARY } from './rendering/AlertRenderingBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -148,6 +152,9 @@ export const AlertCapability = Object.freeze({
   responsePreparationBoundary: RESPONSE_PREPARATION_BOUNDARY,
   operationalFlow: requestOperationalFlow,
   operationalBoundary: OPERATIONAL_BOUNDARY,
+  rendering: requestRendering,
+  runtimeDescriptor: buildRuntimeDescriptor,
+  renderingBoundary: ALERT_RENDERING_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -175,6 +182,7 @@ export const AlertCapability = Object.freeze({
     decisionContext: DecisionContextContractV2,
     policyEvaluation: PolicyEvaluationContractV2,
     responsePreparation: ResponsePreparationContract,
+    renderer: AlertCapabilityRendererContract,
     validator: ContractValidator,
   }),
 });
