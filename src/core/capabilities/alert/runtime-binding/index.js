@@ -18,13 +18,17 @@ export { resolveRuntimeBinding } from './AlertRuntimeBindingResolver.js';
 export { RUNTIME_BINDING_BOUNDARY } from './RuntimeBindingBoundary.js';
 
 export function requestRuntimeBinding(request) {
+  const executionRequested = !!(request && (request.executionRequested === true || request.execute === true));
+
   if (!request) {
     return Object.freeze({
       module: null,
       runtimeCapabilities: [],
       runtimeAvailable: false,
+      available: false,
       executionEnabled: false,
       executionBlocked: false,
+      blocked: false,
       rejected: true,
       reason: 'missing-capability-context',
     });
@@ -38,8 +42,10 @@ export function requestRuntimeBinding(request) {
       module: request.moduleId || request.module || null,
       runtimeCapabilities: [],
       runtimeAvailable: false,
+      available: false,
       executionEnabled: false,
-      executionBlocked: request.executionRequested === true,
+      executionBlocked: executionRequested,
+      blocked: executionRequested,
       rejected: true,
       reason: resolution.reasons[0],
     });
@@ -60,10 +66,12 @@ export function requestRuntimeBinding(request) {
     module: request.moduleId || request.module || null,
     runtimeCapabilities,
     runtimeAvailable: true,
+    available: true,
     runtimeEnabled: true,
     allowed: true,
     executionEnabled: false,
-    executionBlocked: request.executionRequested === true,
+    executionBlocked: executionRequested,
+    blocked: executionRequested,
     rejected: false,
     context,
     boundary: RUNTIME_BINDING_BOUNDARY,

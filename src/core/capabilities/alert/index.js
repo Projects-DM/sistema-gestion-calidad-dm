@@ -97,6 +97,12 @@ import { EXPERIENCE_EXPOSURE_BOUNDARY } from './experience-exposure/ExperienceEx
 import { AlertRuntimeBindingContract } from './runtime-binding/AlertRuntimeBindingContract.js';
 import { requestRuntimeBinding } from './runtime-binding/index.js';
 import { RUNTIME_BINDING_BOUNDARY } from './runtime-binding/RuntimeBindingBoundary.js';
+import { AlertEnterpriseActivationContract } from './enterprise-activation/AlertEnterpriseActivationContract.js';
+import { requestEnterpriseActivation } from './enterprise-activation/index.js';
+import { ENTERPRISE_ACTIVATION_BOUNDARY } from './enterprise-activation/EnterpriseActivationBoundary.js';
+import { AlertRuntimeConsumptionContract } from './runtime-consumption/AlertRuntimeConsumptionContract.js';
+import { requestRuntimeConsumption } from './runtime-consumption/index.js';
+import { RUNTIME_CONSUMPTION_BOUNDARY } from './runtime-consumption/RuntimeConsumptionBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -173,6 +179,10 @@ export const AlertCapability = Object.freeze({
   experienceExposureBoundary: EXPERIENCE_EXPOSURE_BOUNDARY,
   runtimeBinding: requestRuntimeBinding,
   runtimeBindingBoundary: RUNTIME_BINDING_BOUNDARY,
+  enterpriseActivation: requestEnterpriseActivation,
+  enterpriseActivationBoundary: ENTERPRISE_ACTIVATION_BOUNDARY,
+  runtimeConsumption: requestRuntimeConsumption,
+  runtimeConsumptionBoundary: RUNTIME_CONSUMPTION_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -203,6 +213,8 @@ export const AlertCapability = Object.freeze({
     renderer: AlertCapabilityRendererContract,
     experienceExposure: AlertExperienceExposureContract,
     runtimeBinding: AlertRuntimeBindingContract,
+    enterpriseActivation: AlertEnterpriseActivationContract,
+    runtimeConsumption: AlertRuntimeConsumptionContract,
     validator: ContractValidator,
   }),
 });
