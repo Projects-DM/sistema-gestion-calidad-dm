@@ -57,9 +57,12 @@ export const ALERT_OPERATIONAL_EXPERIENCE = Object.freeze({
   experienceKey: 'alert-monitoring',
   metadata: {
     name: 'Alertas',
-    description: 'Monitoreo operacional de alertas del módulo.',
+    description:
+      'Operational Configuration Experience. Produce el Alert Configuration Descriptor que consumen los motores existentes. No es una experiencia visual (renderable: false).',
     icon: 'Bell',
     version: '1.0',
+    role: 'configuration',
+    renderable: false,
   },
   capabilities: {
     supportsImport: false,

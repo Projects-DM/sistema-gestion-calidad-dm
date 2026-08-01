@@ -103,6 +103,10 @@ import { ENTERPRISE_ACTIVATION_BOUNDARY } from './enterprise-activation/Enterpri
 import { AlertRuntimeConsumptionContract } from './runtime-consumption/AlertRuntimeConsumptionContract.js';
 import { requestRuntimeConsumption } from './runtime-consumption/index.js';
 import { RUNTIME_CONSUMPTION_BOUNDARY } from './runtime-consumption/RuntimeConsumptionBoundary.js';
+import { AlertConfigurationContract } from './operational-configuration/AlertConfigurationContract.js';
+import { requestOperationalConfiguration } from './operational-configuration/index.js';
+import { buildAlertConfigurationDescriptor } from './operational-configuration/AlertConfigurationDescriptor.js';
+import { OPERATIONAL_CONFIGURATION_BOUNDARY } from './operational-configuration/OperationalConfigurationBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -183,6 +187,9 @@ export const AlertCapability = Object.freeze({
   enterpriseActivationBoundary: ENTERPRISE_ACTIVATION_BOUNDARY,
   runtimeConsumption: requestRuntimeConsumption,
   runtimeConsumptionBoundary: RUNTIME_CONSUMPTION_BOUNDARY,
+  operationalConfiguration: requestOperationalConfiguration,
+  configurationDescriptor: buildAlertConfigurationDescriptor,
+  operationalConfigurationBoundary: OPERATIONAL_CONFIGURATION_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -215,6 +222,7 @@ export const AlertCapability = Object.freeze({
     runtimeBinding: AlertRuntimeBindingContract,
     enterpriseActivation: AlertEnterpriseActivationContract,
     runtimeConsumption: AlertRuntimeConsumptionContract,
+    operationalConfiguration: AlertConfigurationContract,
     validator: ContractValidator,
   }),
 });
