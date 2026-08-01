@@ -19,7 +19,7 @@ export const ALERT_EXPERIENCE_DESCRIPTOR = Object.freeze({
     'dynamicRecords',
     'documentRepository',
   ]),
-  enabled: false,
+  enabled: true,
   executionEnabled: false,
 });
 

@@ -91,6 +91,9 @@ import { requestOperationalRendering } from './operational-rendering/index.js';
 import { OPERATIONAL_RENDERING_BOUNDARY } from './operational-rendering/OperationalRenderingBoundary.js';
 import { requestExperienceRegistration } from './experience-registration/index.js';
 import { EXPERIENCE_BOUNDARY } from './experience-registration/ExperienceBoundary.js';
+import { AlertExperienceExposureContract } from './experience-exposure/AlertExperienceExposureContract.js';
+import { requestExperienceExposure } from './experience-exposure/index.js';
+import { EXPERIENCE_EXPOSURE_BOUNDARY } from './experience-exposure/ExperienceExposureBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -163,6 +166,8 @@ export const AlertCapability = Object.freeze({
   operationalRenderingBoundary: OPERATIONAL_RENDERING_BOUNDARY,
   experienceRegistration: requestExperienceRegistration,
   experienceBoundary: EXPERIENCE_BOUNDARY,
+  experienceExposure: requestExperienceExposure,
+  experienceExposureBoundary: EXPERIENCE_EXPOSURE_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -191,6 +196,7 @@ export const AlertCapability = Object.freeze({
     policyEvaluation: PolicyEvaluationContractV2,
     responsePreparation: ResponsePreparationContract,
     renderer: AlertCapabilityRendererContract,
+    experienceExposure: AlertExperienceExposureContract,
     validator: ContractValidator,
   }),
 });

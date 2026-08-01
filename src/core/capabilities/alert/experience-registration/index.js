@@ -24,10 +24,9 @@ export function requestExperienceRegistration(request) {
       capabilityKey: 'alerts',
       decision: 'rejected',
       registered: false,
-      experienceAvailable: false,
+      available: false,
       assigned: false,
       resolved: false,
-      available: false,
       reasons: ['missing-experience-context'],
     });
   }
@@ -44,7 +43,7 @@ export function requestExperienceRegistration(request) {
     module: request.module || null,
     decision: valid ? 'ready' : 'rejected',
     registered: registration.registered,
-    experienceAvailable: registration.experienceAvailable,
+    available: registration.available && resolution.available,
     assigned: request.moduleAssigned === true && request.capability === 'alerts',
     resolved: resolution.resolved,
     available: resolution.available,
