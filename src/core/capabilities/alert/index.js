@@ -63,6 +63,9 @@ import { ControlledRegistryService, requestRegistryRegistration } from './regist
 import { validateRegistryRegistration } from './registry-runtime/RegistryRegistrationValidator.js';
 import { decideRegistryRegistration } from './registry-runtime/RegistryDecision.js';
 import { REGISTRY_RUNTIME_BOUNDARY } from './registry-runtime/RegistryRuntimeBoundary.js';
+import { RuntimeExposureContract } from './runtime-exposure/RuntimeExposureContract.js';
+import { requestRuntimeExposure } from './runtime-exposure/index.js';
+import { RUNTIME_EXPOSURE_BOUNDARY } from './runtime-exposure/RuntimeExposureBoundary.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -113,6 +116,8 @@ export const AlertCapability = Object.freeze({
   activationRuntimeBoundary: ACTIVATION_RUNTIME_BOUNDARY,
   registryRuntime: ControlledRegistryService,
   registryRuntimeBoundary: REGISTRY_RUNTIME_BOUNDARY,
+  runtimeExposure: requestRuntimeExposure,
+  runtimeExposureBoundary: RUNTIME_EXPOSURE_BOUNDARY,
   registryRegistrationCompatibility: REGISTRY_REGISTRATION_COMPATIBILITY,
   registryBoundary: REGISTRY_BOUNDARY,
   domains: Object.freeze(DOMAIN_BOUNDARIES),
@@ -135,6 +140,7 @@ export const AlertCapability = Object.freeze({
     integration: IntegrationContract,
     platformDependency: PlatformDependencyContract,
     architectureCertification: ArchitectureCertificationContract,
+    runtimeExposure: RuntimeExposureContract,
     validator: ContractValidator,
   }),
 });
