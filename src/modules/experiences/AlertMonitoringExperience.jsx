@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, AlertTriangle } from 'lucide-react';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
+import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteResolver.js';
 
 /**
  * AlertMonitoringExperience
  *
  * Sprint 187 — Operational Navigation Consolidation.
+ * Sprint 188 — Route Resolution & Existing Navigation Binding Certification.
  *
  * Consumes EXCLUSIVELY the Workspace ViewModel produced by
  * AlertCapability.workspace():
@@ -22,18 +24,34 @@ import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
  * Runtime directly, NEVER opens Alert Monitoring again, NEVER
  * administers CRUD.
  *
+ * Since Sprint 188 the UI does NOT build routes (`/modulo/${slug}` is
+ * forbidden). Every action asks the ExistingModuleRouteResolver for the
+ * `canonicalRoute` derived from the routes ACTUALLY registered in the
+ * certified Router (src/App.jsx). This eliminates any dependency on
+ * assumed routes and the "No routes matched location /modulo/calidad"
+ * error.
+ *
  * Documents NEVER open directly. "Ir al documento" navigates to the
  * existing Document Repository (tab) carrying the selectedDocumentId in
  * location.state so the document is selected automatically.
  */
 
 const ACTION_ROUTE = Object.freeze({
-  'open-form': (moduleSlug, action) => `/modulo/${moduleSlug}/${action.resourceId}`,
-  'open-record': (moduleSlug) => ({ path: `/modulo/${moduleSlug}`, state: { tab: 'records' } }),
-  'go-to-document': (moduleSlug, action) => ({
-    path: `/modulo/${moduleSlug}`,
-    state: { tab: action.tab || 'repository', selectedDocumentId: action.documentId },
-  }),
+  'open-form': (moduleSlug, action) => {
+    const resolved = resolveActionRoute('open-form', { moduleSlug, resourceId: action.resourceId });
+    return resolved.canonicalRoute;
+  },
+  'open-record': (moduleSlug) => {
+    const resolved = resolveActionRoute('open-record', { moduleSlug });
+    return { path: resolved.canonicalRoute, state: { tab: 'records' } };
+  },
+  'go-to-document': (moduleSlug, action) => {
+    const resolved = resolveActionRoute('go-to-document', { moduleSlug });
+    return {
+      path: resolved.canonicalRoute,
+      state: { tab: action.tab || 'repository', selectedDocumentId: action.documentId },
+    };
+  },
 });
 
 function CardButton({ card, moduleSlug }) {
