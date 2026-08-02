@@ -16,12 +16,15 @@ import {
   Briefcase,
   Settings,
   Wrench,
+  Bell,
 } from 'lucide-react';
 import { documentRepositoriesService } from '../../services/documentRepositoriesService';
 import { ModuleAdministrationApplicationService } from '../../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { onModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
+import AlertConfigurationPanel from '../../modules/experiences/AlertConfigurationPanel.jsx';
+import { repositoryAlertConfigurationPersistence } from '../../modules/experiences/alertConfigurationPersistence.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -147,6 +150,8 @@ export default function DocumentRepositoriesAdmin() {
     sort_order: 0,
     is_active: true,
   });
+
+  const [alertConfigTarget, setAlertConfigTarget] = useState(null);
 
   const repo = useMemo(() => repositories.find(r => r.id === activeRepositoryId) || null, [repositories, activeRepositoryId]);
 
@@ -452,6 +457,13 @@ export default function DocumentRepositoriesAdmin() {
                             </div>
                           </div>
                           <div className="flex gap-2">
+                            <button
+                              className="p-1.5 text-amber-500 hover:text-amber-600 bg-white border border-gray-200 rounded-lg"
+                              onClick={(e) => { e.stopPropagation(); setAlertConfigTarget(r); }}
+                              title="Configurar alertas del repositorio"
+                            >
+                              <Bell className="w-4 h-4" />
+                            </button>
                             <button
                               className="p-1.5 text-gray-400 hover:text-primary bg-white border border-gray-200 rounded-lg"
                               onClick={(e) => { e.stopPropagation(); openEditRepo(r); }}
@@ -795,6 +807,39 @@ export default function DocumentRepositoriesAdmin() {
             </button>
           </div>
         </form>
+      </ModalShell>
+
+      {/* Modal: Alert Configuration */}
+      <ModalShell
+        open={!!alertConfigTarget}
+        title={alertConfigTarget ? `Alertas: ${alertConfigTarget.name}` : 'Alertas'}
+        icon={Bell}
+        saving={saving}
+        onClose={() => setAlertConfigTarget(null)}
+      >
+        <div className="p-6">
+          {alertConfigTarget && (
+            <AlertConfigurationPanel
+              resourceKind="documentRepository"
+              resource={alertConfigTarget}
+              persistence={repositoryAlertConfigurationPersistence}
+              onSaved={() => {
+                const repoRow = { ...alertConfigTarget };
+                setAlertConfigTarget(null);
+                documentRepositoriesService
+                  .getRepositoryById(repoRow.id)
+                  .then((fresh) => {
+                    if (fresh) {
+                      setRepositories((prev) =>
+                        prev.map((r) => (String(r.id) === String(fresh.id) ? fresh : r)),
+                      );
+                    }
+                  })
+                  .catch(() => {});
+              }}
+            />
+          )}
+        </div>
       </ModalShell>
     </div>
   );
