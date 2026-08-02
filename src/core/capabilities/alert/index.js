@@ -94,7 +94,7 @@ import { EXPERIENCE_BOUNDARY } from './experience-registration/ExperienceBoundar
 import { AlertExperienceExposureContract } from './experience-exposure/AlertExperienceExposureContract.js';
 import { requestExperienceExposure } from './experience-exposure/index.js';
 import { EXPERIENCE_EXPOSURE_BOUNDARY } from './experience-exposure/ExperienceExposureBoundary.js';
-import { AlertRuntimeBindingContract } from './runtime-binding/AlertRuntimeBindingContract.js';
+import { AlertRuntimeBindingContract } from './runtime-binding/index.js';
 import { requestRuntimeBinding } from './runtime-binding/index.js';
 import { RUNTIME_BINDING_BOUNDARY } from './runtime-binding/RuntimeBindingBoundary.js';
 import { AlertEnterpriseActivationContract } from './enterprise-activation/AlertEnterpriseActivationContract.js';

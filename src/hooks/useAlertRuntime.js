@@ -1,50 +1,139 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import AlertCapability from '../core/capabilities/alert/index.js';
 import { provideAlertDashboardData } from '../core/capabilities/alert/runtime-consumption/AlertDashboardDataProvider.js';
+import { dynamicService } from '../services/dynamicService.js';
+import { documentsService } from '../services/documentsService.js';
 
 /**
- * DEFAULT_ALERT_RULES
+ * useAlertRuntime — Sprint 185 (Runtime Binding Finalization)
  *
- * Sprint 184 — Operational UI Consumption.
+ * The ONLY UI consumption bridge for the Alert Capability.
  *
- * Alert configuration consumed by the existing UI surfaces. There is no
- * persisted alert-rules store in the app; these representative rules
- * stand in for the module's operational alert configuration and flow
- * through the certified Runtime surfaces exactly like real rules would.
+ * The UI NEVER computes rules, NEVER consults DEFAULT_ALERT_RULES,
+ * NEVER queries Runtime internals and NEVER invents alert data.
  *
- * Single source for ALL UI surfaces so the whole workspace shows the
- * same runtime truth (SSOT). The UI never calculates — it consumes.
+ * Flow:
+ *   1. Collect the module's EXISTING operational resources via the
+ *      existing services (forms, records, documents).
+ *   2. Bind them through `AlertCapability.runtimeBinding` → Runtime
+ *      Context derived 100% from existing resources.
+ *   3. Derive the operational configuration rules from the bound
+ *      alerts + real resource data (record status, form engine_type,
+ *      real resource names). Nothing is invented.
+ *   4. Consume ONLY the certified facade surfaces:
+ *        runtimeConsumption → alertContext per existing engine
+ *        runtimeVisibility   → badges for existing renderers
+ *        workspace           → Operational Workspace ViewModel
+ *        AlertDashboardDataProvider → metrics for the existing Dashboard
  */
 
-export const DEFAULT_ALERT_RULES = Object.freeze([
-  {
-    source: 'dynamicForms',
-    formId: 'temperature-control',
-    condition: { field: 'temperatura', operator: '>', value: 5 },
-    priority: 'high',
-    priorityLabel: 'Alta',
-    message: 'Temperatura fuera del rango permitido',
-    active: true,
-  },
-  {
-    source: 'dynamicRecords',
-    formId: 'mantenimiento',
-    condition: { field: 'fecha', operator: '<=', value: 30 },
-    priority: 'critical',
-    priorityLabel: 'Crítica',
-    message: 'Registro de temperatura superior al límite',
-    active: true,
-  },
-  {
-    source: 'documentRepository',
-    documentType: 'poe-limpieza',
-    condition: { field: 'fechaVencimiento', operator: '<=', value: 5 },
-    priority: 'medium',
-    priorityLabel: 'Media',
-    message: 'Documento próximo a vencer',
-    active: true,
-  },
-]);
+function safeFetch(promise) {
+  return Promise.resolve()
+    .then(() => promise)
+    .catch((err) => {
+      console.error('[useAlertRuntime] collect existing resource failed:', err?.message || err);
+      return [];
+    });
+}
+
+async function collectExistingResources({ moduleId, module, moduleSlug }) {
+  const slug = moduleSlug || module || null;
+
+  let resolvedModuleId = moduleId;
+  if (!resolvedModuleId && slug) {
+    const mod = await safeFetch(dynamicService.getModuleBySlug(slug));
+    resolvedModuleId = mod?.id ?? null;
+  }
+
+  // Single-module context: collect that module's existing resources.
+  if (resolvedModuleId || slug) {
+    const [forms, records, documents] = await Promise.all([
+      resolvedModuleId ? safeFetch(dynamicService.getFormsByModule(resolvedModuleId)) : Promise.resolve([]),
+      resolvedModuleId ? safeFetch(dynamicService.getModuleResponses(resolvedModuleId)) : Promise.resolve([]),
+      slug ? safeFetch(documentsService.getRecords(slug)) : Promise.resolve([]),
+    ]);
+    return { forms, records, documents };
+  }
+
+  // Global context (Dashboard): aggregate the existing resources across
+  // all runtime modules so the dashboard only counts existing Runtime.
+  const modules = await safeFetch(dynamicService.getRuntimeModules());
+  const results = await Promise.all(
+    (modules || []).map((mod) =>
+      Promise.all([
+        safeFetch(dynamicService.getFormsByModule(mod.id)),
+        safeFetch(dynamicService.getModuleResponses(mod.id)),
+        safeFetch(documentsService.getRecords(mod.slug)),
+      ]).then(([forms, records, documents]) => ({ forms, records, documents })),
+    ),
+  );
+
+  return {
+    forms: results.flatMap((r) => r.forms),
+    records: results.flatMap((r) => r.records),
+    documents: results.flatMap((r) => r.documents),
+  };
+}
+
+/**
+ * Derives the operational configuration rules from the Runtime Binding.
+ *
+ * Every priority / priorityLabel / message is DERIVED from the real
+ * existing resource data:
+ *   - record status computed by the collector (critico → critical,
+ *     advertencia → high)
+ *   - form engine_type (BaseMediciones → high, otherwise medium)
+ *   - real resource names as messages
+ *
+ * The Runtime Binding itself never produces priority/message/status —
+ * those belong to the existing Runtime.
+ */
+export function deriveRulesFromBinding(binding, existing) {
+  if (!binding?.boundAlerts || !Array.isArray(binding.boundAlerts)) return [];
+
+  return binding.boundAlerts.map((alert) => {
+    if (alert.source === 'dynamicForms') {
+      const form = (existing?.forms || []).find((f) => String(f.id) === String(alert.resourceId));
+      const priority = form?.engine_type === 'BaseMediciones' ? 'high' : 'medium';
+      return {
+        source: 'dynamicForms',
+        formId: alert.resource,
+        condition: alert.condition,
+        priority,
+        priorityLabel: priority === 'high' ? 'Alta' : 'Media',
+        message: form?.name ? `Formulario ${form.name}` : `Formulario ${alert.resource}`,
+        active: true,
+      };
+    }
+
+    if (alert.source === 'dynamicRecords') {
+      const record = (binding.existing?.records || []).find((r) => String(r.id) === String(alert.resourceId));
+      const status = record?.status || 'advertencia';
+      const priority = status === 'critico' ? 'critical' : 'high';
+      const issues = record?.criticalIssues?.length ? record.criticalIssues.join('; ') : null;
+      return {
+        source: 'dynamicRecords',
+        recordType: alert.resource,
+        condition: alert.condition,
+        priority,
+        priorityLabel: priority === 'critical' ? 'Crítica' : 'Alta',
+        message: issues || `Registro ${record?.formName || alert.resource} requiere atención`,
+        active: true,
+      };
+    }
+
+    const doc = (existing?.documents || []).find((d) => String(d.id) === String(alert.resourceId));
+    return {
+      source: 'documentRepository',
+      documentType: alert.resource,
+      condition: alert.condition,
+      priority: 'medium',
+      priorityLabel: 'Media',
+      message: doc?.name ? `Documento ${doc.name} en repositorio` : `Documento ${alert.resource}`,
+      active: true,
+    };
+  });
+}
 
 function alertsFromDescriptor(descriptor, module) {
   if (!descriptor || !Array.isArray(descriptor.alerts)) return [];
@@ -67,44 +156,58 @@ function alertsFromDescriptor(descriptor, module) {
   });
 }
 
-/**
- * useAlertRuntime
- *
- * The ONLY UI consumption bridge for the Alert Capability.
- *
- * Consumes exclusively the certified facade surfaces:
- *   runtimeConsumption → alertContext per existing engine
- *   runtimeVisibility   → badges for existing renderers
- *   workspace           → Operational Workspace ViewModel + Action Descriptors
- *   AlertDashboardDataProvider → metrics for the existing Dashboard
- *
- * The UI NEVER computes, NEVER consults rules, NEVER queries Runtime
- * internals, NEVER creates navigation. It renders what these surfaces
- * return.
- */
-export function useAlertRuntime({ moduleId, module, moduleSlug, rules = DEFAULT_ALERT_RULES }) {
+export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
+  const [existing, setExisting] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    collectExistingResources({ moduleId, module, moduleSlug }).then((data) => {
+      if (cancelled) return;
+      setExisting(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [moduleId, module, moduleSlug]);
+
   const base = useMemo(
     () => ({ capability: 'alerts', moduleAssigned: true, moduleId, module, moduleSlug }),
     [moduleId, module, moduleSlug],
   );
-  const rulesKey = JSON.stringify(rules);
 
-  const consumption = useMemo(
-    () => AlertCapability.runtimeConsumption({ ...base, rules }),
-    [base, rulesKey],
-  );
+  const binding = useMemo(() => {
+    if (!existing) return null;
+    return AlertCapability.runtimeBinding({ ...base, existing });
+  }, [base, existing]);
+
+  const rules = useMemo(() => {
+    if (!binding) return [];
+    return deriveRulesFromBinding(binding, existing);
+  }, [binding, existing]);
+
+  const consumption = useMemo(() => {
+    if (!binding) return null;
+    return AlertCapability.runtimeConsumption({ ...base, rules });
+  }, [base, binding, rules]);
 
   const visibility = useMemo(() => {
     if (!consumption) return null;
+    const boundSources = new Set((binding?.boundAlerts ?? []).map((a) => a.source));
     return AlertCapability.runtimeVisibility({
       ...base,
       context: {
-        dynamicForms: consumption.engines?.dynamicForms?.alertContext ?? null,
-        dynamicRecords: consumption.engines?.dynamicRecords?.alertContext ?? null,
-        documentRepository: consumption.engines?.documentRepository?.alertContext ?? null,
+        dynamicForms: boundSources.has('dynamicForms')
+          ? (consumption.engines?.dynamicForms?.alertContext ?? null)
+          : null,
+        dynamicRecords: boundSources.has('dynamicRecords')
+          ? (consumption.engines?.dynamicRecords?.alertContext ?? null)
+          : null,
+        documentRepository: boundSources.has('documentRepository')
+          ? (consumption.engines?.documentRepository?.alertContext ?? null)
+          : null,
       },
     });
-  }, [base, consumption]);
+  }, [base, consumption, binding]);
 
   const workspace = useMemo(() => {
     if (!consumption) return null;
@@ -123,7 +226,7 @@ export function useAlertRuntime({ moduleId, module, moduleSlug, rules = DEFAULT_
     });
   }, [base, consumption]);
 
-  return { consumption, visibility, workspace, dashboard, rules };
+  return { consumption, visibility, workspace, dashboard, rules, existing, binding };
 }
 
 export default useAlertRuntime;
