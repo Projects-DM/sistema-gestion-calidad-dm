@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import AlertCapability from '../core/capabilities/alert/index.js';
 import { provideAlertDashboardData } from '../core/capabilities/alert/runtime-consumption/AlertDashboardDataProvider.js';
+import { resolveResourceAlertConfiguration, PRIORITY_LABELS } from '../core/capabilities/alert/operational-configuration/index.js';
 import { dynamicService } from '../services/dynamicService.js';
 import { documentsService } from '../services/documentsService.js';
 import { documentRepositoriesService } from '../services/documentRepositoriesService.js';
@@ -156,64 +157,135 @@ async function collectExistingResources({ moduleId, module, moduleSlug }) {
 }
 
 /**
+ * Resolves the RAW resource object that OWNS the Alert Configuration of a
+ * bound alert. The RESOURCE is always the metadata owner (SSOT, Sprint 197):
+ *   - dynamicForms        → the form
+ *   - dynamicRecords      → the form the record belongs to
+ *   - documentRepository  → the repository that hosts the document
+ *
+ * The Runtime NEVER reads the resource's alert configuration directly — it
+ * only hands the resource to the AlertConfigurationResolver (the only owner).
+ */
+function resolveResourceForAlert(alert, resources) {
+  if (!alert || !resources || typeof resources !== 'object') return null;
+
+  if (alert.source === 'dynamicForms') {
+    return (resources.forms || []).find((f) => String(f.id) === String(alert.resourceId)) || null;
+  }
+
+  if (alert.source === 'dynamicRecords') {
+    const record = (resources.records || []).find((r) => String(r.id) === String(alert.resourceId)) || null;
+    if (!record) return null;
+    const formId = record?.sgc_forms?.id ?? record?.form_id ?? record?.formId ?? null;
+    if (formId) {
+      return (resources.forms || []).find((f) => String(f.id) === String(formId)) || record;
+    }
+    return record;
+  }
+
+  if (alert.source === 'documentRepository') {
+    const doc = (resources.documents || []).find((d) => String(d.id) === String(alert.resourceId)) || null;
+    const repositoryId = doc?.repository_id ?? doc?.repositoryId ?? null;
+    if (repositoryId) {
+      const repo = (resources.repositories || []).find((r) => String(r.id) === String(repositoryId)) || null;
+      if (repo) return repo;
+    }
+    return doc || null;
+  }
+
+  return null;
+}
+
+/**
  * Derives the operational configuration rules from the Runtime Binding.
  *
- * Every priority / priorityLabel / message is DERIVED from the real
- * VISIBLE existing resource data:
- *   - record status computed by the collector (critico → critical,
- *     advertencia → high)
- *   - form engine_type (BaseMediciones → high, otherwise medium)
- *   - real resource names as messages
+ * Sprint 198 — Every configuration value comes EXCLUSIVELY from the
+ * AlertConfigurationResolver (SSOT, Sprint 197):
+ *   - enabled              → configuration.enabled; false removes the rule entirely.
+ *   - priority             → configuration.priority (NEVER derived from runtime data).
+ *   - repeatPolicy         → configuration.repeatPolicy
+ *   - automaticClose       → configuration.automaticClose
+ *   - notification         → configuration.notification
+ *   - gracePeriod          → configuration.gracePeriod
+ *   - active               → configuration.enabled (never forced)
  *
- * The Runtime Binding itself never produces priority/message/status —
- * those belong to the existing Runtime.
+ * The Runtime never knows special forms/modules, never hardcodes priorities
+ * and never writes configuration values. Only the `message` references real
+ * existing resource names (transport of identity, not configuration).
+ *
+ * @param {Object} binding Runtime Binding (boundAlerts).
+ * @param {Object} [collected] Collected/visible snapshot (message identity).
+ * @param {Object} [runtimeResources] RAW existing resources (metadata owner).
+ * @returns {Array} Derived rules.
  */
-export function deriveRulesFromBinding(binding, existing) {
+export function deriveRulesFromBinding(binding, collected, runtimeResources) {
   if (!binding?.boundAlerts || !Array.isArray(binding.boundAlerts)) return [];
 
-  return binding.boundAlerts.map((alert) => {
-    if (alert.source === 'dynamicForms') {
-      const form = (existing?.forms || []).find((f) => String(f.id) === String(alert.resourceId));
-      const priority = form?.engine_type === 'BaseMediciones' ? 'high' : 'medium';
+  const snapshot = collected || runtimeResources || {};
+  const resources = runtimeResources || snapshot;
+
+  return binding.boundAlerts
+    .map((alert) => {
+      const resource = resolveResourceForAlert(alert, resources);
+      const resolution = resolveResourceAlertConfiguration(resource);
+      const configuration = resolution.configuration;
+
+      // enabled=false → the resource produces NO rule (and therefore no
+      // descriptor, no alert, nothing reaches the Dashboard or Workspace).
+      if (configuration.enabled !== true) return null;
+
+      const priority = configuration.priority;
+      const priorityLabel = PRIORITY_LABELS[priority] || 'Media';
+      const fromConfiguration = {
+        active: configuration.enabled,
+        enabled: configuration.enabled,
+        repeatPolicy: configuration.repeatPolicy,
+        automaticClose: configuration.automaticClose,
+        notification: configuration.notification,
+        gracePeriod: configuration.gracePeriod,
+        prioritySource: resolution.source,
+      };
+
+      if (alert.source === 'dynamicForms') {
+        const form = (snapshot?.forms || []).find((f) => String(f.id) === String(alert.resourceId)) || null;
+        return {
+          source: 'dynamicForms',
+          formId: alert.resource,
+          condition: alert.condition,
+          priority,
+          priorityLabel,
+          message: form?.name ? `Formulario ${form.name}` : `Formulario ${alert.resource}`,
+          ...fromConfiguration,
+        };
+      }
+
+      if (alert.source === 'dynamicRecords') {
+        const record = (snapshot?.records || []).find((r) => String(r.id) === String(alert.resourceId)) || null;
+        const issues = record?.criticalIssues?.length ? record.criticalIssues.join('; ') : null;
+        return {
+          source: 'dynamicRecords',
+          recordType: alert.resource,
+          condition: alert.condition,
+          priority,
+          priorityLabel,
+          message: issues || `Registro ${record?.formName || alert.resource} requiere atención`,
+          ...fromConfiguration,
+        };
+      }
+
+      const doc = (snapshot?.documents || []).find((d) => String(d.id) === String(alert.resourceId)) || null;
       return {
-        source: 'dynamicForms',
-        formId: alert.resource,
+        source: 'documentRepository',
+        documentType: alert.resource,
+        documentId: doc?.id ?? doc?.type ?? alert.resourceId ?? null,
         condition: alert.condition,
         priority,
-        priorityLabel: priority === 'high' ? 'Alta' : 'Media',
-        message: form?.name ? `Formulario ${form.name}` : `Formulario ${alert.resource}`,
-        active: true,
+        priorityLabel,
+        message: doc?.name ? `Documento ${doc.name} en repositorio` : `Documento ${alert.resource}`,
+        ...fromConfiguration,
       };
-    }
-
-    if (alert.source === 'dynamicRecords') {
-      const record = (existing?.records || []).find((r) => String(r.id) === String(alert.resourceId));
-      const status = record?.status || 'advertencia';
-      const priority = status === 'critico' ? 'critical' : 'high';
-      const issues = record?.criticalIssues?.length ? record.criticalIssues.join('; ') : null;
-      return {
-        source: 'dynamicRecords',
-        recordType: alert.resource,
-        condition: alert.condition,
-        priority,
-        priorityLabel: priority === 'critical' ? 'Crítica' : 'Alta',
-        message: issues || `Registro ${record?.formName || alert.resource} requiere atención`,
-        active: true,
-      };
-    }
-
-    const doc = (existing?.documents || []).find((d) => String(d.id) === String(alert.resourceId));
-    return {
-      source: 'documentRepository',
-      documentType: alert.resource,
-      documentId: doc?.id ?? doc?.type ?? alert.resourceId ?? null,
-      condition: alert.condition,
-      priority: 'medium',
-      priorityLabel: 'Media',
-      message: doc?.name ? `Documento ${doc.name} en repositorio` : `Documento ${alert.resource}`,
-      active: true,
-    };
-  });
+    })
+    .filter(Boolean);
 }
 
 function alertsFromDescriptor(descriptor, module) {
@@ -306,8 +378,11 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
 
   const rules = useMemo(() => {
     if (!binding) return [];
-    return deriveRulesFromBinding(binding, binding.existing || visibleExisting);
-  }, [binding, visibleExisting]);
+    // Sprint 198 — deriveRulesFromBinding consumes the AlertConfigurationResolver
+    // exclusively. `existing` (RAW resources) provides the metadata owner;
+    // `binding.existing || visibleExisting` provides message identity.
+    return deriveRulesFromBinding(binding, binding.existing || visibleExisting, existing);
+  }, [binding, visibleExisting, existing]);
 
   const consumption = useMemo(() => {
     if (!binding) return null;
