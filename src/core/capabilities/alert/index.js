@@ -117,11 +117,7 @@ import { requestWorkspace } from './workspace/index.js';
 import { WORKSPACE_BOUNDARY } from './workspace/WorkspaceBoundary.js';
 import { AlertEvaluationContract } from './evaluation/AlertEvaluationContract.js';
 import { evaluateAlert, evaluateAlertSet, ALERT_EVALUATION_ENGINE } from './evaluation/AlertEvaluationEngine.js';
-import { resolveEvaluationStrategy, EVALUATION_STRATEGY_RESOLVER } from './evaluation/EvaluationStrategyResolver.js';
-import { PeriodicEvaluationStrategy, PERIODIC_STRATEGY_KEY } from './evaluation/PeriodicEvaluationStrategy.js';
-import { resolveEvaluationPolicy, EVALUATION_POLICY_RESOLVER } from './evaluation/AlertEvaluationPolicyResolver.js';
-import { RelativeRiskPolicy, RELATIVE_RISK_POLICY_KEY } from './evaluation/RelativeRiskPolicy.js';
-import { POLICY_CONTRACT } from './evaluation/AlertEvaluationPolicy.js';
+import { resolveResourceAlertConfiguration } from './operational-configuration/AlertConfigurationResolver.js';
 import { EVALUATION_BOUNDARY } from './evaluation/index.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
@@ -206,15 +202,9 @@ export const AlertCapability = Object.freeze({
   runtimeConsumption: requestRuntimeConsumption,
   runtimeConsumptionBoundary: RUNTIME_CONSUMPTION_BOUNDARY,
   evaluation: evaluateAlert,
-  evaluateAlertSet,
+  evaluateAlertCollection: evaluateAlertSet,
+  alertConfigurationResolver: resolveResourceAlertConfiguration,
   evaluationBoundary: EVALUATION_BOUNDARY,
-  evaluationStrategyResolver: resolveEvaluationStrategy,
-  evaluationStrategyResolverBoundary: EVALUATION_STRATEGY_RESOLVER,
-  periodicEvaluationStrategy: PeriodicEvaluationStrategy,
-  evaluationPolicyResolver: resolveEvaluationPolicy,
-  evaluationPolicyResolverBoundary: EVALUATION_POLICY_RESOLVER,
-  relativeRiskPolicy: RelativeRiskPolicy,
-  evaluationEngineContract: ALERT_EVALUATION_ENGINE,
   operationalConfiguration: requestOperationalConfiguration,
   configurationDescriptor: buildAlertConfigurationDescriptor,
   operationalConfigurationBoundary: OPERATIONAL_CONFIGURATION_BOUNDARY,
@@ -259,7 +249,6 @@ export const AlertCapability = Object.freeze({
     runtimeVisibility: AlertRuntimeVisibilityContract,
     workspace: AlertWorkspaceContract,
     evaluation: AlertEvaluationContract,
-    evaluationPolicy: POLICY_CONTRACT,
     validator: ContractValidator,
   }),
 });
