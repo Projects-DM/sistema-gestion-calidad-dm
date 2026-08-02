@@ -39,6 +39,7 @@ import ModuleDocumentViewer from '../modules/documentViewer/ModuleDocumentViewer
 import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
 import { useCapabilityPublicSet } from '../core/capabilities/public/useCapabilityPublicSet';
 import { OperationalExperienceRegistry } from '../core/capabilities/experiences/OperationalExperienceRegistry';
+import { isNavigationState, extractNavigationState } from '../core/navigation/NavigationStateContract.js';
 
 // Authorization capability — governs form access by role (certified, Sprint 52+)
 const authorization = CapabilityDiscovery.discover('authorization');
@@ -215,6 +216,33 @@ export default function DynamicModule() {
   // Active tab key — driven by Capability Public Set (set to first tab on load).
   const [activeTab, setActiveTab] = useState(null);
 
+  // Sprint 190 — One-Shot Navigation Consumption.
+  // The current navigation intent is consumed EXACTLY once, then its
+  // location.state is replaced with a non-historical `state: null`. The
+  // Shell never reads location.state directly for tab/context after the
+  // first consumption — the sticky-navigation bug (forced return to a tab)
+  // is eliminated. Re-entering with a fresh intent starts a new pass.
+  const [navigationState, setNavigationState] = useState(null);
+  const navigationProcessedRef = useRef(null);
+
+  useEffect(() => {
+    const locationState = location.state || {};
+    const key = JSON.stringify(
+      ['tab', 'navigationContext', 'selectedRecord', 'selectedForm', 'selectedDocument'].reduce((acc, k) => {
+        acc[k] = locationState[k] ?? null;
+        return acc;
+      }, {}),
+    );
+    if (key === navigationProcessedRef.current) return; // already handled this intent
+    navigationProcessedRef.current = key;
+    if (!isNavigationState(locationState)) return; // nothing to consume — keep current context
+    const consumed = extractNavigationState(locationState);
+    setNavigationState(consumed);
+    // Strips the navigation state from the current history entry WITHOUT
+    // adding a new history entry (replace: non-historical).
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
+
   // Load module metadata and forms.
   // dynamicService is used here ONLY for fetching display data (name, description, forms).
   // It is NOT consulted for any UI capability decision.
@@ -264,12 +292,11 @@ export default function DynamicModule() {
 
   // Set the default active tab once the Capability Public Set is resolved.
   // The default is always the first tab in capability order (order: 1 → 'forms').
-  // Sprint 184: honor a tab passed via navigation state (used by Alert
-  // Monitoring workspace action descriptors for records / repository),
-  // including when the user is already inside the module.
+  // Sprint 184/190: honor a tab from the ONE-SHOT navigation state (consumed
+  // once by the NavigationStateConsumer) for records / repository intents.
   useEffect(() => {
     if (!capabilityPublicSet) return;
-    const fromState = location.state?.tab;
+    const fromState = navigationState?.tab;
     if (fromState && capabilityPublicSet.getTab(fromState)) {
       setActiveTab(fromState);
       return;
@@ -278,7 +305,7 @@ export default function DynamicModule() {
       const defaultKey = capabilityPublicSet.getDefaultTabKey();
       if (defaultKey) setActiveTab(defaultKey);
     }
-  }, [capabilityPublicSet, activeTab, location.state?.tab]);
+  }, [capabilityPublicSet, activeTab, navigationState?.tab]);
 
   // Forms are filtered by role authorization (capability: authorization, Sprint 52+).
   // This is a display-level filter, not a capability decision.
@@ -322,7 +349,7 @@ export default function DynamicModule() {
       case 'records':
         return <RecordsContent moduleId={modInfo.id} />;
       case 'repository':
-        return <RepositoryContent moduleSlug={moduleSlug} navigationContext={location.state?.navigationContext} />;
+        return <RepositoryContent moduleSlug={moduleSlug} navigationContext={navigationState?.navigationContext} />;
       case 'operational-experiences':
         return (
           <OperationalExperiencesContent
