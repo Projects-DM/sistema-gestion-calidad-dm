@@ -4,6 +4,7 @@ import { provideAlertDashboardData } from '../core/capabilities/alert/runtime-co
 import { dynamicService } from '../services/dynamicService.js';
 import { documentsService } from '../services/documentsService.js';
 import { documentRepositoriesService } from '../services/documentRepositoriesService.js';
+import { dashboardService } from '../modules/dashboard/services/dashboardService.js';
 
 /**
  * useAlertRuntime — Sprint 186 (Operational Resource Integrity Audit)
@@ -79,14 +80,55 @@ async function collectExistingResources({ moduleId, module, moduleSlug }) {
     return collectModuleOperationalData({ moduleId, slug });
   }
 
-  // Global context (Dashboard): audit EVERY runtime module and aggregate.
-  const modules = await safeFetch(dynamicService.getModules());
-  const runtimeModules = (modules || []).filter((m) => m.visible !== false && m.state !== 'archived' && m.state !== 'deprecated');
+  // Global context (Dashboard) — Sprint 195: Shared Query Layer.
+  //
+  // The Dashboard already loads this data through the SAME existing queries:
+  //   - modules    → dynamicService.getRuntimeModules()  (GET_RUNTIME_MODULES)
+  //   - responses  → dashboardService.getRawResponses()   (Dashboard Metrics)
+  // The in-flight de-duplication in those queries merges both consumers into
+  // a single network request per query. Alert Runtime therefore NEVER re-fetches
+  // sgc_modules or sgc_form_responses, and it depends ONLY on the Query Layer —
+  // never on Dashboard React state.
+  const [modules, responses] = await Promise.all([
+    safeFetch(dynamicService.getRuntimeModules()),
+    safeFetch(dashboardService.getRawResponses()),
+  ]);
+
+  const runtimeModules = (modules || []).filter(
+    (m) => m.visible !== false && m.state !== 'archived' && m.state !== 'deprecated',
+  );
 
   const collected = await Promise.all(
-    (runtimeModules || []).map((mod) =>
-      collectModuleOperationalData({ moduleId: mod.id, slug: mod.slug }),
-    ),
+    (runtimeModules || []).map(async (mod) => {
+      // Records come from the SHARED responses query, grouped by module.
+      const moduleResponses = (responses || []).filter(
+        (r) => String(r?.sgc_forms?.module_id) === String(mod.id),
+      );
+
+      // Alert Runtime ONLY queries what the Dashboard does not own.
+      const [forms, documents, repositories] = await Promise.all([
+        safeFetch(dynamicService.getFormsByModule(mod.id)),
+        safeFetch(documentsService.getRecords(mod.slug)),
+        safeFetch(documentRepositoriesService.getRepositories({ moduleSlug: mod.slug })),
+      ]);
+
+      let categories = [];
+      if (Array.isArray(repositories) && repositories.length > 0) {
+        const categoryResults = await Promise.all(
+          repositories.map((repo) => safeFetch(documentRepositoriesService.getCategories(repo.id))),
+        );
+        categories = categoryResults.flat().filter(Boolean);
+      }
+
+      return {
+        module: mod,
+        forms: forms || [],
+        records: moduleResponses,
+        documents: documents || [],
+        repositories: repositories || [],
+        categories,
+      };
+    }),
   );
 
   const report = collected

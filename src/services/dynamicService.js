@@ -1,5 +1,19 @@
 import { getSupabaseClient } from '../lib/supabase';
 
+/**
+ * Sprint 195 — Existing Query Layer consolidation.
+ *
+ * getRuntimeModules is the SHARED query layer for `sgc_modules`.
+ * The Dashboard (GET_RUNTIME_MODULES via ModuleAdministrationApplicationService)
+ * and Alert Runtime (global Dashboard context) both consume THIS same
+ * existing query. In-flight de-duplication merges concurrent identical
+ * calls into a single network request.
+ *
+ * NOT a cache: resolved data is never retained; only in-flight requests
+ * share their promise.
+ */
+let runtimeModulesInFlight = null;
+
 export const dynamicService = {
   async getModules() {
     const supabase = getSupabaseClient();
@@ -13,15 +27,26 @@ export const dynamicService = {
   },
 
   async getRuntimeModules() {
+    if (runtimeModulesInFlight) return runtimeModulesInFlight;
+
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase
-      .from('sgc_modules')
-      .select('id, name, slug, icon, color, order_index')
-      .eq('is_active', true)
-      .eq('visible', true)
-      .order('order_index', { ascending: true });
-    if (error) throw error;
-    return data;
+    const promise = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('sgc_modules')
+          .select('id, name, slug, icon, color, order_index, state, visible')
+          .eq('is_active', true)
+          .eq('visible', true)
+          .order('order_index', { ascending: true });
+        if (error) throw error;
+        return data;
+      } finally {
+        runtimeModulesInFlight = null;
+      }
+    })();
+
+    runtimeModulesInFlight = promise;
+    return promise;
   },
 
   async getModuleBySlug(slug) {
