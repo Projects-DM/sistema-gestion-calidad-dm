@@ -16,7 +16,7 @@ function safeFileType(type) {
   return type;
 }
 
-export default function ModuleDocumentViewer({ moduleSlug, selectedDocumentId }) {
+export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) {
   const { user, isAdmin, isCalidad } = useAuth();
   const canManage = isAdmin || isCalidad;
 
@@ -44,33 +44,47 @@ export default function ModuleDocumentViewer({ moduleSlug, selectedDocumentId })
 
   const uploadInputId = useMemo(() => `upload_${moduleSlug}_${Date.now()}`, [moduleSlug]);
 
-  // Sprint 187 — Operational Navigation Consolidation.
-  // The record reached via a "go-to-document" navigation descriptor gets
-  // scrolled into view and highlighted. Reuses the existing repository;
-  // never opens a modal or creates a new viewer. The document remains
-  // fully available for view/delete as usual.
+  // Sprint 189 — Context Navigation Decoupling.
+  // The Repository NEVER interprets a navigation context as a user selection.
+  // The navigationContext is consumed EXACTLY ONCE: locate the document,
+  // scroll to it and highlight it TEMPORARILY (fade), then the Repository
+  // returns to a completely neutral state. It never leaves the document
+  // selected, never opens a menu, never activates edit/replace/delete, and
+  // never blocks module navigation.
   const documentRefs = useRef(new Map());
-  const [highlightedDocumentId, setHighlightedDocumentId] = useState(selectedDocumentId ?? null);
+  const [navigationTarget, setNavigationTarget] = useState(null); // { resourceId } — consumed once
+  const [contextHighlightId, setContextHighlightId] = useState(null); // temporary highlight
+  const [highlightVisible, setHighlightVisible] = useState(false);
 
+  // Consume the context exactly once. After the first render the context is
+  // dropped so the Repository returns immediately to a neutral state.
   useEffect(() => {
-    if (!selectedDocumentId) return;
-    setHighlightedDocumentId(selectedDocumentId);
-  }, [selectedDocumentId]);
+    if (!navigationContext || navigationContext.resourceType !== 'document') return;
+    const resourceId = navigationContext.resourceId;
+    if (resourceId == null) return;
+    setNavigationTarget({ resourceId });
+    setContextHighlightId(String(resourceId));
+    setHighlightVisible(true);
+  }, [navigationContext]);
 
+  // Temporary highlight: fade out and clear. The document is NEVER selected.
   useEffect(() => {
-    if (!highlightedDocumentId) return;
-    // Wait until the panels/documents are rendered (loading must be done
-    // and the docs must be populated) before scrolling.
-    if (loading) return;
-    const node = documentRefs.current?.get(String(highlightedDocumentId));
-    if (!node) {
-      // The doc may belong to a category not loaded with the first repo,
-      // or be beyond the visible slice. Keep the highlight set so it
-      // applies as soon as its node is present.
-      return;
-    }
+    if (!contextHighlightId) return;
+    const fadeTimer = setTimeout(() => setHighlightVisible(false), 1600);
+    const clearTimer = setTimeout(() => setContextHighlightId(null), 2400);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(clearTimer);
+    };
+  }, [contextHighlightId]);
+
+  // Scroll the target document into view once the panels are rendered.
+  useEffect(() => {
+    if (!navigationTarget || loading) return;
+    const node = documentRefs.current?.get(String(navigationTarget.resourceId));
+    if (!node) return;
     node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [highlightedDocumentId, loading, docsByCategory]);
+  }, [navigationTarget, loading, docsByCategory]);
 
   useEffect(() => {
     (async () => {
@@ -339,7 +353,10 @@ export default function ModuleDocumentViewer({ moduleSlug, selectedDocumentId })
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {records.slice(0, 12).map((record) => {
-                              const isHighlighted = String(record.id) === String(highlightedDocumentId);
+                              const isHighlighted =
+                                highlightVisible &&
+                                contextHighlightId !== null &&
+                                String(record.id) === String(contextHighlightId);
                               return (
                               <div
                                 key={record.id}
