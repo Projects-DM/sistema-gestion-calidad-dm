@@ -115,6 +115,12 @@ export const documentRepositoriesService = {
       is_active: payload.is_active,
     };
 
+    // Sprint 201 — Alert Configuration metadata passthrough.
+    // The column may not exist yet; write only when explicitly provided.
+    if (payload.alert_config !== undefined || payload.alertConfiguration !== undefined) {
+      updatePayload.alert_config = payload.alert_config ?? payload.alertConfiguration;
+    }
+
     const { data, error } = await sb
       .from('sgc_document_repositories')
       .update(updatePayload)

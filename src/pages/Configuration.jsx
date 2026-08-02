@@ -16,11 +16,14 @@ import {
   Edit,
   Settings,
   Upload,
-  FileText
+  FileText,
+  Bell
 } from 'lucide-react';
 import FormBuilder from '../components/FormBuilder';
 import ImportAssistant from '../components/ImportAssistant';
 import DocumentRepositoriesAdmin from '../components/documentRepositories/DocumentRepositoriesAdmin';
+import AlertConfigurationPanel from '../modules/experiences/AlertConfigurationPanel.jsx';
+import { formAlertConfigurationPersistence } from '../modules/experiences/alertConfigurationPersistence.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -49,6 +52,8 @@ export default function Configuration() {
 
   const [isEditingForm, setIsEditingForm] = useState(false);
   const [editFormDef, setEditFormDef] = useState(null);
+
+  const [alertConfigTarget, setAlertConfigTarget] = useState(null);
 
   const [showImport, setShowImport] = useState(false);
   const [importBuilderData, setImportBuilderData] = useState(null);
@@ -227,6 +232,33 @@ export default function Configuration() {
           importFormDef={importBuilderData}
           onImportComplete={handleImportComplete}
         />
+      </div>
+    );
+  }
+
+  // Render the Alert Configuration panel view if a form is targeted
+  if (alertConfigTarget) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <button onClick={() => setAlertConfigTarget(null)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-500" />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Alertas: {alertConfigTarget.name}</h1>
+            <p className="text-sm text-gray-500">
+              Configura la metadata de alertas de este formulario. Solo metadata — el motor evalúa la configuración.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+          <AlertConfigurationPanel
+            resourceKind="dynamicForms"
+            resource={alertConfigTarget}
+            persistence={formAlertConfigurationPersistence}
+          />
+        </div>
       </div>
     );
   }
@@ -426,6 +458,13 @@ export default function Configuration() {
                         </td>
                         <td className="px-6 py-4 text-right whitespace-nowrap">
                           <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setAlertConfigTarget(form)}
+                              className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="Configurar alertas del formulario"
+                            >
+                              <Bell className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => handleStartEditForm(form)}
                               className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
