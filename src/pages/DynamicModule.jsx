@@ -217,12 +217,17 @@ export default function DynamicModule() {
   const [activeTab, setActiveTab] = useState(null);
 
   // Sprint 190 — One-Shot Navigation Consumption.
-  // The current navigation intent is consumed EXACTLY once, then its
-  // location.state is replaced with a non-historical `state: null`. The
-  // Shell never reads location.state directly for tab/context after the
-  // first consumption — the sticky-navigation bug (forced return to a tab)
-  // is eliminated. Re-entering with a fresh intent starts a new pass.
+  // Sprint 192 — Navigation Intent Lifecycle Finalization.
+  // The navigation intent has a SINGLE lifecycle:
+  //   Router → Navigation Intent → consume() → aplicar navegación → destroy() → estado limpio.
+  // After it is applied (activeTab), navigationState is DESTROYED (set to
+  // null) so it can never modify activeTab again. This eliminates the
+  // sticky-navigation bug where the tab effect re-read navigationState on
+  // every activeTab change. navigationContext is delivered separately so
+  // the Repository can consume it (one-shot, Sprint 189) while the intent
+  // itself never survives the first useful render.
   const [navigationState, setNavigationState] = useState(null);
+  const [navigationContext, setNavigationContext] = useState(null);
   const navigationProcessedRef = useRef(null);
 
   useEffect(() => {
@@ -238,6 +243,7 @@ export default function DynamicModule() {
     if (!isNavigationState(locationState)) return; // nothing to consume — keep current context
     const consumed = extractNavigationState(locationState);
     setNavigationState(consumed);
+    if (consumed.navigationContext) setNavigationContext(consumed.navigationContext);
     // Strips the navigation state from the current history entry WITHOUT
     // adding a new history entry (replace: non-historical).
     navigate(location.pathname, { replace: true, state: null });
@@ -294,12 +300,20 @@ export default function DynamicModule() {
   // The default is always the first tab in capability order (order: 1 → 'forms').
   // Sprint 184/190: honor a tab from the ONE-SHOT navigation state (consumed
   // once by the NavigationStateConsumer) for records / repository intents.
+  // Sprint 192: the navigation intent is DESTROYED (set to null) immediately
+  // after it is applied. It can never modify activeTab again — the tab effect
+  // will read `navigationState?.tab === undefined` on subsequent runs and
+  // fall through to the default, leaving activeTab free for the user.
   useEffect(() => {
     if (!capabilityPublicSet) return;
     const fromState = navigationState?.tab;
     if (fromState && capabilityPublicSet.getTab(fromState)) {
       setActiveTab(fromState);
+      setNavigationState(null); // destroy the intent immediately after applying
       return;
+    }
+    if (navigationState) {
+      setNavigationState(null); // intent present but not applicable — destroy anyway
     }
     if (!activeTab) {
       const defaultKey = capabilityPublicSet.getDefaultTabKey();
@@ -349,7 +363,7 @@ export default function DynamicModule() {
       case 'records':
         return <RecordsContent moduleId={modInfo.id} />;
       case 'repository':
-        return <RepositoryContent moduleSlug={moduleSlug} navigationContext={navigationState?.navigationContext} />;
+        return <RepositoryContent moduleSlug={moduleSlug} navigationContext={navigationContext} />;
       case 'operational-experiences':
         return (
           <OperationalExperiencesContent
