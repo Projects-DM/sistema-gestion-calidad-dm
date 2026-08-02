@@ -36,6 +36,15 @@ export {
 export { provideDefaultAlertConfiguration, DEFAULT_ALERT_CONFIGURATION } from './DefaultAlertConfigurationProvider.js';
 export { normalizeAlertConfiguration } from './MetadataNormalizer.js';
 
+// Sprint 198.R — Alert Configuration Runtime Hardening.
+export {
+  createAlertConfiguration,
+  isAlertConfiguration,
+  assertAlertConfiguration,
+  CONFIGURATION_KEYS,
+} from './AlertConfiguration.js';
+export { shouldProduceAlert } from './AlertConfigurationResolver.js';
+
 export function requestOperationalConfiguration(request) {
   if (!request) {
     return Object.freeze({

@@ -1,7 +1,11 @@
 import { useMemo, useEffect, useState } from 'react';
 import AlertCapability from '../core/capabilities/alert/index.js';
 import { provideAlertDashboardData } from '../core/capabilities/alert/runtime-consumption/AlertDashboardDataProvider.js';
-import { resolveResourceAlertConfiguration, PRIORITY_LABELS } from '../core/capabilities/alert/operational-configuration/index.js';
+import {
+  resolveResourceAlertConfiguration,
+  shouldProduceAlert,
+  PRIORITY_LABELS,
+} from '../core/capabilities/alert/operational-configuration/index.js';
 import { dynamicService } from '../services/dynamicService.js';
 import { documentsService } from '../services/documentsService.js';
 import { documentRepositoriesService } from '../services/documentRepositoriesService.js';
@@ -197,21 +201,41 @@ function resolveResourceForAlert(alert, resources) {
 }
 
 /**
+ * Sprint 198.R — PURE transport of the AlertConfiguration Value Object into
+ * a runtime rule. Copies every canonical field AS-IS. Never interprets,
+ * never transforms, never re-defaults. The Runtime assumes the configuration
+ * is ALWAYS complete (guaranteed by the MetadataNormalizer).
+ */
+function transportConfiguration(configuration) {
+  return Object.freeze({
+    enabled: configuration.enabled,
+    periodicity: configuration.periodicity,
+    expiration: configuration.expiration,
+    risk: configuration.risk,
+    priority: configuration.priority,
+    notification: configuration.notification,
+    gracePeriod: configuration.gracePeriod,
+    automaticClose: configuration.automaticClose,
+    repeatPolicy: configuration.repeatPolicy,
+  });
+}
+
+/**
  * Derives the operational configuration rules from the Runtime Binding.
  *
- * Sprint 198 — Every configuration value comes EXCLUSIVELY from the
- * AlertConfigurationResolver (SSOT, Sprint 197):
- *   - enabled              → configuration.enabled; false removes the rule entirely.
- *   - priority             → configuration.priority (NEVER derived from runtime data).
- *   - repeatPolicy         → configuration.repeatPolicy
- *   - automaticClose       → configuration.automaticClose
- *   - notification         → configuration.notification
- *   - gracePeriod          → configuration.gracePeriod
- *   - active               → configuration.enabled (never forced)
+ * Sprint 198.R — The Runtime NEVER interprets metadata. Every configuration
+ * value is transported AS-IS from the AlertConfigurationResolver (SSOT,
+ * Sprint 197) into the rule. The descriptor conceptually separates:
  *
- * The Runtime never knows special forms/modules, never hardcodes priorities
- * and never writes configuration values. Only the `message` references real
- * existing resource names (transport of identity, not configuration).
+ *   Runtime Information:  source, resourceId/condition, message
+ *   Configuration Info:   enabled, priority, repeatPolicy, notification,
+ *                         automaticClose, gracePeriod, periodicity,
+ *                         expiration, risk
+ *
+ * The Runtime knows ONLY `configuration` (a frozen Value Object). It never
+ * reads storage keys, never knows special forms/modules and never writes
+ * configuration values. The `enabled` existence decision goes through the
+ * Resolver (`shouldProduceAlert`).
  *
  * @param {Object} binding Runtime Binding (boundAlerts).
  * @param {Object} [collected] Collected/visible snapshot (message identity).
@@ -232,58 +256,51 @@ export function deriveRulesFromBinding(binding, collected, runtimeResources) {
 
       // enabled=false → the resource produces NO rule (and therefore no
       // descriptor, no alert, nothing reaches the Dashboard or Workspace).
-      if (configuration.enabled !== true) return null;
+      // The decision belongs to the Resolver, never to the Runtime.
+      if (!shouldProduceAlert(configuration)) return null;
 
-      const priority = configuration.priority;
+      const transport = transportConfiguration(configuration);
+      const priority = transport.priority;
       const priorityLabel = PRIORITY_LABELS[priority] || 'Media';
-      const fromConfiguration = {
-        active: configuration.enabled,
-        enabled: configuration.enabled,
-        repeatPolicy: configuration.repeatPolicy,
-        automaticClose: configuration.automaticClose,
-        notification: configuration.notification,
-        gracePeriod: configuration.gracePeriod,
+      const base = {
+        source: null,
+        condition: alert.condition,
+        priority,
+        priorityLabel,
+        active: transport.enabled,
+        ...transport,
         prioritySource: resolution.source,
       };
 
       if (alert.source === 'dynamicForms') {
         const form = (snapshot?.forms || []).find((f) => String(f.id) === String(alert.resourceId)) || null;
-        return {
+        return Object.freeze({
+          ...base,
           source: 'dynamicForms',
           formId: alert.resource,
-          condition: alert.condition,
-          priority,
-          priorityLabel,
           message: form?.name ? `Formulario ${form.name}` : `Formulario ${alert.resource}`,
-          ...fromConfiguration,
-        };
+        });
       }
 
       if (alert.source === 'dynamicRecords') {
         const record = (snapshot?.records || []).find((r) => String(r.id) === String(alert.resourceId)) || null;
         const issues = record?.criticalIssues?.length ? record.criticalIssues.join('; ') : null;
-        return {
+        return Object.freeze({
+          ...base,
           source: 'dynamicRecords',
           recordType: alert.resource,
-          condition: alert.condition,
-          priority,
-          priorityLabel,
           message: issues || `Registro ${record?.formName || alert.resource} requiere atención`,
-          ...fromConfiguration,
-        };
+        });
       }
 
       const doc = (snapshot?.documents || []).find((d) => String(d.id) === String(alert.resourceId)) || null;
-      return {
+      return Object.freeze({
+        ...base,
         source: 'documentRepository',
         documentType: alert.resource,
         documentId: doc?.id ?? doc?.type ?? alert.resourceId ?? null,
-        condition: alert.condition,
-        priority,
-        priorityLabel,
         message: doc?.name ? `Documento ${doc.name} en repositorio` : `Documento ${alert.resource}`,
-        ...fromConfiguration,
-      };
+      });
     })
     .filter(Boolean);
 }

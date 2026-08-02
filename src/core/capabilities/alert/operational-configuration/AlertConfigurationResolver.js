@@ -9,6 +9,11 @@
  * `alert_config`), normalizes it and returns a COMPLETE configuration
  * (defaults when the resource was never configured).
  *
+ * Sprint 198.R — The returned configuration is a formal IMMUTABLE
+ * VALUE OBJECT (AlertConfiguration). The Resolver is the ONLY authorized
+ * reader of metadata storage keys; every configuration decision of the
+ * Runtime (including whether a resource produces an alert) goes through it.
+ *
  * It still returns default values. It does NOT compute due dates, does
  * NOT evaluate dates, does NOT generate alerts.
  *
@@ -17,12 +22,15 @@
 
 import { buildAlertRuleDescriptor } from './AlertRuleDescriptor.js';
 import { normalizeAlertConfiguration } from './MetadataNormalizer.js';
+import { createAlertConfiguration } from './AlertConfiguration.js';
 
 /**
  * Extracts the raw alert metadata from a resource object.
  *
  * Accepts both the official `alertConfiguration` field and the raw
  * `alert_config` column. Returns null when absent (never-configured).
+ *
+ * This is the ONLY place in the codebase allowed to read storage keys.
  *
  * @param {Object} resource Form or Repository resource metadata.
  * @returns {Object|null} Raw alert configuration metadata.
@@ -33,7 +41,8 @@ export function extractResourceAlertMetadata(resource) {
 }
 
 /**
- * Resolves the COMPLETE Alert Configuration of a resource.
+ * Resolves the COMPLETE Alert Configuration of a resource as an IMMUTABLE
+ * AlertConfiguration Value Object.
  *
  * - `source: 'metadata'`  → the resource carried `alertConfiguration`.
  * - `source: 'default'`   → the resource was never configured; DEFAULT used.
@@ -43,12 +52,24 @@ export function extractResourceAlertMetadata(resource) {
  */
 export function resolveResourceAlertConfiguration(resource) {
   const raw = extractResourceAlertMetadata(resource);
-  const configuration = normalizeAlertConfiguration(raw);
+  const configuration = createAlertConfiguration(normalizeAlertConfiguration(raw));
   return Object.freeze({
     source: raw && typeof raw === 'object' ? 'metadata' : 'default',
     resourceId: resource?.id ?? resource?.slug ?? null,
     configuration,
   });
+}
+
+/**
+ * THE sanctioned configuration decision of the Runtime: whether a resource
+ * produces an alert. The Runtime never evaluates `enabled` itself — it asks
+ * the Resolver (sole owner of configuration).
+ *
+ * @param {Object} configuration AlertConfiguration Value Object.
+ * @returns {boolean}
+ */
+export function shouldProduceAlert(configuration) {
+  return configuration?.enabled !== false;
 }
 
 export function resolveOperationalConfiguration(request) {
