@@ -25,7 +25,15 @@ export { RelativeRiskPolicy, RELATIVE_RISK_POLICY_KEY, RelativeRiskPolicyContrac
 export { resolveEvaluationStrategy, EVALUATION_STRATEGY_RESOLVER } from './EvaluationStrategyResolver.js';
 export { resolveEvaluationPolicy, EVALUATION_POLICY_RESOLVER } from './AlertEvaluationPolicyResolver.js';
 export { evaluateAlert, evaluateAlertSet, ALERT_EVALUATION_ENGINE } from './AlertEvaluationEngine.js';
-
+export { AlertConsumptionContract, CONSUMPTION_KEYS, CONSUMER_FIELDS, ALERT_CONSUMPTION_VERSION } from './consumption/AlertConsumptionContract.js';
+export {
+  buildConsumptionEntry,
+  mapEvaluationToConsumption,
+  mapEvaluationsToDashboardMetrics,
+  mapEvaluationToWorkspaceCard,
+  resolveConsumptionVisual,
+  CONSUMPTION_VISUALS,
+} from './consumption/AlertConsumptionMapper.js';
 export const EVALUATION_BOUNDARY = Object.freeze({
   contractKey: 'alert.evaluation.boundary',
   version: 2,

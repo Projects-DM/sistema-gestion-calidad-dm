@@ -4,19 +4,43 @@
  * Sprint 180 / Audit-3 — Delivers Alert Capability context to the existing
  * Dynamic Forms engine.
  *
- * Audit-2/3: when a configurationDescriptor is present, the adapter derives
- * status/priority/message/icon from the descriptor rules for the
- * dynamicForms source. Existing engines remain untouched.
+ * Sprint 200 — The adapter consumes ONLY the single Evaluation contract
+ * `{ descriptor, evaluation }` produced by the Consumption layer. Status,
+ * severity, remaining, nextDue, transition and escalation come EXCLUSIVELY
+ * from `evaluation`; the adapter NEVER derives state from descriptor rules
+ * and NEVER recomputes risk/severity/due dates/priorities.
  *
  * Integration ONLY. Never creates forms or alert-specific fields.
  */
 
+import { mapEvaluationToConsumption } from '../evaluation/consumption/AlertConsumptionMapper.js';
+
 export const FORM_CONSUMER_KEY = 'dynamicForms';
 
-function descriptorAlertFor(request, source) {
-  const descriptor = request?.configurationDescriptor;
-  const alerts = descriptor && Array.isArray(descriptor.alerts) ? descriptor.alerts : [];
-  return alerts.find((a) => a.source === source) || alerts[0] || null;
+function evaluationEntryFor(request, source) {
+  const entries = Array.isArray(request?.evaluationEntries) ? request.evaluationEntries : [];
+  return entries.find((e) => e?.descriptor?.source === source) || null;
+}
+
+function neutralContext() {
+  return Object.freeze({
+    source: FORM_CONSUMER_KEY,
+    status: 'NORMAL',
+    severity: 'green',
+    riskLevel: 'green',
+    remaining: null,
+    elapsed: null,
+    overdue: false,
+    nextDue: null,
+    transition: 'UNCHANGED',
+    escalation: 'none',
+    message: 'Bajo monitoreo',
+    priority: null,
+    priorityLabel: null,
+    icon: 'Bell',
+    color: 'gray',
+    action: 'view-detail',
+  });
 }
 
 export function consumeFormAlertContext(request) {
@@ -59,26 +83,8 @@ export function consumeFormAlertContext(request) {
     });
   }
 
-  const descriptorAlert = descriptorAlertFor(request, FORM_CONSUMER_KEY);
-
-  const alertContext = Object.freeze({
-    status: descriptorAlert
-      ? descriptorAlert.priority === 'critical' ? 'critical' : 'attention'
-      : request.condition === 'critical' ? 'critical' : 'attention',
-    message: descriptorAlert
-      ? descriptorAlert.message
-      : request.condition === 'critical'
-        ? 'Condición crítica detectada'
-        : 'Condición que requiere atención',
-    priority: descriptorAlert ? descriptorAlert.priority : null,
-    priorityLabel: descriptorAlert ? descriptorAlert.priorityLabel : null,
-    icon: descriptorAlert && descriptorAlert.priority === 'critical'
-      ? 'AlertOctagon'
-      : descriptorAlert
-        ? 'AlertTriangle'
-        : 'Bell',
-    action: 'view-detail',
-  });
+  const entry = evaluationEntryFor(request, FORM_CONSUMER_KEY);
+  const alertContext = entry ? mapEvaluationToConsumption(entry) : neutralContext();
 
   return Object.freeze({
     consumer: FORM_CONSUMER_KEY,

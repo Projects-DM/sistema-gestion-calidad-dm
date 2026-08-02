@@ -3,6 +3,12 @@
  *
  * Sprint 182-R — Builds operational cards for the Workspace.
  *
+ * Sprint 200 — When an evaluation entry `{ descriptor, evaluation }` is
+ * available for the alert, the card sources its status/severity/icon/color
+ * and the evaluation fields EXCLUSIVELY from the ALREADY-COMPUTED
+ * evaluation. The builder NEVER recomputes risk/severity/priorities and
+ * NEVER interprets descriptor rules.
+ *
  * Builder ONLY. Never executes, never navigates directly, never
  * consults engines, never knows React Router.
  */
@@ -10,6 +16,7 @@
 import { buildAlertVisualDescriptor } from '../runtime-visibility/AlertVisualDescriptor.js';
 import { resolveAlertNavigation } from './AlertNavigationResolver.js';
 import { buildActionDescriptor } from './AlertWorkspaceActionDescriptor.js';
+import { mapEvaluationToWorkspaceCard } from '../evaluation/consumption/AlertConsumptionMapper.js';
 
 const SOURCE_TYPES = Object.freeze({
   dynamicForms: { tipo: 'Formulario', origen: 'Dynamic Forms' },
@@ -17,7 +24,7 @@ const SOURCE_TYPES = Object.freeze({
   documentRepository: { tipo: 'Documento', origen: 'Document Repository' },
 });
 
-export function buildAlertWorkspaceCard(alert, moduleId) {
+export function buildAlertWorkspaceCard(alert, moduleId, entry) {
   const mergedAlert = { ...alert, moduleId: moduleId || alert.moduleId };
 
   const visual = buildAlertVisualDescriptor({
@@ -33,7 +40,7 @@ export function buildAlertWorkspaceCard(alert, moduleId) {
   const sourceInfo = SOURCE_TYPES[alert.source] || { tipo: alert.source || null, origen: null };
   const activeCount = Number(alert.activeCount ?? alert.count ?? (alert.active ? 1 : 1));
 
-  return Object.freeze({
+  const card = {
     id: alert.id || alert.alertId || null,
     title: alert.title || alert.message || 'Alerta operacional',
     tipo: sourceInfo.tipo,
@@ -52,7 +59,13 @@ export function buildAlertWorkspaceCard(alert, moduleId) {
     action,
     navigationLabel: navigation.label,
     navigable: navigation.navigable,
-  });
+  };
+
+  if (entry && entry.evaluation) {
+    return mapEvaluationToWorkspaceCard(entry, card);
+  }
+
+  return Object.freeze(card);
 }
 
 export default buildAlertWorkspaceCard;
