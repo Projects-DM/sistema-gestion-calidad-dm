@@ -1,22 +1,46 @@
 /**
- * Alert Runtime Binding
+ * Alert Runtime Binding — CONSOLIDATED (Sprint 185)
  *
- * Sprint 178 — Binds the Alert Capability into the existing Runtime
- * and prepares renderer consumption.
+ * Runtime Binding Finalization.
  *
- * Binding ONLY. Reuses existing Runtime and Renderers. No parallel
- * runtime, no independent UI.
+ * Binds the Alert Capability EXCLUSIVELY to the module's existing
+ * operational resources (forms, records, documents). The Runtime Context
+ * produced here derives 100% from existing resources — never from demo
+ * rules, fake alerts, hardcoded messages or generated data.
+ *
+ * Binding ONLY. Reuses existing Runtime. No parallel runtime,
+ * no independent UI, no persistence.
  */
 
-import { buildRuntimeCapabilityContext } from './AlertRuntimeCapabilityContext.js';
-import { resolveRuntimeBinding } from './AlertRuntimeBindingResolver.js';
-import { RUNTIME_BINDING_BOUNDARY } from './RuntimeBindingBoundary.js';
+import { collectExistingModuleRuntime } from './ExistingModuleRuntimeCollector.js';
+import { resolveExistingOperationalSources } from './ExistingOperationalSourceResolver.js';
+import { buildRuntimeBindingDescriptor } from './RuntimeBindingDescriptor.js';
+import { validateRuntimeBinding } from './RuntimeBindingValidator.js';
+import { resolveRuntimeBinding, buildBoundAlertContexts } from './RuntimeBindingResolver.js';
+import {
+  RUNTIME_BINDING_BOUNDARY,
+  findForbiddenDataToken,
+} from './RuntimeBindingBoundary.js';
 
-export { AlertRuntimeBindingContract, RUNTIME_BINDING_VERSION } from './AlertRuntimeBindingContract.js';
-export { buildRuntimeCapabilityContext } from './AlertRuntimeCapabilityContext.js';
-export { resolveRuntimeBinding } from './AlertRuntimeBindingResolver.js';
-export { RUNTIME_BINDING_BOUNDARY } from './RuntimeBindingBoundary.js';
+export { collectExistingModuleRuntime } from './ExistingModuleRuntimeCollector.js';
+export { resolveExistingOperationalSources, resolveExistingOperationalSource } from './ExistingOperationalSourceResolver.js';
+export { buildRuntimeBindingDescriptor, buildResourceBindingDescriptor } from './RuntimeBindingDescriptor.js';
+export { validateRuntimeBinding } from './RuntimeBindingValidator.js';
+export { resolveRuntimeBinding, buildBoundAlertContexts } from './RuntimeBindingResolver.js';
+export { RUNTIME_BINDING_BOUNDARY, findForbiddenDataToken, FORBIDDEN_DATA_TOKENS } from './RuntimeBindingBoundary.js';
 
+/**
+ * Requests the Runtime Binding for a module.
+ *
+ * The request MUST carry the module's EXISTING resources under
+ * `request.existing = { forms, records, documents }`. Any request that
+ * attempts to inject demo/fake/hardcoded data is rejected by the
+ * RuntimeBindingBoundary.
+ *
+ * @param {Object} request
+ * @param {Object} [request.existing] Existing module resources.
+ * @returns {Object} Runtime binding resolution.
+ */
 export function requestRuntimeBinding(request) {
   const executionRequested = !!(request && (request.executionRequested === true || request.execute === true));
 
@@ -26,6 +50,8 @@ export function requestRuntimeBinding(request) {
       runtimeCapabilities: [],
       runtimeAvailable: false,
       available: false,
+      runtimeEnabled: false,
+      runtimeBound: false,
       executionEnabled: false,
       executionBlocked: false,
       blocked: false,
@@ -34,8 +60,26 @@ export function requestRuntimeBinding(request) {
     });
   }
 
+  // RuntimeBindingBoundary — block any demo/simulated/hardcoded data.
+  const forbiddenToken = findForbiddenDataToken(request.existing);
+  if (forbiddenToken) {
+    return Object.freeze({
+      module: request.moduleId || request.module || null,
+      runtimeCapabilities: [],
+      runtimeAvailable: false,
+      available: false,
+      runtimeEnabled: false,
+      runtimeBound: false,
+      executionEnabled: false,
+      executionBlocked: executionRequested,
+      blocked: true,
+      rejected: true,
+      reason: `demo-data-blocked:${forbiddenToken}`,
+      boundary: RUNTIME_BINDING_BOUNDARY,
+    });
+  }
+
   const resolution = resolveRuntimeBinding(request);
-  const context = buildRuntimeCapabilityContext(request);
 
   if (!resolution.resolved) {
     return Object.freeze({
@@ -43,11 +87,14 @@ export function requestRuntimeBinding(request) {
       runtimeCapabilities: [],
       runtimeAvailable: false,
       available: false,
+      runtimeEnabled: false,
+      runtimeBound: false,
       executionEnabled: false,
       executionBlocked: executionRequested,
       blocked: executionRequested,
       rejected: true,
-      reason: resolution.reasons[0],
+      reason: resolution.reasons[0] || 'runtime-binding-not-resolved',
+      boundary: RUNTIME_BINDING_BOUNDARY,
     });
   }
 
@@ -57,7 +104,7 @@ export function requestRuntimeBinding(request) {
       experience: 'alert-monitoring',
       available: true,
       runtimeEnabled: true,
-      targets: context.targets,
+      targets: ['dynamicForms', 'dynamicRecords', 'documentRepository'],
       allowed: true,
     }),
   ];
@@ -68,15 +115,47 @@ export function requestRuntimeBinding(request) {
     runtimeAvailable: true,
     available: true,
     runtimeEnabled: true,
-    allowed: true,
+    runtimeBound: resolution.runtimeBound,
     executionEnabled: false,
     executionBlocked: executionRequested,
     blocked: executionRequested,
     rejected: false,
-    context,
+    existing: resolution.existing,
+    sources: resolution.sources,
+    counts: resolution.counts,
+    anySourceExists: resolution.anySourceExists,
+    descriptor: resolution.descriptor,
+    validation: resolution.validation,
+    boundAlerts: resolution.boundAlerts,
+    reasons: [],
     boundary: RUNTIME_BINDING_BOUNDARY,
   });
 }
+
+export const RUNTIME_BINDING_VERSION = '2';
+
+export const AlertRuntimeBindingContract = Object.freeze({
+  contractKey: 'alert.runtime-binding',
+  name: 'Alert Runtime Binding Contract',
+  version: RUNTIME_BINDING_VERSION,
+  capabilityKey: 'alerts',
+  runtimeMode: 'controlled',
+  source: 'existing-module-resources',
+  supportedContexts: Object.freeze([
+    'dynamicForms',
+    'dynamicRecords',
+    'documentRepository',
+  ]),
+  executionEnabled: false,
+  representation: Object.freeze({
+    module: Object.freeze({ type: 'string', required: true, description: 'Module runtime reference' }),
+    resource: Object.freeze({ type: 'string', required: true, description: 'Existing resource identity' }),
+    resourceId: Object.freeze({ type: 'string', required: true, description: 'Existing resource id' }),
+    resourceType: Object.freeze({ type: 'string', required: true, description: 'Existing resource type' }),
+    available: Object.freeze({ type: 'boolean', required: true, description: 'Resource exists' }),
+    runtimeBound: Object.freeze({ type: 'boolean', required: true, description: 'Bound to existing Runtime' }),
+  }),
+});
 
 export const ALERT_RUNTIME_BINDING = Object.freeze({
   key: 'runtime-binding',
