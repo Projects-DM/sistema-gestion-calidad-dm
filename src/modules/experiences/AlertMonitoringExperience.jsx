@@ -10,6 +10,7 @@ import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteRes
  *
  * Sprint 187 — Operational Navigation Consolidation.
  * Sprint 188 — Route Resolution & Existing Navigation Binding Certification.
+ * Sprint 189 — Context Navigation Decoupling.
  *
  * Consumes EXCLUSIVELY the Workspace ViewModel produced by
  * AlertCapability.workspace():
@@ -32,8 +33,9 @@ import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteRes
  * error.
  *
  * Documents NEVER open directly. "Ir al documento" navigates to the
- * existing Document Repository (tab) carrying the selectedDocumentId in
- * location.state so the document is selected automatically.
+ * existing Document Repository (tab) carrying a **navigationContext**
+ * in location.state: the Repository locates the document, scrolls to it
+ * and highlights it TEMPORARILY — it is NEVER left selected.
  */
 
 const ACTION_ROUTE = Object.freeze({
@@ -49,7 +51,13 @@ const ACTION_ROUTE = Object.freeze({
     const resolved = resolveActionRoute('go-to-document', { moduleSlug });
     return {
       path: resolved.canonicalRoute,
-      state: { tab: action.tab || 'repository', selectedDocumentId: action.documentId },
+      state: {
+        tab: action.tab || 'repository',
+        navigationContext: {
+          resourceType: 'document',
+          resourceId: action.documentId,
+        },
+      },
     };
   },
 });
