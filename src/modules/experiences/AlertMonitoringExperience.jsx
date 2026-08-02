@@ -7,8 +7,7 @@ import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 /**
  * AlertMonitoringExperience
  *
- * Sprint 184 — Operational UI Consumption for the Alert Monitoring
- * operational experience.
+ * Sprint 187 — Operational Navigation Consolidation.
  *
  * Consumes EXCLUSIVELY the Workspace ViewModel produced by
  * AlertCapability.workspace():
@@ -17,16 +16,24 @@ import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
  *   - summary
  *   - actions (Action Descriptors)
  *
- * The Action Descriptor (open-form / open-record / open-document) is the
- * ONLY navigation intent the UI consumes. This component NEVER creates
- * navigation logic, NEVER calculates routes, NEVER consults Runtime
- * directly, NEVER opens Alert Monitoring again, NEVER administers CRUD.
+ * The Action Descriptor (open-form / open-record / go-to-document) is
+ * the ONLY navigation intent the UI consumes. This component NEVER
+ * creates navigation logic, NEVER calculates routes, NEVER consults
+ * Runtime directly, NEVER opens Alert Monitoring again, NEVER
+ * administers CRUD.
+ *
+ * Documents NEVER open directly. "Ir al documento" navigates to the
+ * existing Document Repository (tab) carrying the selectedDocumentId in
+ * location.state so the document is selected automatically.
  */
 
 const ACTION_ROUTE = Object.freeze({
   'open-form': (moduleSlug, action) => `/modulo/${moduleSlug}/${action.resourceId}`,
   'open-record': (moduleSlug) => ({ path: `/modulo/${moduleSlug}`, state: { tab: 'records' } }),
-  'open-document': (moduleSlug) => ({ path: `/modulo/${moduleSlug}`, state: { tab: 'repository' } }),
+  'go-to-document': (moduleSlug, action) => ({
+    path: `/modulo/${moduleSlug}`,
+    state: { tab: action.tab || 'repository', selectedDocumentId: action.documentId },
+  }),
 });
 
 function CardButton({ card, moduleSlug }) {

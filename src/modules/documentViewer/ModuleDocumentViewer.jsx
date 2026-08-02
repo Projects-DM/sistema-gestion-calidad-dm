@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Folder, UploadCloud, Eye, RefreshCw, Trash2, Loader2 } from 'lucide-react';
 
 import { documentRepositoriesService } from '../../services/documentRepositoriesService';
@@ -16,7 +16,7 @@ function safeFileType(type) {
   return type;
 }
 
-export default function ModuleDocumentViewer({ moduleSlug }) {
+export default function ModuleDocumentViewer({ moduleSlug, selectedDocumentId }) {
   const { user, isAdmin, isCalidad } = useAuth();
   const canManage = isAdmin || isCalidad;
 
@@ -42,8 +42,35 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
   });
   const documentBadge = visibility?.badges?.documentRepository ?? null;
 
-
   const uploadInputId = useMemo(() => `upload_${moduleSlug}_${Date.now()}`, [moduleSlug]);
+
+  // Sprint 187 — Operational Navigation Consolidation.
+  // The record reached via a "go-to-document" navigation descriptor gets
+  // scrolled into view and highlighted. Reuses the existing repository;
+  // never opens a modal or creates a new viewer. The document remains
+  // fully available for view/delete as usual.
+  const documentRefs = useRef(new Map());
+  const [highlightedDocumentId, setHighlightedDocumentId] = useState(selectedDocumentId ?? null);
+
+  useEffect(() => {
+    if (!selectedDocumentId) return;
+    setHighlightedDocumentId(selectedDocumentId);
+  }, [selectedDocumentId]);
+
+  useEffect(() => {
+    if (!highlightedDocumentId) return;
+    // Wait until the panels/documents are rendered (loading must be done
+    // and the docs must be populated) before scrolling.
+    if (loading) return;
+    const node = documentRefs.current?.get(String(highlightedDocumentId));
+    if (!node) {
+      // The doc may belong to a category not loaded with the first repo,
+      // or be beyond the visible slice. Keep the highlight set so it
+      // applies as soon as its node is present.
+      return;
+    }
+    node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightedDocumentId, loading, docsByCategory]);
 
   useEffect(() => {
     (async () => {
@@ -311,10 +338,20 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {records.slice(0, 12).map((record) => (
+                            {records.slice(0, 12).map((record) => {
+                              const isHighlighted = String(record.id) === String(highlightedDocumentId);
+                              return (
                               <div
                                 key={record.id}
-                                className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                                ref={(node) => {
+                                  if (node) documentRefs.current.set(String(record.id), node);
+                                  else documentRefs.current.delete(String(record.id));
+                                }}
+                                className={`bg-white rounded-2xl p-4 border shadow-sm transition-all ${
+                                  isHighlighted
+                                    ? 'border-primary ring-2 ring-primary/30 bg-primary/[0.03]'
+                                    : 'border-gray-200 hover:shadow-md'
+                                }`}
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
@@ -389,7 +426,8 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
                                   </div>
                                 )}
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

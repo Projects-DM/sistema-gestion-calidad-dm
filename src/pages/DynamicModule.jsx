@@ -104,10 +104,10 @@ function RecordsContent({ moduleId }) {
   return <DynamicRecordsView moduleId={moduleId} />;
 }
 
-function RepositoryContent({ moduleSlug }) {
+function RepositoryContent({ moduleSlug, selectedDocumentId }) {
   return (
     <div className="space-y-6">
-      <ModuleDocumentViewer moduleSlug={moduleSlug} />
+      <ModuleDocumentViewer moduleSlug={moduleSlug} selectedDocumentId={selectedDocumentId} />
     </div>
   );
 }
@@ -322,7 +322,7 @@ export default function DynamicModule() {
       case 'records':
         return <RecordsContent moduleId={modInfo.id} />;
       case 'repository':
-        return <RepositoryContent moduleSlug={moduleSlug} />;
+        return <RepositoryContent moduleSlug={moduleSlug} selectedDocumentId={location.state?.selectedDocumentId} />;
       case 'operational-experiences':
         return (
           <OperationalExperiencesContent

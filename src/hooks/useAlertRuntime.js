@@ -164,6 +164,7 @@ export function deriveRulesFromBinding(binding, existing) {
     return {
       source: 'documentRepository',
       documentType: alert.resource,
+      documentId: doc?.id ?? doc?.type ?? alert.resourceId ?? null,
       condition: alert.condition,
       priority: 'medium',
       priorityLabel: 'Media',
@@ -189,7 +190,7 @@ function alertsFromDescriptor(descriptor, module) {
     };
     if (a.source === 'dynamicForms') return { ...common, formId: a.resource };
     if (a.source === 'dynamicRecords') return { ...common, recordType: a.resource };
-    if (a.source === 'documentRepository') return { ...common, documentType: a.resource };
+    if (a.source === 'documentRepository') return { ...common, documentType: a.resource, documentId: a.documentId || null };
     return common;
   });
 }

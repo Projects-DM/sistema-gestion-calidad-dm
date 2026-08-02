@@ -1,11 +1,21 @@
 /**
  * AlertWorkspaceActionDescriptor
  *
- * Sprint 182-R — The OFFICIAL contract between the Workspace and the
- * existing engines.
+ * Sprint 187 — Operational Navigation Consolidation.
+ *
+ * The OFFICIAL contract between the Workspace and the existing engines.
  *
  * Describes navigation ONLY. Executes absolutely nothing, never
  * navigates, never imports Router, never consults engines.
+ *
+ * New documental contract:
+ *   {
+ *     "action": "go-to-document",
+ *     "moduleId": "trazabilidad",
+ *     "resourceId": "xxxx",
+ *     "documentId": "xxxx",
+ *     "tab": "repository"
+ *   }
  */
 
 export function buildActionDescriptor(alert, navigation) {
@@ -13,8 +23,10 @@ export function buildActionDescriptor(alert, navigation) {
     return Object.freeze({
       action: null,
       resourceType: null,
-      resourceId: null,
       moduleId: null,
+      resourceId: null,
+      documentId: null,
+      tab: null,
       metadata: Object.freeze({}),
       reasons: ['not-navigable'],
     });
@@ -24,7 +36,9 @@ export function buildActionDescriptor(alert, navigation) {
     action: navigation.action,
     resourceType: navigation.resourceType,
     resourceId: navigation.resourceId,
+    documentId: navigation.documentId,
     moduleId: navigation.moduleId,
+    tab: navigation.tab,
     metadata: navigation.metadata || Object.freeze({}),
     reasons: [],
   });

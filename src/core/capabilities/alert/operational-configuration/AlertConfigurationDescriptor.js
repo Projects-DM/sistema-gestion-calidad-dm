@@ -58,6 +58,7 @@ export function buildAlertConfigurationDescriptor(request) {
       priorityLabel: d.priorityLabel,
       message: d.message,
       active: d.active,
+      documentId: d.documentId || null,
     })),
     reasons: [],
   });
