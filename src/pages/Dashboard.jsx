@@ -5,6 +5,7 @@ import { LayoutDashboard } from "lucide-react";
 import { useDashboardMetrics } from '../modules/dashboard/hooks/useDashboardMetrics';
 import { DashboardMetricCard } from '../modules/dashboard/components/DashboardMetricCard';
 import { DashboardRecentActivity } from '../modules/dashboard/components/DashboardRecentActivity';
+import { useAlertRuntime } from '../hooks/useAlertRuntime';
 import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
@@ -51,6 +52,15 @@ export default function Dashboard() {
   const { rol, user } = useAuth();
   const { metrics, recentActivity, loading, error } = useDashboardMetrics();
   const [runtimeModules, setRuntimeModules] = useState([]);
+
+  // Sprint 184 — Operational UI Consumption.
+  // Dashboard consumes ONLY AlertDashboardDataProvider metrics. It never
+  // administers, configures or navigates alert data.
+  const { dashboard: alertDashboard } = useAlertRuntime({
+    module: null,
+    moduleId: null,
+  });
+  const alertMetrics = alertDashboard?.metrics ?? null;
 
   const appContext = useMemo(() => createApplicationContext({
     actorId: user?.id ?? null,
@@ -167,6 +177,50 @@ export default function Dashboard() {
           />
         ))}
       </div>
+
+      {/* Sprint 184 — Alertas Operacionales (consume AlertDashboardDataProvider only) */}
+      {alertMetrics && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <div className="w-1.5 h-6 bg-red-500 rounded-full"></div>
+            Alertas Operacionales
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <DashboardMetricCard
+              label="Alertas Activas"
+              value={alertMetrics.activeAlerts}
+              icon={AlertCircle}
+              trend="Runtime"
+              color="text-red-600"
+              bg="bg-red-100"
+            />
+            <DashboardMetricCard
+              label="Alertas Críticas"
+              value={alertMetrics.criticalAlerts}
+              icon={AlertTriangle}
+              trend="Prioridad Alta/Crítica"
+              color="text-red-600"
+              bg="bg-red-100"
+            />
+            <DashboardMetricCard
+              label="Documentos por Vencer"
+              value={alertMetrics.expiringDocuments}
+              icon={FileText}
+              trend="Repositorio Documental"
+              color="text-amber-600"
+              bg="bg-amber-100"
+            />
+            <DashboardMetricCard
+              label="Acciones Pendientes"
+              value={alertMetrics.pendingActions}
+              icon={ListChecks}
+              trend="Registros"
+              color="text-blue-600"
+              bg="bg-blue-100"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modules Grid */}
       <div>

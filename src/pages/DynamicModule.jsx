@@ -28,7 +28,7 @@
  */
 
 import { useState, useEffect, lazy, Suspense } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -204,6 +204,7 @@ export default function DynamicModule() {
   const { moduleSlug } = useParams();
   const { rol } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Module metadata and forms — loaded from service for display purposes only.
   // These are NOT used for UI decisions (tabs, visibility, navigation).
@@ -263,12 +264,21 @@ export default function DynamicModule() {
 
   // Set the default active tab once the Capability Public Set is resolved.
   // The default is always the first tab in capability order (order: 1 → 'forms').
+  // Sprint 184: honor a tab passed via navigation state (used by Alert
+  // Monitoring workspace action descriptors for records / repository),
+  // including when the user is already inside the module.
   useEffect(() => {
-    if (capabilityPublicSet && !activeTab) {
+    if (!capabilityPublicSet) return;
+    const fromState = location.state?.tab;
+    if (fromState && capabilityPublicSet.getTab(fromState)) {
+      setActiveTab(fromState);
+      return;
+    }
+    if (!activeTab) {
       const defaultKey = capabilityPublicSet.getDefaultTabKey();
       if (defaultKey) setActiveTab(defaultKey);
     }
-  }, [capabilityPublicSet, activeTab]);
+  }, [capabilityPublicSet, activeTab, location.state?.tab]);
 
   // Forms are filtered by role authorization (capability: authorization, Sprint 52+).
   // This is a display-level filter, not a capability decision.

@@ -7,6 +7,8 @@ import { useAuth } from '../../hooks/useAuth';
 
 import { usePdfViewerStore } from '../../shared/state/viewer/pdfViewer.store';
 import PdfViewerModal from '../../shared/components/viewers/PdfViewerModal';
+import { useAlertRuntime } from '../../hooks/useAlertRuntime';
+import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 
 
 function safeFileType(type) {
@@ -31,6 +33,14 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
   const viewerDoc = usePdfViewerStore((state) => state.viewerDoc);
   const openViewer = usePdfViewerStore((state) => state.openViewer);
   const closeViewer = usePdfViewerStore((state) => state.closeViewer);
+
+  // Sprint 184 — Operational UI Consumption.
+  // Consumes ONLY the Runtime Visibility surface for the Document Repository engine.
+  const { visibility } = useAlertRuntime({
+    module: moduleSlug,
+    moduleSlug,
+  });
+  const documentBadge = visibility?.badges?.documentRepository ?? null;
 
 
   const uploadInputId = useMemo(() => `upload_${moduleSlug}_${Date.now()}`, [moduleSlug]);
@@ -341,6 +351,18 @@ export default function ModuleDocumentViewer({ moduleSlug }) {
                                   <div className="text-[10px] text-gray-500 mt-1">
                                     {new Date(record.created_at).toLocaleDateString()}
                                   </div>
+                                  {documentBadge?.show === true && documentBadge.badge && (
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border mt-2 ${alertVisualClasses(documentBadge.badge.color).badge}`}
+                                      title={documentBadge.badge.tooltip}
+                                    >
+                                      {(() => {
+                                        const IconComponent = resolveAlertIcon(documentBadge.badge.icon);
+                                        return <IconComponent className="w-3 h-3" />;
+                                      })()}
+                                      {documentBadge.badge.label}
+                                    </span>
+                                  )}
                                 </div>
 
                                 {canManage && (
