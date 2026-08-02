@@ -14,6 +14,9 @@ import { consumeRecordAlertContext, RECORD_CONSUMER_KEY } from './AlertRecordRun
 import { consumeDocumentAlertContext, DOCUMENT_CONSUMER_KEY } from './AlertDocumentRuntimeAdapter.js';
 import { provideAlertDashboardData, DASHBOARD_CONSUMER_KEY } from './AlertDashboardDataProvider.js';
 import { buildAlertConfigurationDescriptor } from '../operational-configuration/AlertConfigurationDescriptor.js';
+import { buildAlertRuleDescriptor } from '../operational-configuration/AlertRuleDescriptor.js';
+import { createAlertConfiguration } from '../operational-configuration/AlertConfiguration.js';
+import { evaluateAlert } from '../evaluation/index.js';
 import { RUNTIME_CONSUMPTION_BOUNDARY } from './RuntimeConsumptionBoundary.js';
 
 export { AlertRuntimeConsumptionContract, RUNTIME_CONSUMPTION_VERSION } from './AlertRuntimeConsumptionContract.js';
@@ -23,6 +26,40 @@ export { consumeRecordAlertContext, RECORD_CONSUMER_KEY } from './AlertRecordRun
 export { consumeDocumentAlertContext, DOCUMENT_CONSUMER_KEY } from './AlertDocumentRuntimeAdapter.js';
 export { provideAlertDashboardData, DASHBOARD_CONSUMER_KEY, EMPTY_ALERT_METRICS } from './AlertDashboardDataProvider.js';
 export { RUNTIME_CONSUMPTION_BOUNDARY } from './RuntimeConsumptionBoundary.js';
+export { AlertConsumptionContract, ALERT_CONSUMPTION_VERSION } from '../evaluation/consumption/AlertConsumptionContract.js';
+export {
+  buildConsumptionEntry,
+  mapEvaluationToConsumption,
+  mapEvaluationsToDashboardMetrics,
+  mapEvaluationToWorkspaceCard,
+} from '../evaluation/consumption/AlertConsumptionMapper.js';
+
+/**
+ * Produces the evaluation entries of the single contract { descriptor,
+ * evaluation } for every rule of the Runtime Context.
+ *
+ * The Engine (public API) computes; this layer ONLY transports the results
+ * to the consumers. `runtimeContext` is transported (never built here), so
+ * no temporal decision happens inside the Consumption layer.
+ *
+ * @param {Object} request Runtime consumption request (rules + runtimeContext).
+ * @returns {Array} List of frozen { descriptor, evaluation }.
+ */
+function buildEvaluationEntries(request) {
+  const rules = Array.isArray(request?.rules) ? request.rules : [];
+  const runtimeContext = request?.runtimeContext ?? {};
+  const entries = [];
+
+  for (const rule of rules) {
+    const descriptor = buildAlertRuleDescriptor(rule);
+    if (!descriptor.valid) continue;
+    const configuration = createAlertConfiguration(rule);
+    const { evaluation } = evaluateAlert(descriptor, configuration, runtimeContext);
+    entries.push(Object.freeze({ descriptor, evaluation }));
+  }
+
+  return entries;
+}
 
 export function requestRuntimeConsumption(request) {
   if (!request) {
@@ -68,9 +105,12 @@ export function requestRuntimeConsumption(request) {
   }
 
   const configurationDescriptor = buildAlertConfigurationDescriptor(request);
-  const consumptionRequest = request.configurationDescriptor
-    ? request
-    : Object.freeze({ ...request, configurationDescriptor });
+  const evaluationEntries = buildEvaluationEntries(request);
+  const consumptionRequest = Object.freeze({
+    ...request,
+    configurationDescriptor,
+    evaluationEntries,
+  });
 
   const engineConsumption = Object.freeze({
     dynamicForms: consumeFormAlertContext(consumptionRequest),
@@ -89,6 +129,7 @@ export function requestRuntimeConsumption(request) {
     module: request.moduleId || request.module || null,
     consumers: resolution.consumers,
     configurationDescriptor,
+    evaluationEntries,
     engines: engineConsumption,
     executionEnabled: false,
     executionBlocked: executionRequested,

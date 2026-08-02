@@ -4,11 +4,15 @@
  * Sprint 180 / Audit-4 — Delivers consolidated alert metrics to the
  * existing Dashboard engine.
  *
- * Audit-4: the existing Dashboard reuses this provider. It NEVER creates
- * a parallel Alert Dashboard and NEVER administers configurations.
+ * Sprint 200 — The metrics are aggregated ONLY from the ALREADY-COMPUTED
+ * evaluations ({ descriptor, evaluation }) produced by the Consumption
+ * layer. The provider NEVER derives state from descriptor rules and NEVER
+ * recomputes risk/severity/expirations/priorities.
  *
  * Provider ONLY. Never creates a dashboard.
  */
+
+import { mapEvaluationsToDashboardMetrics } from '../evaluation/consumption/AlertConsumptionMapper.js';
 
 export const DASHBOARD_CONSUMER_KEY = 'dashboard';
 
@@ -19,21 +23,12 @@ export const EMPTY_ALERT_METRICS = Object.freeze({
   pendingActions: 0,
 });
 
-function deriveMetricsFromDescriptor(request) {
-  const descriptor = request?.configurationDescriptor;
-  const alerts = descriptor && Array.isArray(descriptor.alerts) ? descriptor.alerts : [];
-  if (alerts.length === 0) return null;
-
-  const activeAlerts = alerts.filter((a) => a.active !== false).length;
-  const criticalAlerts = alerts.filter((a) => a.priority === 'critical' || a.priority === 'high').length;
-  const expiringDocuments = alerts.filter((a) => a.source === 'documentRepository').length;
-  const pendingActions = alerts.filter((a) => a.source === 'dynamicRecords').length;
-
+function fallbackMetrics(request) {
   return Object.freeze({
-    activeAlerts,
-    criticalAlerts,
-    expiringDocuments,
-    pendingActions,
+    activeAlerts: Number(request?.activeAlerts ?? 0),
+    criticalAlerts: Number(request?.criticalAlerts ?? 0),
+    expiringDocuments: Number(request?.expiringDocuments ?? 0),
+    pendingActions: Number(request?.pendingActions ?? 0),
   });
 }
 
@@ -80,12 +75,10 @@ export function provideAlertDashboardData(request) {
     });
   }
 
-  const metrics = deriveMetricsFromDescriptor(request) || Object.freeze({
-    activeAlerts: Number(request.activeAlerts ?? 0),
-    criticalAlerts: Number(request.criticalAlerts ?? 0),
-    expiringDocuments: Number(request.expiringDocuments ?? 0),
-    pendingActions: Number(request.pendingActions ?? 0),
-  });
+  const entries = Array.isArray(request.evaluationEntries) ? request.evaluationEntries : [];
+  const metrics = entries.length > 0
+    ? mapEvaluationsToDashboardMetrics(entries)
+    : fallbackMetrics(request);
 
   return Object.freeze({
     consumer: DASHBOARD_CONSUMER_KEY,

@@ -4,19 +4,43 @@
  * Sprint 180 / Audit-3 — Delivers Alert Capability context to the existing
  * Dynamic Records engine.
  *
- * Audit-2/3: when a configurationDescriptor is present, the adapter derives
- * status/priority/message from the descriptor rules for the dynamicRecords
- * source. Existing engines remain untouched.
+ * Sprint 200 — The adapter consumes ONLY the single Evaluation contract
+ * `{ descriptor, evaluation }` produced by the Consumption layer. Status,
+ * severity, remaining, nextDue, transition and escalation come EXCLUSIVELY
+ * from `evaluation`; the adapter NEVER derives state from descriptor rules
+ * and NEVER recomputes risk/severity/due dates/priorities.
  *
  * Integration ONLY. Never creates records or alert-specific fields.
  */
 
+import { mapEvaluationToConsumption } from '../evaluation/consumption/AlertConsumptionMapper.js';
+
 export const RECORD_CONSUMER_KEY = 'dynamicRecords';
 
-function descriptorAlertFor(request, source) {
-  const descriptor = request?.configurationDescriptor;
-  const alerts = descriptor && Array.isArray(descriptor.alerts) ? descriptor.alerts : [];
-  return alerts.find((a) => a.source === source) || alerts[0] || null;
+function evaluationEntryFor(request, source) {
+  const entries = Array.isArray(request?.evaluationEntries) ? request.evaluationEntries : [];
+  return entries.find((e) => e?.descriptor?.source === source) || null;
+}
+
+function neutralContext() {
+  return Object.freeze({
+    source: RECORD_CONSUMER_KEY,
+    status: 'NORMAL',
+    severity: 'green',
+    riskLevel: 'green',
+    remaining: null,
+    elapsed: null,
+    overdue: false,
+    nextDue: null,
+    transition: 'UNCHANGED',
+    escalation: 'none',
+    message: 'Bajo monitoreo',
+    priority: null,
+    priorityLabel: null,
+    icon: 'Bell',
+    color: 'gray',
+    action: 'view-detail',
+  });
 }
 
 export function consumeRecordAlertContext(request) {
@@ -59,25 +83,8 @@ export function consumeRecordAlertContext(request) {
     });
   }
 
-  const descriptorAlert = descriptorAlertFor(request, RECORD_CONSUMER_KEY);
-  const expiring = request.expiryInDays !== undefined && Number(request.expiryInDays) <= 3;
-
-  const alertContext = Object.freeze({
-    status: descriptorAlert
-      ? descriptorAlert.priority === 'critical' ? 'critical' : expiring ? 'expiring' : 'attention'
-      : expiring ? 'expiring' : 'monitoring',
-    message: descriptorAlert
-      ? descriptorAlert.message
-      : expiring ? 'Próximo vencimiento' : 'Bajo monitoreo',
-    priority: descriptorAlert ? descriptorAlert.priority : null,
-    priorityLabel: descriptorAlert ? descriptorAlert.priorityLabel : null,
-    icon: descriptorAlert && descriptorAlert.priority === 'critical'
-      ? 'AlertOctagon'
-      : descriptorAlert
-        ? 'AlertTriangle'
-        : 'Bell',
-    action: 'view-detail',
-  });
+  const entry = evaluationEntryFor(request, RECORD_CONSUMER_KEY);
+  const alertContext = entry ? mapEvaluationToConsumption(entry) : neutralContext();
 
   return Object.freeze({
     consumer: RECORD_CONSUMER_KEY,
