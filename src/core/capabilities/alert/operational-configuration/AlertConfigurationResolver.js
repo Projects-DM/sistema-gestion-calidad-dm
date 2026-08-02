@@ -39,17 +39,15 @@ export function extractResourceAlertMetadata(resource) {
  * - `source: 'default'`   → the resource was never configured; DEFAULT used.
  *
  * @param {Object} resource Form or Repository resource metadata.
- * @returns {Object} { capabilityKey, resolved, source, resourceId, config }
+ * @returns {Object} { source, resourceId, configuration }
  */
 export function resolveResourceAlertConfiguration(resource) {
   const raw = extractResourceAlertMetadata(resource);
-  const config = normalizeAlertConfiguration(raw);
+  const configuration = normalizeAlertConfiguration(raw);
   return Object.freeze({
-    capabilityKey: 'alerts',
-    resolved: true,
     source: raw && typeof raw === 'object' ? 'metadata' : 'default',
     resourceId: resource?.id ?? resource?.slug ?? null,
-    config,
+    configuration,
   });
 }
 
