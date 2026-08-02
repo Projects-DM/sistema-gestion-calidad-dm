@@ -46,7 +46,11 @@ export function resolveOperationalConfiguration(request) {
     alerts: validDescriptors.map((d) => ({
       source: d.source,
       priority: d.priority,
+      priorityLabel: d.priorityLabel,
+      message: d.message,
+      active: d.active,
       formId: d.formId,
+      documentId: d.documentId,
     })),
     reasons: descriptors.some((d) => d.valid === false)
       ? ['invalid-rules-present']

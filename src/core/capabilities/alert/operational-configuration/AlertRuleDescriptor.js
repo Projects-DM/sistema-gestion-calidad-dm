@@ -42,7 +42,8 @@ export function buildAlertRuleDescriptor(rule) {
 
   return Object.freeze({
     source: rule.source,
-    formId: rule.formId || rule.recordType || rule.documentType || null,
+    formId: rule.formId || rule.recordType || (rule.source === 'documentRepository' ? (rule.documentId || rule.documentType) : null) || null,
+    documentId: rule.source === 'documentRepository' ? (rule.documentId || rule.resourceId || null) : null,
     condition: Object.freeze({
       field: condition.field,
       operator: condition.operator,
