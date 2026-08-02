@@ -16,12 +16,25 @@ import { buildAlertConfigurationDescriptor } from './AlertConfigurationDescripto
 import { OPERATIONAL_CONFIGURATION_BOUNDARY } from './OperationalConfigurationBoundary.js';
 
 export { AlertConfigurationContract, OPERATIONAL_CONFIGURATION_VERSION } from './AlertConfigurationContract.js';
-export { resolveOperationalConfiguration } from './AlertConfigurationResolver.js';
+export { resolveOperationalConfiguration, resolveResourceAlertConfiguration, extractResourceAlertMetadata } from './AlertConfigurationResolver.js';
 export { buildAlertRuleDescriptor } from './AlertRuleDescriptor.js';
 export { resolvePriority, ALERT_PRIORITY_LEVELS, PRIORITY_LABELS } from './AlertPriorityPolicy.js';
 export { buildAlertOperationalContext } from './AlertOperationalContext.js';
 export { buildAlertConfigurationDescriptor } from './AlertConfigurationDescriptor.js';
 export { OPERATIONAL_CONFIGURATION_BOUNDARY } from './OperationalConfigurationBoundary.js';
+
+// Sprint 197 — Alert Configuration Metadata Foundation.
+export {
+  AlertConfigurationMetadata,
+  ALERT_CONFIGURATION_VERSION,
+  PERIODICITY_UNITS,
+  EXPIRATION_POLICIES,
+  RISK_MODELS,
+  REPEAT_POLICIES,
+  NOTIFICATION_CHANNELS,
+} from './AlertConfigurationMetadata.js';
+export { provideDefaultAlertConfiguration, DEFAULT_ALERT_CONFIGURATION } from './DefaultAlertConfigurationProvider.js';
+export { normalizeAlertConfiguration } from './MetadataNormalizer.js';
 
 export function requestOperationalConfiguration(request) {
   if (!request) {

@@ -13,7 +13,7 @@ function getClientOrThrow() {
 
 const mapRepositoryRow = (row) => {
   if (!row) return null;
-  return {
+  const mapped = {
     id: row.id,
     slug: row.slug,
     name: row.name,
@@ -24,6 +24,12 @@ const mapRepositoryRow = (row) => {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+  // Sprint 197 — Alert Configuration metadata support.
+  // The column may not exist yet; pass through only when present.
+  if (row.alert_config !== undefined || row.alertConfiguration !== undefined) {
+    mapped.alertConfiguration = row.alert_config ?? row.alertConfiguration ?? null;
+  }
+  return mapped;
 };
 
 const mapCategoryRow = (row) => {
