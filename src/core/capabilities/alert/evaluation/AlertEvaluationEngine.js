@@ -21,10 +21,23 @@
  */
 
 import { resolveEvaluationStrategy } from './EvaluationStrategyResolver.js';
+import { resolveEvaluationPolicy } from './AlertEvaluationPolicyResolver.js';
 import { assertAlertEvaluation } from './AlertEvaluation.js';
 
 /**
- * Evaluates a descriptor through the strategy selected by its metadata.
+ * Evaluates a descriptor through the strategy selected by its metadata and
+ * the policy selected by its risk model.
+ *
+ * The Engine is a PURE ORCHESTRATOR (Sprint 199.R2 §3):
+ *
+ *   strategy = StrategyResolver.resolve(configuration)
+ *   temporalState = strategy.evaluate(...)
+ *   policy   = PolicyResolver.resolve(configuration)
+ *   evaluation = policy.evaluate(temporalState, ...)
+ *   return { descriptor, evaluation }
+ *
+ * No additional decision exists. It never computes risk, severity, priority,
+ * transition or due dates — those belong exclusively to Strategy/Policy.
  *
  * @param {Object} descriptor AlertRuleDescriptor (inmutable).
  * @param {Object} configuration AlertConfiguration Value Object (inmutable).
@@ -33,7 +46,9 @@ import { assertAlertEvaluation } from './AlertEvaluation.js';
  */
 export function evaluateAlert(descriptor, configuration, runtimeContext) {
   const strategy = resolveEvaluationStrategy(configuration);
-  const evaluation = strategy.evaluate(descriptor, configuration, runtimeContext);
+  const temporalState = strategy.evaluate(descriptor, configuration, runtimeContext);
+  const policy = resolveEvaluationPolicy(configuration);
+  const evaluation = policy.evaluate(temporalState, descriptor, configuration, runtimeContext);
   assertAlertEvaluation(evaluation);
   return Object.freeze({
     descriptor,

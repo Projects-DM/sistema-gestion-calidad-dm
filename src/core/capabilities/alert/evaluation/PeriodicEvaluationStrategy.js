@@ -28,7 +28,6 @@
 
 import { EvaluationStrategy } from './EvaluationStrategy.js';
 import { createAlertTemporalState } from './AlertTemporalState.js';
-import { resolveEvaluationPolicy } from './AlertEvaluationPolicyResolver.js';
 import {
   EVALUATION_STATUSES,
   EVALUATION_SEVERITIES,
@@ -72,13 +71,13 @@ export class PeriodicEvaluationStrategy extends EvaluationStrategy {
   }
 
   /**
-   * Computes the temporal state of a periodic alert rule and delegates the
-   * business interpretation to the resolved policy.
+   * Computes the temporal state of a periodic alert rule. The Engine (not the
+   * Strategy) resolves the policy that interprets this state (Sprint 199.R2).
    *
    * @param {Object} descriptor AlertRuleDescriptor (inmutable).
    * @param {Object} configuration AlertConfiguration Value Object (inmutable).
    * @param {Object} runtimeContext Transport context (inmutable).
-   * @returns {Object} AlertEvaluation Value Object.
+   * @returns {Object} AlertTemporalState Value Object.
    */
   evaluate(descriptor, configuration, runtimeContext) {
     const now = runtimeContext?.now ?? null;
@@ -89,7 +88,7 @@ export class PeriodicEvaluationStrategy extends EvaluationStrategy {
     const elapsed = baseDate === null || now === null ? null : now - baseDate;
     const overdue = nextDue !== null && now !== null ? now > nextDue : false;
 
-    const temporalState = createAlertTemporalState({
+    return createAlertTemporalState({
       baseDate,
       period,
       nextDue,
@@ -97,9 +96,6 @@ export class PeriodicEvaluationStrategy extends EvaluationStrategy {
       elapsed,
       overdue,
     });
-
-    const policy = resolveEvaluationPolicy(configuration);
-    return policy.evaluate(temporalState, descriptor, configuration, runtimeContext);
   }
 }
 
