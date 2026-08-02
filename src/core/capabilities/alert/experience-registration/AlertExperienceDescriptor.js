@@ -4,10 +4,14 @@
  * Sprint 176 / 180-R — Defines the operational identity of the Alert
  * Capability.
  *
- * Sprint 180-R: Alert Monitoring is officially an OPERATIONAL
- * CONFIGURATION EXPERIENCE, NOT a visual operational experience.
- * Its only responsibility is producing an Alert Configuration
- * Descriptor consumed by existing engines. It never renders.
+ * Sprint 180-R: Alert Monitoring is an OPERATIONAL CONFIGURATION
+ * EXPERIENCE. Its only responsibility is producing an Alert
+ * Configuration Descriptor consumed by existing engines.
+ *
+ * Sprint 184: the experience becomes RENDERABLE by consuming the
+ * Operational Workspace ViewModel + Action Descriptor (see
+ * AlertMonitoringExperience). It still never executes, never creates
+ * CRUD, never creates a parallel runtime.
  *
  * Metadata ONLY. Never evaluates alerts, processes events or
  * generates notifications.
@@ -20,7 +24,7 @@ export const ALERT_EXPERIENCE_DESCRIPTOR = Object.freeze({
   label: 'Alertas',
   category: 'operational-configuration',
   role: 'configuration',
-  renderable: false,
+  renderable: true,
   supportedTargets: Object.freeze([
     'dynamicForms',
     'dynamicRecords',

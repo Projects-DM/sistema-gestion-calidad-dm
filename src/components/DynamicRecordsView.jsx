@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
 import { exportService } from '../shared/services/exportService';
 import { buildExportFileName } from '../shared/utils/exportFileNameBuilder';
+import { useAlertRuntime } from '../hooks/useAlertRuntime';
+import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
 
 import { 
 
@@ -28,6 +30,14 @@ export default function DynamicRecordsView({ moduleId }) {
   const { user, rol } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Sprint 184 — Operational UI Consumption.
+  // Consumes ONLY the Runtime Visibility surface for the Dynamic Records engine.
+  const { visibility } = useAlertRuntime({
+    moduleId,
+    module: null,
+  });
+  const recordBadge = visibility?.badges?.dynamicRecords ?? null;
   
   // Modal for details
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -381,7 +391,21 @@ export default function DynamicRecordsView({ moduleId }) {
                       </div>
                     </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={rec.computedStatus} />
+                    <div className="flex flex-col gap-1.5">
+                      <StatusBadge status={rec.computedStatus} />
+                      {recordBadge?.show === true && recordBadge.badge && rec.computedStatus !== 'cumple' && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${alertVisualClasses(recordBadge.badge.color).badge}`}
+                          title={recordBadge.badge.tooltip}
+                        >
+                          {(() => {
+                            const IconComponent = resolveAlertIcon(recordBadge.badge.icon);
+                            return <IconComponent className="w-3 h-3" />;
+                          })()}
+                          {recordBadge.badge.label}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <ValidationBadge status={rec.status} />

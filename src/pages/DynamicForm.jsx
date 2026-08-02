@@ -8,6 +8,8 @@ import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivation
 import EvidenceUploader from '../components/EvidenceUploader';
 
 import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
+import { useAlertRuntime } from '../hooks/useAlertRuntime';
+import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
 
 const authorization = CapabilityDiscovery.discover('authorization');
 const navigation = CapabilityDiscovery.discover('navigation');
@@ -29,6 +31,17 @@ export default function DynamicForm() {
   const [success, setSuccess] = useState(false);
 
   const [evidenceRequired, setEvidenceRequired] = useState(false);
+
+  // Sprint 184 — Operational UI Consumption.
+  // Consumes ONLY the Runtime Visibility surface for the Dynamic Forms engine.
+  // Never calculates, never consults rules, never queries Runtime directly.
+  const { visibility } = useAlertRuntime({
+    moduleId: formDef?.module_id ?? null,
+    module: moduleSlug,
+    moduleSlug,
+  });
+
+  const formBadge = visibility?.badges?.dynamicForms ?? null;
 
   useEffect(() => {
     async function loadForm() {
@@ -213,6 +226,23 @@ export default function DynamicForm() {
           <p className="text-sm text-gray-500">{formDef.description}</p>
         </div>
       </div>
+
+      {/* Sprint 184 — Alert badge consumed from Runtime Visibility (never computed). */}
+      {formBadge?.show === true && formBadge.badge && (
+        <div
+          className={`flex items-start gap-3 p-4 rounded-2xl border ${alertVisualClasses(formBadge.badge.color).badge}`}
+          title={formBadge.badge.tooltip}
+        >
+          {(() => {
+            const IconComponent = resolveAlertIcon(formBadge.badge.icon);
+            return <IconComponent className="w-5 h-5 mt-0.5 shrink-0" />;
+          })()}
+          <div>
+            <div className="text-sm font-bold">{formBadge.badge.label}</div>
+            <div className="text-sm">{formBadge.badge.tooltip}</div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm space-y-6">
         
