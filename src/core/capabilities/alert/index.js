@@ -115,6 +115,11 @@ import { RUNTIME_VISIBILITY_BOUNDARY } from './runtime-visibility/RuntimeVisibil
 import { AlertWorkspaceContract } from './workspace/AlertWorkspaceContract.js';
 import { requestWorkspace } from './workspace/index.js';
 import { WORKSPACE_BOUNDARY } from './workspace/WorkspaceBoundary.js';
+import { AlertEvaluationContract } from './evaluation/AlertEvaluationContract.js';
+import { evaluateAlert, evaluateAlertSet, ALERT_EVALUATION_ENGINE } from './evaluation/AlertEvaluationEngine.js';
+import { resolveEvaluationStrategy, EVALUATION_STRATEGY_RESOLVER } from './evaluation/EvaluationStrategyResolver.js';
+import { PeriodicEvaluationStrategy, PERIODIC_STRATEGY_KEY } from './evaluation/PeriodicEvaluationStrategy.js';
+import { EVALUATION_BOUNDARY } from './evaluation/index.js';
 import { REGISTRY_COMPATIBILITY as REGISTRY_REGISTRATION_COMPATIBILITY } from './registry/RegistryCompatibility.js';
 import { REGISTRY_BOUNDARY } from './registry/RegistryBoundary.js';
 import { RegistryRegistrationContract } from './registry/RegistryRegistrationContract.js';
@@ -197,6 +202,13 @@ export const AlertCapability = Object.freeze({
   enterpriseActivationBoundary: ENTERPRISE_ACTIVATION_BOUNDARY,
   runtimeConsumption: requestRuntimeConsumption,
   runtimeConsumptionBoundary: RUNTIME_CONSUMPTION_BOUNDARY,
+  evaluation: evaluateAlert,
+  evaluateAlertSet,
+  evaluationBoundary: EVALUATION_BOUNDARY,
+  evaluationStrategyResolver: resolveEvaluationStrategy,
+  evaluationStrategyResolverBoundary: EVALUATION_STRATEGY_RESOLVER,
+  periodicEvaluationStrategy: PeriodicEvaluationStrategy,
+  evaluationEngineContract: ALERT_EVALUATION_ENGINE,
   operationalConfiguration: requestOperationalConfiguration,
   configurationDescriptor: buildAlertConfigurationDescriptor,
   operationalConfigurationBoundary: OPERATIONAL_CONFIGURATION_BOUNDARY,
@@ -240,6 +252,7 @@ export const AlertCapability = Object.freeze({
     operationalConfiguration: AlertConfigurationContract,
     runtimeVisibility: AlertRuntimeVisibilityContract,
     workspace: AlertWorkspaceContract,
+    evaluation: AlertEvaluationContract,
     validator: ContractValidator,
   }),
 });
