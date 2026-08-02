@@ -97,6 +97,8 @@ import { EXPERIENCE_EXPOSURE_BOUNDARY } from './experience-exposure/ExperienceEx
 import { AlertRuntimeBindingContract } from './runtime-binding/index.js';
 import { requestRuntimeBinding } from './runtime-binding/index.js';
 import { RUNTIME_BINDING_BOUNDARY } from './runtime-binding/RuntimeBindingBoundary.js';
+import { AlertRuntimeAuditContract, runResourceIntegrityAudit } from './runtime-audit/index.js';
+import { RUNTIME_INTEGRITY_BOUNDARY } from './runtime-audit/RuntimeIntegrityBoundary.js';
 import { AlertEnterpriseActivationContract } from './enterprise-activation/AlertEnterpriseActivationContract.js';
 import { requestEnterpriseActivation } from './enterprise-activation/index.js';
 import { ENTERPRISE_ACTIVATION_BOUNDARY } from './enterprise-activation/EnterpriseActivationBoundary.js';
@@ -189,6 +191,8 @@ export const AlertCapability = Object.freeze({
   experienceExposureBoundary: EXPERIENCE_EXPOSURE_BOUNDARY,
   runtimeBinding: requestRuntimeBinding,
   runtimeBindingBoundary: RUNTIME_BINDING_BOUNDARY,
+  runtimeAudit: runResourceIntegrityAudit,
+  runtimeAuditBoundary: RUNTIME_INTEGRITY_BOUNDARY,
   enterpriseActivation: requestEnterpriseActivation,
   enterpriseActivationBoundary: ENTERPRISE_ACTIVATION_BOUNDARY,
   runtimeConsumption: requestRuntimeConsumption,
@@ -230,6 +234,7 @@ export const AlertCapability = Object.freeze({
     renderer: AlertCapabilityRendererContract,
     experienceExposure: AlertExperienceExposureContract,
     runtimeBinding: AlertRuntimeBindingContract,
+    runtimeAudit: AlertRuntimeAuditContract,
     enterpriseActivation: AlertEnterpriseActivationContract,
     runtimeConsumption: AlertRuntimeConsumptionContract,
     operationalConfiguration: AlertConfigurationContract,
