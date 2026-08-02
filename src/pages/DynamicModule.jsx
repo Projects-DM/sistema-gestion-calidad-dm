@@ -27,7 +27,7 @@
  *   DynamicModule renders tabs + content exclusively from capabilityPublicSet
  */
 
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, useRef, Suspense } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import * as Icons from 'lucide-react';
