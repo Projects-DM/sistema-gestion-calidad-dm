@@ -23,7 +23,7 @@ import FormBuilder from '../components/FormBuilder';
 import ImportAssistant from '../components/ImportAssistant';
 import DocumentRepositoriesAdmin from '../components/documentRepositories/DocumentRepositoriesAdmin';
 import AlertConfigurationPanel from '../modules/experiences/AlertConfigurationPanel.jsx';
-import { formAlertConfigurationPersistence } from '../modules/experiences/alertConfigurationPersistence.js';
+import { alertConfigurationPersistence } from '../modules/experiences/AlertConfigurationPersistenceAdapter.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -256,7 +256,7 @@ export default function Configuration() {
           <AlertConfigurationPanel
             resourceKind="dynamicForms"
             resource={alertConfigTarget}
-            persistence={formAlertConfigurationPersistence}
+            persistence={alertConfigurationPersistence}
           />
         </div>
       </div>

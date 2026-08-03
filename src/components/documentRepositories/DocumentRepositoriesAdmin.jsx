@@ -24,7 +24,7 @@ import { ModuleCapabilityPersistenceAdapter } from '../../core/applicationLayer/
 import { createApplicationRequest } from '../../core/applicationLayer/common/contracts/ApplicationRequest.js';
 import { onModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import AlertConfigurationPanel from '../../modules/experiences/AlertConfigurationPanel.jsx';
-import { repositoryAlertConfigurationPersistence } from '../../modules/experiences/alertConfigurationPersistence.js';
+import { alertConfigurationPersistence } from '../../modules/experiences/AlertConfigurationPersistenceAdapter.js';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -822,7 +822,7 @@ export default function DocumentRepositoriesAdmin() {
             <AlertConfigurationPanel
               resourceKind="documentRepository"
               resource={alertConfigTarget}
-              persistence={repositoryAlertConfigurationPersistence}
+              persistence={alertConfigurationPersistence}
               onSaved={() => {
                 const repoRow = { ...alertConfigTarget };
                 setAlertConfigTarget(null);
