@@ -2,25 +2,27 @@
  * AlertRuntimeConfigurationBridge
  *
  * Sprint 202 — Runtime Configuration Wiring.
+ * Sprint 202.R — Boundary certified: TRANSPORT layer.
  *
  * The BRIDGE between the Operational Experience (persisted metadata) and the
  * Runtime (consumption). It is PURE WIRING: it connects what the Operational
- * Experience persisted to what the Runtime consumes, WITHOUT touching the
+ * Experience delivered to what the Runtime consumes, WITHOUT touching the
  * frozen Operational Experience components and WITHOUT creating any parallel
  * Runtime.
  *
- * The Bridge NEVER computes rules, NEVER evaluates and NEVER interprets
- * metadata. It transports the OFFICIAL configuration obtained from the
- * AlertRuntimeConfigurationProvider (which in turn delegates exclusively to
- * the AlertConfigurationResolver) into the Runtime entry contract:
+ * The Bridge NEVER computes rules, NEVER evaluates, NEVER normalizes, NEVER
+ * validates, NEVER persists, NEVER consults infrastructure and NEVER executes
+ * the Engine. It only TRANSPORTS the configured entry into the Runtime input
+ * contract:
  *
  *   { descriptor, configuration, runtimeContext }
  *
- * `configuration` ALWAYS originates from the AlertConfigurationResolver
- * (persisted metadata). `runtimeContext` is TRANSPORTED with the
+ * The `configuration` it transports is ALWAYS the already-resolved AlertConfiguration
+ * Value Object delivered as input. The `runtimeContext` is TRANSPORTED with the
  * configuration provenance (version/hash/source) — never built here.
  *
- * Bridge ONLY. Never executes, notifies or persists.
+ * Bridge ONLY. Never executes, notifies or persists. Produces Runtime INPUT
+ * only — never Runtime OUTPUT (never an AlertEvaluation/Descriptor/Policy).
  */
 
 import { provideRuntimeConfiguration } from './AlertRuntimeConfigurationProvider.js';
@@ -30,28 +32,38 @@ export const RUNTIME_CONFIGURATION_BRIDGE_VERSION = '202.1';
 
 /**
  * Produces the runtime-facing entry `{ descriptor, configuration,
- * runtimeContext }` for a single resource, wiring the Operational
- * Experience persisted metadata into the Runtime contract.
+ * runtimeContext }`, wiring the Operational Experience delivered configuration
+ * into the Runtime input contract.
  *
- * The `descriptor` is provided by the caller (it describes the bound alert —
- * source/resource identity). The `configuration` is ALWAYS resolved here by
- * the Runtime Configuration Provider (official source). The `runtimeContext`
- * is synchronized with the configuration provenance.
+ * The `descriptor` and the `configuration` are provided by the caller (the
+ * Operational Experience) — the Bridge TRANSPORTS them, never computes them.
+ * The `runtimeContext` is synchronized with the configuration provenance.
  *
  * @param {Object} input
- * @param {Object} [input.resource] RAW existing resource (metadata owner).
  * @param {Object} [input.descriptor] Runtime descriptor (already built).
+ * @param {Object} [input.configuration] Resolved AlertConfiguration VO.
+ * @param {String} [input.configurationSource] 'metadata' | 'default'.
  * @param {Object} [input.runtimeContext] Existing runtime context to enrich.
- * @param {String} [input.resourceReference] Resource identity (fallback).
- * @returns {Object} Frozen runtime entry.
+ * @param {String} [input.resourceReference] Resource identity (provenance).
+ * @param {String} [input.resourceId] Resource id (provenance).
+ * @param {Boolean} [input.produceAlert] Transported decision.
+ * @returns {Object} Frozen runtime input entry.
  */
 export function buildRuntimeConfigurationEntry({
-  resource,
   descriptor,
+  configuration,
+  configurationSource,
   runtimeContext,
   resourceReference,
+  resourceId,
+  produceAlert,
 } = {}) {
-  const resolution = provideRuntimeConfiguration(resource);
+  const resolution = provideRuntimeConfiguration({
+    configuration,
+    configurationSource,
+    resourceId: resourceId || resourceReference,
+    produceAlert,
+  });
 
   const context = synchronizeRuntimeConfiguration({
     configuration: resolution.configuration,
@@ -82,6 +94,7 @@ export const alertRuntimeConfigurationBridge = Object.freeze({
   name: 'Alert Runtime Configuration Bridge',
   version: RUNTIME_CONFIGURATION_BRIDGE_VERSION,
   capabilityKey: 'alerts',
+  layer: 'integration',
   wiring: true,
   computes: false,
   buildRuntimeConfigurationEntry,
