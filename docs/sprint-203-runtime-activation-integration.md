@@ -100,6 +100,73 @@ Suite: `sprint-203-runtime-activation-integration-certification.mjs` → **A1–
 
 Sprint 202 (W1–W12) PASS, 202.R (R1–R10) PASS, 202.R2 (F1–F9) PASS. `git status` muestra únicamente la carpeta nueva `runtime-activation/` — ninguna capa certificada fue modificada.
 
-## 10. FINAL CERTIFICATION
+10. Componentes congelados
 
-**LEVEL 5 — ALERT CAPABILITY · RUNTIME ACTIVATION INTEGRATED · RUNTIME CONSUMES CERTIFIED RUNTIME WIRING · PERSISTED CONFIGURATION ACTIVE · CERTIFIED LAYERS UNTOUCHED**
+A partir de esta certificación quedan congelados:
+
+RuntimeActivationCoordinator
+RuntimeActivationBoundary
+RuntimeActivationContract
+runtime-activation/index.js
+
+Ningún Sprint posterior podrá modificar su responsabilidad arquitectónica.
+
+11. Dependency Rule certificada
+Operational Experience
+        │
+        ▼
+AlertConfigurationResolver
+        │
+        ▼
+Runtime Wiring
+        │
+        ▼
+Runtime Activation
+        │
+        ▼
+Runtime
+
+Quedan prohibidas las siguientes dependencias:
+
+Runtime → Runtime Wiring
+Runtime → AlertConfigurationResolver
+Runtime → Operational Experience
+Runtime → Infrastructure
+
+El Runtime continúa dependiendo únicamente del contrato de entrada certificado.
+
+12. Integridad del contrato
+
+Se certifica que la activación del Runtime no altera el contrato existente.
+
+Entrada certificada:
+
+{
+  descriptor,
+  configuration,
+  runtimeContext
+}
+
+Salida:
+
+Runtime Execution
+
+No se agregan nuevos parámetros.
+
+No se elimina ninguno.
+
+No se modifica la semántica del contrato.
+
+13. Inmutabilidad
+
+Se mantiene la inmutabilidad de:
+
+AlertConfiguration
+AlertRuleDescriptor
+RuntimeContext
+
+RuntimeActivation nunca modifica estos objetos; únicamente los transporta hacia el Runtime.
+
+14. FINAL CERTIFICATION
+
+LEVEL 5 — ALERT CAPABILITY · RUNTIME ACTIVATION CERTIFIED · RUNTIME WIRING ACTIVATED · CERTIFIED RUNTIME INPUT PIPELINE · CONTRACT PRESERVED · ARCHITECTURE STABILIZED
