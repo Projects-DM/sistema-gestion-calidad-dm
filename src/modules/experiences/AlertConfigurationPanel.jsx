@@ -9,25 +9,31 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
  * Sprint 201 — The ADMINISTRATIVE operational experience to edit the
  * `alertConfiguration` metadata of a resource (form or document repository).
  *
+ * Sprint 201.R — The panel only knows the AlertConfigurationApplicationService
+ * (already constructed with the injected PersistencePort adapter). The panel
+ * never receives a concrete persistence service nor a resourceKind→backend
+ * selection; it passes a raw `resource` reference and the Application Port
+ * routes persistence internally.
+ *
  * CONTAINER ONLY. The panel:
  *   1. Loads the current configuration through the certified
  *      AlertConfigurationResolver (via the Application Service) → editable
  *      draft.
  *   2. Renders the AlertConfigurationForm (pure presentation).
  *   3. On submit, orchestrates VALIDATION + PERSISTENCE through the
- *      Application Service using the injected `persistence` port.
+ *      Application Service using the injected `persistence` persister.
  *
  * The panel NEVER interacts with the Runtime, the Engine or the Consumption
  * Layer. It edits METADATA ONLY and never computes severity / risk / due
  * dates / status.
  *
  * Props:
- *   - resourceKind   'dynamicForms' | 'documentRepository'
  *   - resource       the RAW resource metadata (form / repository row)
- *   - persistence    port { saveAlertConfiguration({ resourceKind, resourceId, metadata }) }
+ *   - persistence    PersistencePort adapter (contract: loadConfiguration/saveConfiguration)
  *   - onSaved        optional callback after a successful save
  *   - onClose        optional close button handler
  *   - showClose      boolean, renders the close button
+ *   - resourceKind   optional, display label only (kept for the container title)
  */
 
 const emptyState = Object.freeze({
@@ -89,9 +95,8 @@ export default function AlertConfigurationPanel({
     setSaved(false);
     setSaveError(null);
     try {
-      const result = await serviceRef.current.save({
-        resourceKind,
-        resourceId: resource.id ?? resource.slug ?? null,
+      const result = await serviceRef.current.saveConfiguration({
+        resource,
         formState,
       });
       if (result.success) {
