@@ -1,6 +1,9 @@
 import { useMemo, useEffect, useState } from 'react';
 import AlertCapability from '../core/capabilities/alert/index.js';
 import { provideAlertDashboardData } from '../core/capabilities/alert/runtime-consumption/AlertDashboardDataProvider.js';
+import { provideNotificationRequests } from '../core/capabilities/alert/notification-activation/NotificationActivationProvider.js';
+import { provideLifecycleRecords } from '../core/capabilities/alert/lifecycle/AlertLifecycleProvider.js';
+import { provideOperationalActions } from '../core/capabilities/alert/operational-actions/AlertOperationalActionProvider.js';
 import {
   resolveResourceAlertConfiguration,
   shouldProduceAlert,
@@ -431,6 +434,7 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
     return AlertCapability.workspace({
       ...base,
       alerts: alertsFromDescriptor(descriptor, module),
+      evaluationEntries: consumption.evaluationEntries,
     });
   }, [base, consumption, module]);
 
@@ -439,10 +443,59 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
     return provideAlertDashboardData({
       ...base,
       configurationDescriptor: consumption.configurationDescriptor,
+      evaluationEntries: consumption.evaluationEntries,
     });
   }, [base, consumption]);
 
-  return { consumption, visibility, workspace, dashboard, rules, existing, visibleExisting, audit, binding };
+  // Sprint 210 — R5: Notification consumes the certified Consumption entries
+  // + the persisted `notification` intent transported from the resolved
+  // configuration. Notification NEVER decides when to execute.
+  const notification = useMemo(() => {
+    if (!consumption || !rules.length) return null;
+    const intent = rules.find((r) => r.notification)?.notification ?? null;
+    return provideNotificationRequests({
+      ...base,
+      evaluationEntries: consumption.evaluationEntries,
+      notification: intent,
+    });
+  }, [base, consumption, rules]);
+
+  // Sprint 210 — R6: Lifecycle persists ONLY the certified Consumption entries;
+  // the timestamp is transported (the hook supplies it; Lifecycle never generates time).
+  const lifecycle = useMemo(() => {
+    if (!consumption) return null;
+    return provideLifecycleRecords({
+      ...base,
+      evaluationEntries: consumption.evaluationEntries,
+      timestamp: null,
+    });
+  }, [base, consumption]);
+
+  // Sprint 210 — R7: Operational Actions operate on the real Alert IDs derived
+  // from the certified Consumption entries; user intents are transported in.
+  const operationalActions = useMemo(() => {
+    if (!consumption) return null;
+    return provideOperationalActions({
+      ...base,
+      evaluationEntries: consumption.evaluationEntries,
+      actions: [],
+    });
+  }, [base, consumption]);
+
+  return {
+    consumption,
+    visibility,
+    workspace,
+    dashboard,
+    notification,
+    lifecycle,
+    operationalActions,
+    rules,
+    existing,
+    visibleExisting,
+    audit,
+    binding,
+  };
 }
 
 function mergeAuditReports(reports) {
