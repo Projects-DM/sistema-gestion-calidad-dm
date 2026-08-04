@@ -83,6 +83,27 @@ PASS (verificado): Sprint 202 (W1–W12), 202.R (R1–R10), 202.R2 (F1–F9), 20
 
 `WorkspaceAlertProvider`, `WorkspaceAlertAdapter`, `WorkspaceAlertBoundary`, `WorkspaceAlertContract`, `workspace-alert/index.js`. Los Sprints posteriores no podrán modificarlos.
 
-## 10. FINAL CERTIFICATION
+10. Open/Closed Certification
+El Workspace únicamente podrá crecer mediante nuevos Workspace View Models.
+
+Nunca mediante:
+
+- nuevos Engines
+- nuevos Providers
+- nuevos Runtime Adapters
+- nuevos Consumption Engines
+- nuevos Runtime Contracts
+11. Architecture Freeze
+
+A partir de este Sprint quedan congelados:
+
+Workspace Consumer Boundary
+Workspace View Model Contract
+Workspace Alert Provider
+Workspace Alert Adapter
+Workspace Alert Boundary
+Workspace Alert Contract
+
+## 12. FINAL CERTIFICATION
 
 **LEVEL 5 — ALERT CAPABILITY · WORKSPACE RUNTIME INTEGRATION HARDENED · WORKSPACE CONSUMER BOUNDARY CERTIFIED · CONSUMPTION CONTRACT CERTIFIED · VIEW MODEL CERTIFIED · RUNTIME LAYERS UNTOUCHED**

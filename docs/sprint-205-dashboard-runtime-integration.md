@@ -105,6 +105,52 @@ PASS (verificado): Sprint 202, 202.R, 202.R2, 203, 204, 204.R. Sin modificacione
 
 `DashboardAlertProvider`, `DashboardAlertAdapter`, `DashboardAlertBoundary`, `DashboardAlertContract`, `dashboard-alert/index.js`.
 
-## 13. FINAL CERTIFICATION
+## 13. Dashboard Boundary Certification
+
+```
+Consumption Layer
+        │
+        ▼
+Dashboard Provider
+        │
+        ▼
+Dashboard Adapter
+        │
+        ▼
+Dashboard Components
+```
+
+Frontera certificada: el Dashboard solo conoce la Consumption Layer (vía `DashboardAlertProvider`) y el `DashboardAlertAdapter`. Nunca cruza hacia Runtime, Evaluation Engine, Strategy, Policy, Resolver, Metadata, configuration o runtimeContext.
+
+**Nunca:**
+
+```
+Dashboard
+      │
+      ▼
+Runtime
+```
+
+```
+Dashboard
+      │
+      ▼
+Evaluation Engine
+```
+
+```
+Dashboard
+      │
+      ▼
+AlertConfigurationResolver
+```
+
+Dependency Rule: `Consumption → Dashboard Provider → Dashboard Adapter → Dashboard UI`. Nunca `UI → Runtime`, `UI → Consumption`, `Adapter → Runtime`. Open/Closed: el Dashboard únicamente crece mediante nuevos Dashboard View Models; nunca mediante nuevos Engines, Providers, Runtime Adapters, Consumption Engines o Runtime Contracts.
+
+## 14. Architecture Freeze
+
+Quedan congelados: `DashboardAlertProvider`, `DashboardAlertAdapter`, `DashboardAlertBoundary`, `DashboardAlertContract`, `dashboard-alert/index.js`. Los Sprints posteriores no podrán modificar su responsabilidad arquitectónica.
+
+## 15. FINAL CERTIFICATION
 
 **LEVEL 5 — ALERT CAPABILITY · DASHBOARD RUNTIME INTEGRATED · CONSUMPTION CERTIFIED · DASHBOARD BOUNDARY CERTIFIED · OPERATIONAL VISUALIZATION ACTIVE · RUNTIME LAYERS UNTOUCHED**
