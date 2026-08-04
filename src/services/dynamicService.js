@@ -81,7 +81,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_forms')
-      .select('id, name, slug, module_id, engine_type, description, roles_allowed, created_at')
+      .select('id, name, slug, module_id, engine_type, description, roles_allowed, created_at, alert_config')
       .eq('module_id', moduleId)
       .eq('is_active', true)
       .order('created_at', { ascending: true });
@@ -93,7 +93,7 @@ export const dynamicService = {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_forms')
-      .select('id, name, slug, module_id, engine_type, roles_allowed, description')
+      .select('id, name, slug, module_id, engine_type, roles_allowed, description, alert_config')
       .eq('slug', slug)
       .single();
     if (error) throw error;
