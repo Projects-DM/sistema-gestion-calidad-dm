@@ -45,6 +45,15 @@ export {
 } from './AlertConfiguration.js';
 export { shouldProduceAlert } from './AlertConfigurationResolver.js';
 
+// Sprint 211 — Official Explicit Enrollment Policy (LEVEL 5). A resource ONLY
+// enters the Runtime when explicitly configured AND enabled AND valid.
+export {
+  evaluateAlertEnrollment,
+  isExplicitlyEnrolled,
+  shouldEnrollResource,
+  ENROLLMENT_REASONS,
+} from './ExplicitEnrollmentValidator.js';
+
 export function requestOperationalConfiguration(request) {
   if (!request) {
     return Object.freeze({
