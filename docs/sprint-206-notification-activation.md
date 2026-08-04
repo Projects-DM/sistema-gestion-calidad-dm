@@ -104,6 +104,40 @@ PASS (verificado): Sprint 202, 202.R, 202.R2, 203, 204, 204.R, 205. Sin modifica
 
 `NotificationActivationProvider`, `NotificationActivationAdapter`, `NotificationActivationBoundary`, `NotificationActivationContract`, `notification-activation/index.js`.
 
-## 13. FINAL CERTIFICATION
+## 13. Notification Boundary Certification
 
-**LEVEL 5 — ALERT CAPABILITY · NOTIFICATION ACTIVATION INTEGRATED · CONSUMPTION CERTIFIED · NOTIFICATION BOUNDARY CERTIFIED · OPERATIONAL ACTIONS ACTIVE · RUNTIME LAYERS UNTOUCHED**
+```
+Consumption Layer
+        │
+        ▼
+Notification Activation Provider
+        │
+        ▼
+Notification Activation Adapter
+        │
+        ▼
+Notification Infrastructure
+```
+
+Frontera certificada: Notification solo conoce la Consumption Layer (vía `NotificationActivationProvider`) y el `NotificationActivationAdapter`. Nunca cruza hacia Runtime, Runtime Wiring, Runtime Activation, Evaluation Engine, Metadata, Resolver, Dashboard o Workspace.
+
+**Nunca:**
+
+```
+Notification → Runtime
+Notification → Runtime Wiring
+Notification → Runtime Activation
+Notification → Evaluation Engine
+Notification → Metadata
+Notification → AlertConfigurationResolver
+```
+
+Dependency Rule: `Consumption → Notification Provider → Notification Adapter → Notification Infrastructure`. Nunca `Infrastructure → Runtime`, `Infrastructure → Consumption`, `Adapter → Runtime`, `Provider → Evaluation Engine`, `Provider → Metadata`. Open/Closed: Notification únicamente crece mediante nuevos adaptadores de infraestructura (Email, Teams, Slack, WhatsApp, SMS, Push…); nunca mediante nuevos Engines, Providers, Runtime Adapters, Consumption Engines o Runtime Contracts.
+
+## 14. Architecture Freeze
+
+Quedan congelados: `NotificationActivationProvider`, `NotificationActivationAdapter`, `NotificationActivationBoundary`, `NotificationActivationContract`, `notification-activation/index.js`. Los Sprints posteriores no podrán modificar su responsabilidad arquitectónica.
+
+## 15. FINAL CERTIFICATION
+
+**LEVEL 5 — ALERT CAPABILITY · NOTIFICATION ACTIVATION HARDENED · NOTIFICATION CONSUMER BOUNDARY CERTIFIED · NOTIFICATION CONTRACT CERTIFIED · NOTIFICATION REQUEST CERTIFIED · OPERATIONAL ACTIONS CERTIFIED · RUNTIME LAYERS UNTOUCHED · ARCHITECTURE STABILIZED**
