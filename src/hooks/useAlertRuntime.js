@@ -5,8 +5,7 @@ import { provideNotificationRequests } from '../core/capabilities/alert/notifica
 import { provideLifecycleRecords } from '../core/capabilities/alert/lifecycle/AlertLifecycleProvider.js';
 import { provideOperationalActions } from '../core/capabilities/alert/operational-actions/AlertOperationalActionProvider.js';
 import {
-  resolveResourceAlertConfiguration,
-  shouldProduceAlert,
+  evaluateAlertEnrollment,
   PRIORITY_LABELS,
 } from '../core/capabilities/alert/operational-configuration/index.js';
 import { dynamicService } from '../services/dynamicService.js';
@@ -254,13 +253,19 @@ export function deriveRulesFromBinding(binding, collected, runtimeResources) {
   return binding.boundAlerts
     .map((alert) => {
       const resource = resolveResourceForAlert(alert, resources);
-      const resolution = resolveResourceAlertConfiguration(resource);
-      const configuration = resolution.configuration;
 
-      // enabled=false → the resource produces NO rule (and therefore no
-      // descriptor, no alert, nothing reaches the Dashboard or Workspace).
-      // The decision belongs to the Resolver, never to the Runtime.
-      if (!shouldProduceAlert(configuration)) return null;
+      // Sprint 211 — EXPLICIT ENROLLMENT (LEVEL 5). A resource ONLY enters
+      // the Runtime when it holds explicit, non-empty, ENABLED configuration
+      // (E1–E4). Creating a Form/Repository/Document/Record NEVER generates
+      // an implicit alert. Resources never configured by the user are IGNORED
+      // entirely: no rule, no descriptor, no Dashboard/Workspace card, no
+      // notification, no lifecycle record, no operational action. The
+      // decision is delegated to the Enrollment Validator, which reuses the
+      // Resolver (sole owner of metadata + the `shouldProduceAlert` decision).
+      const enrollment = evaluateAlertEnrollment(resource);
+      if (!enrollment.enrolled) return null;
+
+      const configuration = enrollment.resolution.configuration;
 
       const transport = transportConfiguration(configuration);
       const priority = transport.priority;
@@ -272,7 +277,7 @@ export function deriveRulesFromBinding(binding, collected, runtimeResources) {
         priorityLabel,
         active: transport.enabled,
         ...transport,
-        prioritySource: resolution.source,
+        prioritySource: enrollment.resolution.source,
       };
 
       if (alert.source === 'dynamicForms') {
