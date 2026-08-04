@@ -340,7 +340,7 @@ Governance Validation
 
 ↓
 
-Capability Integration
+Architectural Admission
 
 ↓
 
@@ -376,16 +376,11 @@ Extension Certification
 
 ↓
 
-Certified Extension Admission
-
-↓
-
-Capability Integration
+Architectural Admission
 
 ↓
 
 Certified Evolution
-```
 
 ---
 

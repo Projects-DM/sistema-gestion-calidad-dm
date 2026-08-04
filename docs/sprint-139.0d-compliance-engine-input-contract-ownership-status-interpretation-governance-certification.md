@@ -84,7 +84,8 @@ El Compliance Engine **jamás conocerá**:
 - ❌ Data Sources
 ```
 
-Su única responsabilidad será consumir un **contrato de entrada perteneciente a su propio dominio**.
+Su única responsabilidad será consumir un Capability Input Contract
+certificado para su dominio operacional.
 
 ### Arquitectura certificada
 

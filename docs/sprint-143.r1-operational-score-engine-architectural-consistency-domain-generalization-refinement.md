@@ -51,15 +51,16 @@ como dominios oficiales del motor.
 ### Modelo certificado
 
 ```
-Operational Score Domains
-       │
-       ├── Domain Score Models
-       ├── Composite Score Models
-       ├── Metadata Score Models
-       ├── Threshold Score Models
-       ├── Predictive Score Models
-       ├── AI Score Models
-       └── Future Score Domains
+
+Operational Score Models
+
+├── Domain Score Models
+├── Composite Score Models
+├── Metadata Score Models
+├── Threshold Score Models
+├── Predictive Score Models
+├── AI Score Models
+└── Future Score Models
 ```
 
 ### Principio certificado
