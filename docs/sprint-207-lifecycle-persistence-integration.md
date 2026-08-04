@@ -139,6 +139,63 @@ PASS (verificado): Sprint 202, 202.R, 202.R2, 203, 204, 204.R, 205, 206. Sin mod
 
 `AlertLifecycleProvider`, `AlertLifecycleAdapter`, `AlertLifecycleBoundary`, `AlertLifecycleContract`, `lifecycle/index.js`. Los Sprints posteriores no podrán modificar su responsabilidad arquitectónica.
 
-## 14. FINAL CERTIFICATION
+## 14. Lifecycle Consumer Boundary Certification
 
-**LEVEL 5 — ALERT CAPABILITY · LIFECYCLE PERSISTENCE INTEGRATED · CONSUMPTION CERTIFIED · LIFECYCLE BOUNDARY CERTIFIED · OPERATIONAL HISTORY ACTIVE · RUNTIME LAYERS UNTOUCHED**
+```
+Consumption Layer
+        │
+        ▼
+AlertLifecycleProvider
+        │
+        ▼
+AlertLifecycleAdapter
+        │
+        ▼
+Lifecycle Persistence
+```
+
+Frontera certificada: Lifecycle solo conoce la Consumption Layer (vía `AlertLifecycleProvider`) y el `AlertLifecycleAdapter`. Nunca cruza hacia Runtime, Runtime Wiring, Runtime Activation, Evaluation Engine, Metadata, AlertConfigurationResolver, Dashboard, Workspace o Notification.
+
+**Nunca:**
+
+```
+Lifecycle → Runtime
+Lifecycle → Runtime Wiring
+Lifecycle → Runtime Activation
+Lifecycle → Evaluation Engine
+Lifecycle → Metadata
+Lifecycle → AlertConfigurationResolver
+Lifecycle → Dashboard
+Lifecycle → Workspace
+Lifecycle → Notification
+```
+
+Dependency Rule: `Consumption → Lifecycle Provider → Lifecycle Adapter → Lifecycle Persistence`. Nunca `Persistence → Runtime`, `Persistence → Consumption`, `Adapter → Runtime`, `Provider → Evaluation Engine`, `Provider → Metadata`. Open/Closed: Lifecycle únicamente crece mediante nuevos Persistence Adapters (Audit, Compliance, Analytics, BI, External Archive); nunca mediante Engine, Runtime paralelo, Scheduler, Polling, Strategy o Policy.
+
+## 15. Lifecycle Record Certification
+
+El único objeto permitido para persistencia es:
+
+```json
+{
+  "alertId",
+  "resourceId",
+  "timestamp",
+  "status",
+  "severity",
+  "transition",
+  "escalation",
+  "nextDue",
+  "remaining"
+}
+```
+
+Nunca: `RuntimeContext`, `Metadata`, `AlertConfiguration`, `Strategy`, `Policy`, `AlertTemporalState`, `Evaluation Engine`. `timestamp` es transportado como input, nunca generado por Lifecycle.
+
+## 16. Architecture Freeze
+
+Quedan congelados: `AlertLifecycleProvider`, `AlertLifecycleAdapter`, `AlertLifecycleBoundary`, `AlertLifecycleContract`, `lifecycle/index.js`. Los Sprints posteriores no podrán modificar su responsabilidad arquitectónica; las futuras extensiones se implementarán exclusivamente mediante nuevos Persistence Adapters.
+
+## 17. FINAL CERTIFICATION
+
+**LEVEL 5 — ALERT CAPABILITY · LIFECYCLE PERSISTENCE HARDENED · LIFECYCLE CONSUMER BOUNDARY CERTIFIED · LIFECYCLE RECORD CERTIFIED · OPERATIONAL HISTORY CERTIFIED · RUNTIME LAYERS UNTOUCHED · ARCHITECTURE STABILIZED**
