@@ -166,7 +166,9 @@ export default function Dashboard() {
 
       {/* Sprint 213 — Registros Operacionales (dominio colapsable; reutiliza las
           mismas metricas de useDashboardMetrics. Solo presentacion, sin recalc.) */}
-      <CollapsiblePanel title="Registros Operacionales" icon={FileCheck} accent="bg-blue-500" defaultOpen>
+      {/* Sprint 214 — Collapsed by Default (Dashboard Overview First):
+          paneles iniciados cerrados; el usuario expande por demanda. */}
+      <CollapsiblePanel title="Registros Operacionales" icon={FileCheck} accent="bg-blue-500" defaultOpen={false}>
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {kpis.map((kpi, idx) => (
             <DashboardMetricCard 
@@ -185,7 +187,7 @@ export default function Dashboard() {
       {/* Sprint 213 — Alertas Operacionales (reutiliza DashboardMetricCard y el
           facade certificado useAlertRuntime.dashboard.metrics; solo presentacion.) */}
       {alertMetrics && (
-        <CollapsiblePanel title="Alertas Operacionales" icon={AlertTriangle} accent="bg-red-500" defaultOpen>
+        <CollapsiblePanel title="Alertas Operacionales" icon={AlertTriangle} accent="bg-red-500" defaultOpen={false}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <DashboardMetricCard
               label="Alertas Activas"
