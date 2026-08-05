@@ -72,6 +72,11 @@ export default function Dashboard() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
 
+  // Sprint 220 — Modelo de resultados: matches[] + selectedIndex + currentMatch.
+  // Multiples coincidencias sobre el MISMO indice local certificado (Sprint 219).
+  const [matches, setMatches] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
   // Sprint 184 — Operational UI Consumption.
   // Dashboard consumes ONLY AlertDashboardDataProvider metrics. It never
   // administers, configures or navigates alert data.
@@ -166,22 +171,32 @@ export default function Dashboard() {
     return entries.map((e) => ({ ...e, hay: normalizeToken(`${e.title} ${e.keywords}`) }));
   }, [allModules, alertMetrics]);
 
-  // Sprint 219 — Matching local + navegación automática: expand panel → scroll
-  // → highlight (≈2s). Sin persistencia y sin queries.
+  // Sprint 219 — Matching local: recolecta TODAS las coincidencias; Sprint 220
+  // las navega. Sin persistencia y sin queries.
   useEffect(() => {
     const q = normalizeToken(searchQuery).trim();
-    if (!q) return;
-    const match = searchIndex.find((e) => e.hay.includes(q));
-    if (!match) return;
-    if (match.section === 'records') setRecordsOpen(true);
-    else if (match.section === 'alerts') setAlertsOpen(true);
-    setHighlightId(match.id);
+    const list = q ? searchIndex.filter((e) => e.hay.includes(q)) : [];
+    setMatches(list);
+    setSelectedIndex(0);
+  }, [searchQuery, searchIndex]);
+
+  // Sprint 220 — Navegación automática al resultado actual (currentMatch):
+  // expand panel → scroll → highlight (≈2s).
+  const currentMatch = matches[selectedIndex] ?? null;
+  useEffect(() => {
+    if (!currentMatch) return;
+    if (currentMatch.section === 'records') setRecordsOpen(true);
+    else if (currentMatch.section === 'alerts') setAlertsOpen(true);
+    setHighlightId(currentMatch.id);
     const scrollTimer = window.setTimeout(() => {
-      document.getElementById(match.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById(currentMatch.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 80);
     const clearTimer = window.setTimeout(() => setHighlightId(null), 2000);
     return () => { window.clearTimeout(scrollTimer); window.clearTimeout(clearTimer); };
-  }, [searchQuery, searchIndex]);
+  }, [selectedIndex, matches]);
+
+  const goPrev = () => setSelectedIndex((i) => (i - 1 + matches.length) % matches.length);
+  const goNext = () => setSelectedIndex((i) => (i + 1) % matches.length);
 
   const hl = (id) =>
     highlightId === id ? 'ring-2 ring-primary/60 bg-primary/5 shadow-md rounded-2xl' : '';
@@ -224,6 +239,32 @@ export default function Dashboard() {
           <span className="text-sm font-medium text-gray-700">Sistema Operativo</span>
         </div>
       </div>
+
+      {/* Sprint 220 — Resultados de búsqueda: contador (n/N) + navegación
+          anterior/siguiente. Solo presentación; navega los matches locales. */}
+      {matches.length > 0 && (
+        <div className="flex items-center justify-between gap-3 bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-2.5">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={matches.length <= 1}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary disabled:opacity-40 hover:underline"
+          >
+            <span aria-hidden="true">◀</span> Anterior
+          </button>
+          <span className="text-sm font-semibold text-gray-700" data-testid="search-result-count">
+            {matches.length} {matches.length === 1 ? 'resultado encontrado' : 'resultados encontrados'} · {selectedIndex + 1} / {matches.length}
+          </span>
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={matches.length <= 1}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary disabled:opacity-40 hover:underline"
+          >
+            Siguiente <span aria-hidden="true">▶</span>
+          </button>
+        </div>
+      )}
 
       {/* Sprint 213 — Registros Operacionales (dominio colapsable; reutiliza las
           mismas metricas de useDashboardMetrics. Solo presentacion, sin recalc.) */}
