@@ -50,6 +50,11 @@ const STATIC_MODULE_CARDS = [
   { path: '/configuracion', name: 'Configuración', icon: Settings, color: '#374151', desc: 'Usuarios y parámetros', roles: ['administrador'] },
 ];
 
+// Sprint 219 — Helpers de matching local (case-insensitive, accent-insensitive,
+// partial) y generador de ids de destino para navegacion (scroll/highlight).
+const normalizeToken = (s = '') => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const idSlug = (p = '') => `dashboard-search-target-${p.replace(/[^a-zA-Z0-9]+/g, '-')}`;
+
 export default function Dashboard() {
   const { rol, user } = useAuth();
   const { metrics, recentActivity, loading, error } = useDashboardMetrics();
@@ -60,6 +65,12 @@ export default function Dashboard() {
   // filtrado/resultados se implementa en Sprint 217; aqui solo se establece
   // el canal de comunicacion (transporte).
   const { query: searchQuery } = useDashboardSearch();
+
+  // Sprint 219 — Expansión controlada de los dominios (navegación por búsqueda)
+  // y resaltado temporal del resultado (≈2s).
+  const [recordsOpen, setRecordsOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [highlightId, setHighlightId] = useState(null);
 
   // Sprint 184 — Operational UI Consumption.
   // Dashboard consumes ONLY AlertDashboardDataProvider metrics. It never
@@ -132,6 +143,49 @@ export default function Dashboard() {
   const filteredModules = allModules;
   console.log('[TRACE][L10][Dashboard] filteredModules:', { length: filteredModules.length, modules: filteredModules.map(m => ({ path: m.path, name: m.name })) });
 
+  // Sprint 219 — Indice de busqueda local (efimero, no persistido), construido
+  // UNICAMENTE desde memoria: runtimeModules + metrics + alertMetrics. El Dashboard
+  // sigue siendo consumidor: sin consultas a Runtime/Supabase y sin servicios.
+  const searchIndex = useMemo(() => {
+    const entries = [];
+    allModules.forEach((m) =>
+      entries.push({ id: idSlug(m.path), type: 'module', title: m.name, keywords: m.name, section: 'modules' })
+    );
+    entries.push({ id: idSlug('records-panel'), type: 'domain', title: 'Registros Operacionales', keywords: 'Registros Operacionales', section: 'records' });
+    entries.push({ id: idSlug('records-panel'), type: 'kpi', title: 'Registros Hoy', keywords: 'Registros Actividad', section: 'records' });
+    entries.push({ id: idSlug('records-panel'), type: 'kpi', title: 'Total Registros', keywords: 'Registros Historico', section: 'records' });
+    entries.push({ id: idSlug('records-panel'), type: 'kpi', title: 'Incumplimientos', keywords: 'Rechazados Desvios', section: 'records' });
+    if (alertMetrics) {
+      entries.push({ id: idSlug('alerts-panel'), type: 'domain', title: 'Alertas Operacionales', keywords: 'Alertas Operacionales', section: 'alerts' });
+      entries.push({ id: idSlug('alerts-panel'), type: 'kpi', title: 'Alertas Activas', keywords: 'Alertas', section: 'alerts' });
+      entries.push({ id: idSlug('alerts-panel'), type: 'kpi', title: 'Alertas Críticas', keywords: 'Criticas Prioridad', section: 'alerts' });
+      entries.push({ id: idSlug('alerts-panel'), type: 'kpi', title: 'Documentos por Vencer', keywords: 'Documentos Repositorio', section: 'alerts' });
+      entries.push({ id: idSlug('alerts-panel'), type: 'kpi', title: 'Acciones Pendientes', keywords: 'Acciones Registros', section: 'alerts' });
+    }
+    entries.push({ id: idSlug('activity'), type: 'domain', title: 'Actividad Reciente', keywords: 'Actividad Reciente', section: 'activity' });
+    return entries.map((e) => ({ ...e, hay: normalizeToken(`${e.title} ${e.keywords}`) }));
+  }, [allModules, alertMetrics]);
+
+  // Sprint 219 — Matching local + navegación automática: expand panel → scroll
+  // → highlight (≈2s). Sin persistencia y sin queries.
+  useEffect(() => {
+    const q = normalizeToken(searchQuery).trim();
+    if (!q) return;
+    const match = searchIndex.find((e) => e.hay.includes(q));
+    if (!match) return;
+    if (match.section === 'records') setRecordsOpen(true);
+    else if (match.section === 'alerts') setAlertsOpen(true);
+    setHighlightId(match.id);
+    const scrollTimer = window.setTimeout(() => {
+      document.getElementById(match.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+    const clearTimer = window.setTimeout(() => setHighlightId(null), 2000);
+    return () => { window.clearTimeout(scrollTimer); window.clearTimeout(clearTimer); };
+  }, [searchQuery, searchIndex]);
+
+  const hl = (id) =>
+    highlightId === id ? 'ring-2 ring-primary/60 bg-primary/5 shadow-md rounded-2xl' : '';
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -175,26 +229,33 @@ export default function Dashboard() {
           mismas metricas de useDashboardMetrics. Solo presentacion, sin recalc.) */}
       {/* Sprint 214 — Collapsed by Default (Dashboard Overview First):
           paneles iniciados cerrados; el usuario expande por demanda. */}
-      <CollapsiblePanel title="Registros Operacionales" icon={FileCheck} accent="bg-blue-500" defaultOpen={false}>
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {kpis.map((kpi, idx) => (
-            <DashboardMetricCard 
-              key={idx}
-              label={kpi.label}
-              value={kpi.value}
-              icon={kpi.icon}
-              trend={kpi.trend}
-              color={kpi.color}
-              bg={kpi.bg}
-            />
-          ))}
-        </div>
-      </CollapsiblePanel>
+      {/* Sprint 219 — Dominio controlado (recordsOpen/onExpandedChange) para que
+          la busqueda local expanda automaticamente el panel al encontrar match. */}
+      <div id={idSlug('records-panel')} className={hl(idSlug('records-panel'))}>
+        <CollapsiblePanel title="Registros Operacionales" icon={FileCheck} accent="bg-blue-500" defaultOpen={false} expanded={recordsOpen} onExpandedChange={setRecordsOpen}>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {kpis.map((kpi, idx) => (
+              <DashboardMetricCard 
+                key={idx}
+                label={kpi.label}
+                value={kpi.value}
+                icon={kpi.icon}
+                trend={kpi.trend}
+                color={kpi.color}
+                bg={kpi.bg}
+              />
+            ))}
+          </div>
+        </CollapsiblePanel>
+      </div>
 
       {/* Sprint 213 — Alertas Operacionales (reutiliza DashboardMetricCard y el
           facade certificado useAlertRuntime.dashboard.metrics; solo presentacion.) */}
+      {/* Sprint 219 — Dominio controlado (alertsOpen/onExpandedChange) para la
+          expansion automatica por busqueda local. */}
       {alertMetrics && (
-        <CollapsiblePanel title="Alertas Operacionales" icon={AlertTriangle} accent="bg-red-500" defaultOpen={false}>
+        <div id={idSlug('alerts-panel')} className={hl(idSlug('alerts-panel'))}>
+          <CollapsiblePanel title="Alertas Operacionales" icon={AlertTriangle} accent="bg-red-500" defaultOpen={false} expanded={alertsOpen} onExpandedChange={setAlertsOpen}>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <DashboardMetricCard
               label="Alertas Activas"
@@ -229,7 +290,8 @@ export default function Dashboard() {
               bg="bg-blue-100"
             />
           </div>
-        </CollapsiblePanel>
+          </CollapsiblePanel>
+        </div>
       )}
 
       {/* Modules Grid */}
@@ -243,8 +305,9 @@ export default function Dashboard() {
           {filteredModules.map((mod) => (
             <Link 
               to={mod.path} 
+              id={idSlug(mod.path)}
               key={mod.id || mod.path}
-              className={`group relative bg-white rounded-2xl p-6 border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden ${
+              className={`group relative bg-white rounded-2xl p-6 border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden ${hl(idSlug(mod.path))} ${
                 mod.featured ? 'border-accent/50 shadow-md ring-1 ring-accent/10' : 'border-gray-100 hover:border-primary/30'
               }`}
             >
@@ -277,7 +340,9 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Activity Section */}
-      <DashboardRecentActivity recent={recentActivity} />
+      <div id={idSlug('activity')} className={hl(idSlug('activity'))}>
+        <DashboardRecentActivity recent={recentActivity} />
+      </div>
       
     </div>
   );

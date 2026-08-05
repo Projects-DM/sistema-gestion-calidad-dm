@@ -19,7 +19,9 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
  * @param {Object}   props
  * @param {string}   props.title       Titulo del panel.
  * @param {Function} props.icon        Componente lucide opcional para el header.
- * @param {boolean}  [props.defaultOpen=true] Estado inicial del panel.
+ * @param {boolean}  [props.defaultOpen=true] Estado inicial del panel (modo no controlado).
+ * @param {boolean}  [props.expanded]  Estado controlado (si se provee, gobierno externo).
+ * @param {Function} [props.onExpandedChange] Callback (next) cuando el estado controlado cambia.
  * @param {number|string} [props.badge]       Badge opcional junto al titulo.
  * @param {string}   [props.accent='bg-primary'] Clase tailwind del acento.
  * @param {import('react').ReactNode} props.children Contenido expandible.
@@ -28,17 +30,29 @@ export function CollapsiblePanel({
   title,
   icon: Icon,
   defaultOpen = true,
+  expanded,
+  onExpandedChange,
   badge,
   accent = 'bg-primary',
   children,
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  // Modo no controlado (independiente por panel) preservado: Sprint 213/214/215.
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const open = expanded !== undefined ? expanded : internalOpen;
+
+  const toggle = () => {
+    if (expanded !== undefined) {
+      onExpandedChange?.(!open);
+    } else {
+      setInternalOpen((prev) => !prev);
+    }
+  };
 
   return (
     <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] overflow-hidden">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={toggle}
         aria-expanded={open}
         className="w-full flex items-center justify-between gap-3 px-4 sm:px-5 py-4 text-left hover:bg-gray-50 transition-colors group"
       >
