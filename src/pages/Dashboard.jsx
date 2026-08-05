@@ -5,6 +5,7 @@ import { LayoutDashboard } from "lucide-react";
 import { useDashboardMetrics } from '../modules/dashboard/hooks/useDashboardMetrics';
 import { DashboardMetricCard } from '../modules/dashboard/components/DashboardMetricCard';
 import { DashboardRecentActivity } from '../modules/dashboard/components/DashboardRecentActivity';
+import { CollapsiblePanel } from '../shared/components/CollapsiblePanel';
 import { useAlertRuntime } from '../hooks/useAlertRuntime';
 import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
@@ -163,28 +164,28 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards — Grid responsivo de 2 columnas compactas en móvil y 4 en desktop */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {kpis.map((kpi, idx) => (
-          <DashboardMetricCard 
-            key={idx}
-            label={kpi.label}
-            value={kpi.value}
-            icon={kpi.icon}
-            trend={kpi.trend}
-            color={kpi.color}
-            bg={kpi.bg}
-          />
-        ))}
-      </div>
+      {/* Sprint 213 — Registros Operacionales (dominio colapsable; reutiliza las
+          mismas metricas de useDashboardMetrics. Solo presentacion, sin recalc.) */}
+      <CollapsiblePanel title="Registros Operacionales" icon={FileCheck} accent="bg-blue-500" defaultOpen>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {kpis.map((kpi, idx) => (
+            <DashboardMetricCard 
+              key={idx}
+              label={kpi.label}
+              value={kpi.value}
+              icon={kpi.icon}
+              trend={kpi.trend}
+              color={kpi.color}
+              bg={kpi.bg}
+            />
+          ))}
+        </div>
+      </CollapsiblePanel>
 
-      {/* Sprint 184 — Alertas Operacionales (consume AlertDashboardDataProvider only) */}
+      {/* Sprint 213 — Alertas Operacionales (reutiliza DashboardMetricCard y el
+          facade certificado useAlertRuntime.dashboard.metrics; solo presentacion.) */}
       {alertMetrics && (
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <div className="w-1.5 h-6 bg-red-500 rounded-full"></div>
-            Alertas Operacionales
-          </h2>
+        <CollapsiblePanel title="Alertas Operacionales" icon={AlertTriangle} accent="bg-red-500" defaultOpen>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <DashboardMetricCard
               label="Alertas Activas"
@@ -219,7 +220,7 @@ export default function Dashboard() {
               bg="bg-blue-100"
             />
           </div>
-        </div>
+        </CollapsiblePanel>
       )}
 
       {/* Modules Grid */}
