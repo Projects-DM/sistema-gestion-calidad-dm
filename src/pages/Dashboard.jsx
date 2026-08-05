@@ -7,6 +7,7 @@ import { DashboardMetricCard } from '../modules/dashboard/components/DashboardMe
 import { DashboardRecentActivity } from '../modules/dashboard/components/DashboardRecentActivity';
 import { CollapsiblePanel } from '../shared/components/CollapsiblePanel';
 import { useAlertRuntime } from '../hooks/useAlertRuntime';
+import { useDashboardSearch } from '../shared/components/DashboardSearchContext';
 import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
@@ -53,6 +54,12 @@ export default function Dashboard() {
   const { rol, user } = useAuth();
   const { metrics, recentActivity, loading, error } = useDashboardMetrics();
   const [runtimeModules, setRuntimeModules] = useState([]);
+
+  // Sprint 216 — El Dashboard recibe la intencion de busqueda VIA CONTEXTO
+  // (nunca del input directamente) y conserva la propiedad del indice. El
+  // filtrado/resultados se implementa en Sprint 217; aqui solo se establece
+  // el canal de comunicacion (transporte).
+  const { query: searchQuery } = useDashboardSearch();
 
   // Sprint 184 — Operational UI Consumption.
   // Dashboard consumes ONLY AlertDashboardDataProvider metrics. It never
@@ -150,7 +157,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10" data-search-query={searchQuery}>
       
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

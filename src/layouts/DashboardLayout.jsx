@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
+import { DashboardSearchProvider, useDashboardSearch } from '../shared/components/DashboardSearchContext';
 import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
@@ -56,6 +57,9 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut, user, rol } = useAuth();
+  // Sprint 216 — Search Input transmite unicamente intencion de busqueda al
+  // contexto (transporte). Nunca interpreta resultados.
+  const { query, setQuery } = useDashboardSearch();
 
   const appContext = useMemo(() => createApplicationContext({
     actorId: user?.id ?? null,
@@ -129,7 +133,8 @@ export default function DashboardLayout() {
   console.log('[TRACE][L10][Sidebar] filteredMenuItems:', { length: filteredMenuItems.length, items: filteredMenuItems.map(i => ({ path: i.path, name: i.name })) });
 
   return (
-    <div className="h-screen bg-gray-50 flex overflow-hidden">
+    <DashboardSearchProvider>
+      <div className="h-screen bg-gray-50 flex overflow-hidden">
 
       {/* Sidebar Overlay (Mobile) */}
       {sidebarOpen && (
@@ -235,6 +240,8 @@ export default function DashboardLayout() {
               <Search className="w-4 h-4 text-gray-400 mr-2" />
               <input
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar módulo, registro, lote..."
                 className="bg-transparent border-none outline-none text-sm w-full text-gray-700 placeholder-gray-400"
               />
@@ -274,6 +281,7 @@ export default function DashboardLayout() {
         </main>
       </div>
     </div>
+    </DashboardSearchProvider>
   );
 }
 
