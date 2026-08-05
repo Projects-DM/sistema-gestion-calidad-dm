@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../hooks/useAuth';
-import { DashboardSearchProvider, useDashboardSearch } from '../shared/components/DashboardSearchContext';
+import { DashboardSearchProvider } from '../shared/components/DashboardSearchContext';
+import HeaderSearchInput from '../shared/components/HeaderSearchInput';
 import { ModuleAdministrationApplicationService } from '../core/applicationLayer/moduleAdministration/ModuleAdministrationApplicationService.js';
 import { ModuleCapabilityPersistenceAdapter } from '../core/applicationLayer/moduleAdministration/adapters/ModuleCapabilityPersistenceAdapter.js';
 import { createApplicationRequest } from '../core/applicationLayer/common/contracts/ApplicationRequest.js';
@@ -16,7 +17,6 @@ import {
   AlertTriangle,
   LogOut,
   Bell,
-  Search,
   Menu,
   X,
   ShieldCheck,
@@ -57,9 +57,6 @@ export default function DashboardLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, signOut, user, rol } = useAuth();
-  // Sprint 216 — Search Input transmite unicamente intencion de busqueda al
-  // contexto (transporte). Nunca interpreta resultados.
-  const { query, setQuery } = useDashboardSearch();
 
   const appContext = useMemo(() => createApplicationContext({
     actorId: user?.id ?? null,
@@ -236,16 +233,9 @@ export default function DashboardLayout() {
               <Menu className="w-6 h-6" />
             </button>
 
-            <div className="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-2 border border-gray-200 focus-within:border-primary/50 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/10 transition-all w-80">
-              <Search className="w-4 h-4 text-gray-400 mr-2" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar módulo, registro, lote..."
-                className="bg-transparent border-none outline-none text-sm w-full text-gray-700 placeholder-gray-400"
-              />
-            </div>
+            {/* Sprint 218 — HeaderSearchInput es el unico consumidor del
+                Search Context (montado bajo el Provider). */}
+            <HeaderSearchInput />
           </div>
 
           <div className="flex items-center gap-4 lg:gap-6">
