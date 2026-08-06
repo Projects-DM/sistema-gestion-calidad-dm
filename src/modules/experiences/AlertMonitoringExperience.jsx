@@ -42,26 +42,80 @@ import {
  * and highlights it TEMPORARILY — it is NEVER left selected.
  */
 
-/*
- * Sprint 231 — Consolidated single representation. The persisted
- * alertConfigurations[] collection (Sprint 229) is the SINGLE source for the
- * operational alert cards: one card per alert, each carrying the existing
- * navigation (open-form / go-to-document). The second representation created
- * in Sprint 230 (OperationalAlertCollection) is removed.
- */
-const PRIORITY_VISUAL = Object.freeze({
-  low: { color: 'green', icon: 'Bell' },
-  medium: { color: 'yellow', icon: 'AlertTriangle' },
-  high: { color: 'orange', icon: 'AlertOctagon' },
-  critical: { color: 'red', icon: 'AlertOctagon' },
+const STATUS_VISUAL = Object.freeze({
+  overdue: Object.freeze({ label: 'Vencida', color: 'red' }),
+  today: Object.freeze({ label: 'Hoy', color: 'orange' }),
+  upcoming: Object.freeze({ label: 'Próxima', color: 'yellow' }),
+  active: Object.freeze({ label: 'Activa', color: 'green' }),
+  disabled: Object.freeze({ label: 'Deshabilitada', color: 'gray' }),
 });
+const STATUS_ORDER = Object.freeze({ overdue: 0, today: 1, upcoming: 2, active: 3, disabled: 4 });
+const PRIORITY_LABELS = Object.freeze({ low: 'Baja', medium: 'Media', high: 'Alta' });
+const PERIOD_UNITS_DAYS = Object.freeze({ hours: 1 / 24, days: 1, weeks: 7, months: 30, years: 365 });
+const UNIT_LABELS = Object.freeze({ hours: 'hora', days: 'día', weeks: 'semana', months: 'mes', years: 'año' });
+const CHANNEL_LABELS = Object.freeze({ email: 'Email', 'in-app': 'Sistema', push: 'Push', bluetooth: 'Bluetooth' });
 
 /**
- * Sprint 231 — Projects the persisted alert collections of the existing
- * resources into navigable alert cards (read-only; single representation).
- * Reuses the certified Resolver. Legacy single `alertConfiguration` resolves
- * to a one-element collection (backward compatible). Resources NEVER
- * configured are skipped (no spurious cards). The UI never evaluates.
+ * Sprint 235 — OPERATIONAL STATUS PROJECTION (read-only, provisional).
+ *
+ * Derives a deterministic operational ordering/status from the ALREADY
+ * PERSISTED canonical fields (periodicity, expiration, priority, notification,
+ * enabled). The UI NEVER evaluates the Alert Engine and NEVER persists:
+ * this is a TEMPORARY projection that the UI will later replace with the
+ * ENGINE's certified operational states without changing the design/UX.
+ */
+function operationalState(cfg) {
+  if (cfg?.enabled === false) {
+    return { key: 'disabled', label: STATUS_VISUAL.disabled.label, color: STATUS_VISUAL.disabled.color };
+  }
+  const days = cadenceDays(cfg?.periodicity);
+  if (days === null) {
+    // Once / no cadence → the configured single event is closest.
+    return { key: 'upcoming', label: STATUS_VISUAL.upcoming.label, color: STATUS_VISUAL.upcoming.color };
+  }
+  if (days <= 1) return { key: 'today', label: STATUS_VISUAL.today.label, color: STATUS_VISUAL.today.color };
+  if (days <= 7) return { key: 'upcoming', label: STATUS_VISUAL.upcoming.label, color: STATUS_VISUAL.upcoming.color };
+  return { key: 'active', label: STATUS_VISUAL.active.label, color: STATUS_VISUAL.active.color };
+}
+
+function cadenceDays(periodicity) {
+  if (periodicity === 'once') return 0;
+  if (!periodicity || typeof periodicity !== 'object') return null;
+  const mult = PERIOD_UNITS_DAYS[periodicity.unit];
+  const amount = Number(periodicity.amount) || 1;
+  return mult ? amount * mult : amount;
+}
+
+function frequencyLabel(periodicity) {
+  if (periodicity === 'once') return 'Una vez';
+  if (!periodicity || typeof periodicity !== 'object') return 'Sin periodicidad';
+  const a = Number(periodicity.amount) || 1;
+  const u = UNIT_LABELS[periodicity.unit] || periodicity.unit || 'día';
+  return `Cada ${a} ${u}${a === 1 ? '' : 's'}`;
+}
+
+function relativeLabel(days) {
+  if (days === null) return '—';
+  const d = Math.round(days);
+  if (days <= 0) return 'Hoy';
+  if (days < 1) return `En ${Math.round(days * 24)} horas`;
+  if (d <= 30) return `En ${d} día${d === 1 ? '' : 's'}`;
+  if (d <= 365) return `En ~${Math.round(d / 30)} meses`;
+  return `En ~${Math.round(d / 365)} año${d / 365 >= 2 ? 's' : ''}`;
+}
+
+function channelLabel(cfg) {
+  const ch = cfg?.notification?.channel;
+  if (!ch) return null;
+  return CHANNEL_LABELS[ch] || ch;
+}
+
+/**
+ * Sprint 231+235 — Projects the persisted alert collections into navigable
+ * OPERATIONAL alert cards. Reuses the certified Resolver; legacy single
+ * `alertConfiguration` resolves to a one-element collection (backward
+ * compatible); never-configured resources are skipped. The cards carry the
+ * operational status projection + the certified navigation. UI never evaluates.
  */
 function projectConfigCards(resources) {
   const out = [];
@@ -78,23 +132,31 @@ function projectConfigCards(resources) {
       }
       (resolution?.collection ?? []).forEach((cfg, idx) => {
         const isForm = s === 'forms';
-        const enabled = cfg?.enabled !== false;
+        const state = operationalState(cfg);
+        const days = cadenceDays(cfg?.periodicity);
         const priority = cfg?.priority || 'medium';
-        const priorityLabel = priority === 'high' ? 'Alta' : priority === 'low' ? 'Baja' : 'Media';
-        const visual = PRIORITY_VISUAL[priority] || PRIORITY_VISUAL.medium;
-        const meta = [cfg?.description, cfg?.notification?.channel ? `Canal: ${cfg.notification.channel}` : null]
+        const channel = channelLabel(cfg);
+        const meta = [frequencyLabel(cfg?.periodicity), channel ? `Canal: ${channel}` : null]
           .filter(Boolean)
           .join(' · ');
         out.push({
           id: `${s}:${resource?.id}:${idx}`,
+          order: STATUS_ORDER[state.key],
+          days,
           title: cfg?.description || (cfg?.periodicity === 'once' ? 'Una vez' : 'Alerta'),
           tipo: isForm ? 'Formulario' : 'Repositorio',
           origen: resource?.name || resource?.slug || resource?.id || null,
           priority,
-          priorityLabel,
-          estado: enabled ? 'Activa' : 'Deshabilitada',
-          color: visual.color,
-          icon: visual.icon,
+          priorityLabel: PRIORITY_LABELS[priority] || 'Media',
+          status: state.key,
+          statusLabel: state.label,
+          color: state.color,
+          icon: state.key === 'disabled' ? 'Bell' : 'AlertOctagon',
+          frequency: frequencyLabel(cfg?.periodicity),
+          expiration: cfg?.expiration || 'none',
+          nextExecution: relativeLabel(days === 0 ? 0 : days),
+          remainingTime: relativeLabel(days === 0 ? 0 : days),
+          channel,
           message: meta,
           navigable: true,
           navigationLabel: isForm ? 'Ir al formulario' : 'Ir al repositorio',
@@ -108,6 +170,7 @@ function projectConfigCards(resources) {
       });
     }
   }
+  out.sort((a, b) => a.order - b.order || (a.days === null ? 1 : a.days) - (b.days === null ? 1 : b.days));
   return out;
 }
 
@@ -158,24 +221,28 @@ function CardButton({ card, moduleSlug }) {
         </div>
         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${classes.badge}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${classes.dot}`} />
-          {card.priorityLabel}
+          {card.statusLabel}
         </span>
       </div>
 
       <div>
         <div className="text-sm font-bold text-gray-900">{card.title}</div>
         <div className="text-xs text-gray-500 mt-1">
-          {card.tipo} · {card.origen}
+          Prioridad {card.priorityLabel} · {card.tipo}
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-[11px] text-gray-500">
-        <span className={`inline-flex px-2 py-0.5 rounded-full font-bold border ${classes.badge}`}>{card.estado}</span>
+      <div className="grid grid-cols-1 gap-1 text-[11px] text-gray-600">
+        <p><span className="font-semibold text-gray-400">Frecuencia:</span> {card.frequency}</p>
+        <p><span className="font-semibold text-gray-400">Próxima ejecución:</span> {card.nextExecution || '—'}</p>
+        <p><span className="font-semibold text-gray-400">Tiempo:</span> {card.remainingTime || '—'}</p>
+        {card.channel && <p><span className="font-semibold text-gray-400">Canal:</span> {card.channel}</p>}
       </div>
 
-      {card.message && (
-        <p className="text-xs text-gray-600 leading-relaxed">{card.message}</p>
-      )}
+      <div className="flex items-center gap-2 text-[11px] text-gray-500">
+        <span className={`inline-flex px-2 py-0.5 rounded-full font-bold border ${classes.badge}`}>{card.statusLabel}</span>
+        {card.origen && <span className="truncate">{card.origen}</span>}
+      </div>
 
       {card.navigable && route && (
         <button
@@ -206,20 +273,25 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
   // Pure read projection; the UI never evaluates, never persists.
   const configCards = useMemo(() => projectConfigCards(existing), [existing]);
 
+  // Sprint 235 — the cards are grouped by OPERATIONAL status (not load order):
+// Vencidas → Hoy → Próximas → Activas → Deshabilitadas. projectConfigCards
+// already sorts each card's `order` + closest next, so groups stay ordered.
   const grouped = useMemo(() => {
-    const order = ['high', 'medium', 'low'];
-    const out = [];
-    for (const p of order) {
-      const cards = configCards.filter((c) => c.priority === p);
-      if (cards.length) {
-        out.push({
-          priority: p,
-          label: p === 'high' ? 'Prioridad alta' : p === 'medium' ? 'Prioridad media' : 'Prioridad baja',
-          cards,
-        });
-      }
-    }
-    return out;
+    const order = ['overdue', 'today', 'upcoming', 'active', 'disabled'];
+    const labels = {
+      overdue: 'Vencidas',
+      today: 'Hoy',
+      upcoming: 'Próximas',
+      active: 'Activas',
+      disabled: 'Deshabilitadas',
+    };
+    return order
+      .map((key) => ({
+        key,
+        label: labels[key],
+        cards: configCards.filter((c) => c.status === key),
+      }))
+      .filter((g) => g.cards.length > 0);
   }, [configCards]);
 
   if (configCards.length === 0) {
@@ -247,7 +319,7 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
       </div>
 
       {grouped.map((group) => (
-        <div key={group.priority}>
+        <div key={group.key}>
           <div className="flex items-center gap-2 mb-3">
             <h3 className="text-sm font-bold text-gray-900">{group.label}</h3>
             <span className="text-xs text-gray-400">({group.cards.length})</span>
