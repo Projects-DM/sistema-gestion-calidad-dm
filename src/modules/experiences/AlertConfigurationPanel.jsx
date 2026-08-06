@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { CheckCircle2, X, Loader2, Plus, BellRing } from 'lucide-react';
+import { CheckCircle2, X, Loader2, Plus, Bell, Copy, Trash2 } from 'lucide-react';
 import { AlertConfigurationApplicationService } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationApplicationService.js';
 import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
@@ -9,18 +9,24 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
  * Sprint 201 — The ADMINISTRATIVE operational experience to edit the
  * `alertConfiguration` metadata of a resource (form or document repository).
  *
- * Sprint 201.R — The panel only knows the AlertConfigurationApplicationService
- * (already constructed with the injected PersistencePort adapter). It never
- * receives a concrete persistence service nor a resourceKind→backend selection;
- * it passes a raw `resource` reference and the Application Port routes
- * persistence internally.
- *
  * Sprint 222 — Multi-alert administration: the panel keeps a presentational
- * collection (`alerts`) of named alert intents (key + name + description). The
- * administrator creates intents with "＋ Nueva alerta", selects one, and edits it
- * through the reused AlertConfigurationForm. Persistence continues through the
- * Application Service / PersistencePort as the single compatible
- * `alertConfiguration` metadata.
+ * collection (`alerts`) of named alert intents (key + name + description).
+ * The administrator creates intents with "＋ Nueva alerta", selects one, and edits
+ * it through the reused AlertConfigurationForm.
+ *
+ * Sprint 227 — COLLECTION ADMINISTRATION (MASTER SSOT):
+ *   - The panel is now the OWNER/ADMINISTRATOR of the alert collection.
+ *   - It creates, selects, edits, DUPLICATES and DELETES alert intents.
+ *   - Each intent keeps its own per-alert configuration draft (`configs`), so
+ *     multiple alerts are truly independent.
+ *   - The form only ever receives the SELECTED (active) alert (selectedAlert);
+ *     it does not know about the collection.
+ *   - Cards expose only per-alert SUMMARY: name, short description, schedule,
+ *     priority, and operational status (Activa / Deshabilitada). No due-date
+ *     calculation happens here (that belongs to Sprint 228 + the Alert Engine).
+ *   - Compatibility is PRESERVED: persistence continues through the Application
+ *     Service / PersistencePort as the single compatible `alertConfiguration`
+ *     metadata (the ACTIVE alert is the one written, retrocompatible scenario).
  *
  * CONTAINER ONLY. The panel loads, validates and persists; it NEVER interacts
  * with the Runtime, the Engine or the Consumption Layer.
@@ -39,6 +45,19 @@ const emptyState = Object.freeze({
   formState: null,
 });
 
+function scheduleLabel(f) {
+  if (!f) return 'Sin programación';
+  if (f.periodicityMode === 'recurring') {
+    const a = Number(f.periodicityAmount) || 1;
+    const units = { hours: 'hora', days: 'día', weeks: 'semana', months: 'mes', years: 'año' };
+    const u = f.periodicityUnit || 'days';
+    return `Cada ${a} ${units[u] || u}${a === 1 ? '' : 's'}`;
+  }
+  if (f.expiration === 'recurring') return 'Al vencimiento';
+  if (f.expiration === 'fixed') return 'Fecha específica';
+  return 'Sin programación';
+}
+
 export default function AlertConfigurationPanel({
   resourceKind,
   resource,
@@ -52,24 +71,31 @@ export default function AlertConfigurationPanel({
     serviceRef.current = new AlertConfigurationApplicationService({ persistence });
   }
 
-  const [load, setLoad] = useState(() => ({
-    ...emptyState,
-    ...(resource && typeof resource === 'object' ? serviceRef.current.load(resource) : {}),
-  }));
-  const [formState, setFormState] = useState(load.formState);
+  const load = useMemo(() => ({ ...emptyState, ...(resource && typeof resource === 'object' ? serviceRef.current.load(resource) : {}) }), [resource]);
+
+  const initialAlertKey = 'alert-1';
   const [alerts, setAlerts] = useState(() => [
-    { key: 'alert-1', name: resource?.name || resource?.slug || resource?.id || 'Nueva alerta', description: '' },
+    { key: initialAlertKey, name: resource?.name || resource?.slug || resource?.id || 'Nueva alerta', description: '' },
   ]);
-  const [activeKey, setActiveKey] = useState('alert-1');
+  const [configs, setConfigs] = useState(() => ({ [initialAlertKey]: load.formState }));
+  const [activeKey, setActiveKey] = useState(initialAlertKey);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const counterRef = useRef(1);
 
   const title = useMemo(() => {
     if (resourceKind === 'documentRepository') return 'Configuración de alertas del repositorio';
     return 'Configuración de alertas del formulario';
   }, [resourceKind]);
+
+  const activeConfig = configs[activeKey] || {};
+
+  const makeAlert = (name, description) => {
+    counterRef.current += 1;
+    return { key: `alert-${counterRef.current}`, name, description };
+  };
 
   const onChange = (field, value) => {
     setSaved(false);
@@ -79,38 +105,65 @@ export default function AlertConfigurationPanel({
       delete next[field];
       return next;
     });
-    setFormState((prev) => ({ ...prev, [field]: value }));
+    setConfigs((prev) => ({ ...prev, [activeKey]: { ...(prev[activeKey] || {}), [field]: value } }));
     if (field === 'name' || field === 'description') {
       setAlerts((prev) => prev.map((a) => (a.key === activeKey ? { ...a, [field]: value } : a)));
     }
   };
 
   const addAlert = () => {
-    const key = `alert-${alerts.length + 1}`;
-    setAlerts((prev) => [...prev, { key, name: 'Nueva alerta', description: '' }]);
-    setActiveKey(key);
+    const next = makeAlert('Nueva alerta', '');
+    const base = configs[activeKey] || load.formState || {};
+    setAlerts((prev) => [...prev, next]);
+    setConfigs((prev) => ({ ...prev, [next.key]: { ...base, name: '', description: '' } }));
+    setActiveKey(next.key);
   };
 
   const selectAlert = (key) => {
     setActiveKey(key);
-    const active = alerts.find((a) => a.key === key);
-    setFormState((prev) => ({ ...(prev || {}), name: active?.name || '', description: active?.description || '' }));
+    setErrors({});
+    setSaved(false);
+  };
+
+  const duplicateAlert = (key) => {
+    const src = alerts.find((a) => a.key === key);
+    const srcConfig = configs[key] || {};
+    const next = makeAlert(`${src?.name || 'Nueva alerta'} (copia)`, src?.description || '');
+    setAlerts((prev) => [...prev, next]);
+    setConfigs((prev) => ({ ...prev, [next.key]: { ...srcConfig, name: next.name, description: next.description } }));
+    setActiveKey(next.key);
+  };
+
+  const deleteAlert = (key) => {
+    const remaining = alerts.filter((a) => a.key !== key);
+    setAlerts(remaining);
+    setConfigs((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setErrors({});
+    setSaved(false);
+    if (activeKey === key) {
+      const nextActive = remaining[0]?.key || null;
+      setActiveKey(nextActive);
+    }
   };
 
   const onReset = () => {
     setSaved(false);
     setSaveError(null);
     setErrors({});
-    setFormState(serviceRef.current.load(resource).formState);
+    setConfigs((prev) => ({ ...prev, [activeKey]: serviceRef.current.load(resource).formState }));
   };
 
   const onSubmit = async () => {
-    if (!resource || !formState) return;
+    if (!resource || !activeConfig) return;
     setSaving(true);
     setSaved(false);
     setSaveError(null);
     try {
-      const result = await serviceRef.current.saveConfiguration({ resource, formState });
+      const result = await serviceRef.current.saveConfiguration({ resource, formState: activeConfig });
       if (result.success) {
         setSaved(true);
         setErrors({});
@@ -154,7 +207,7 @@ export default function AlertConfigurationPanel({
         )}
       </div>
 
-      {!resource || !formState ? (
+      {!resource || !load.formState ? (
         <div className="py-10 text-center text-gray-500 text-sm">
           No se pudo cargar la configuración de este recurso.
         </div>
@@ -176,11 +229,12 @@ export default function AlertConfigurationPanel({
             </div>
           )}
 
-          {/* Sprint 222 — Colección de alertas */}
+          {/* Sprint 222/227 — Colección de alertas */}
           <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
             <div className="px-4 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <BellRing className="w-4 h-4 text-primary" /> Alertas
+                <Bell className="w-4 h-4 text-primary" /> Alertas
+                <span className="text-[11px] font-medium text-gray-400">({alerts.length})</span>
               </h3>
               <button
                 type="button"
@@ -190,39 +244,74 @@ export default function AlertConfigurationPanel({
                 <Plus className="w-4 h-4" /> Nueva alerta
               </button>
             </div>
-            <div className="p-3 space-y-1" data-testid="alerts-collection">
+            <div className="p-3 space-y-1.5" data-testid="alerts-collection">
               {alerts.map((a) => {
                 const selected = a.key === activeKey;
+                const cfg = configs[a.key] || {};
                 return (
-                  <button
+                  <div
                     key={a.key}
-                    type="button"
-                    onClick={() => selectAlert(a.key)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm text-left transition-colors ${
-                      selected ? 'border-primary bg-primary/5 text-gray-900' : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    className={`rounded-xl border p-2.5 transition-colors ${
+                      selected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <span aria-hidden="true" className="text-xs">{selected ? '✓' : '•'}</span>
-                    <span className="truncate font-medium">{a.name || 'Sin nombre'}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => selectAlert(a.key)}
+                      className="w-full flex items-center justify-between gap-2 text-left"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span aria-hidden="true" className="text-xs text-primary">{selected ? '✓' : '•'}</span>
+                        <span className="truncate font-medium text-sm text-gray-900">{a.name || 'Sin nombre'}</span>
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg?.enabled === true ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                        {cfg?.enabled === true ? 'Activa' : 'Deshabilitada'}
+                      </span>
+                    </button>
+                    <div className="mt-1.5 pl-5 space-y-0.5">
+                      {a.description && <p className="text-[11px] text-gray-500 truncate">{a.description}</p>}
+                      <p className="text-[11px] text-gray-400">{scheduleLabel(cfg)}</p>
+                      <p className="text-[11px] text-gray-400">Prioridad: {cfg?.priority || 'media'} · Canal: {cfg?.notificationChannel || 'email'}</p>
+                    </div>
+                    <div className="mt-1.5 pl-5 flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => duplicateAlert(a.key)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-primary"
+                        title="Duplicar"
+                      >
+                        <Copy className="w-3.5 h-3.5" /> Duplicar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteAlert(a.key)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-600"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           </div>
 
-          <AlertConfigurationForm
-            formState={{
-              ...formState,
-              name: active?.name || formState?.name,
-              description: active?.description || formState?.description,
-            }}
-            errors={errors}
-            onChange={onChange}
-            onSubmit={onSubmit}
-            onReset={onReset}
-            saving={saving}
-            canReset={load.source === 'metadata'}
-          />
+          {active && (
+            <AlertConfigurationForm
+              formState={{
+                ...(configs[active.key] || {}),
+                name: active?.name || '',
+                description: active?.description || '',
+              }}
+              errors={errors}
+              onChange={onChange}
+              onSubmit={onSubmit}
+              onReset={onReset}
+              saving={saving}
+              canReset={load.source === 'metadata'}
+            />
+          )}
         </>
       )}
     </div>
