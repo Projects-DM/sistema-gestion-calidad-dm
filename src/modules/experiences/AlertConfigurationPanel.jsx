@@ -4,32 +4,18 @@ import { AlertConfigurationApplicationService } from '../../core/capabilities/al
 import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
 /**
- * AlertConfigurationPanel
+ * AlertConfigurationPanel — COLLECTION ADMINISTRATOR (Sprint 201/222/227/229).
  *
- * Sprint 201 — The ADMINISTRATIVE operational experience to edit the
- * `alertConfiguration` metadata of a resource (form or document repository).
+ * Sprint 229 — ALERT COLLECTION PERSISTENCE. The panel now loads and persists
+ * the WHOLE alert collection through the Application Service:
+ *   - load: `loadCollection(resource)` → `formStates[]` → rebuild `alerts[]`/`configs[]`.
+ *   - save: `saveCollection({ resource, formStates })` → whole collection persisted
+ *     as canonical `alertConfigurations` (backward compatible with single-config).
+ * The panel creates/selects/edits/duplicates/deletes alert intents; the reused
+ * AlertConfigurationForm edits only the SELECTED alert. It never evaluates.
  *
- * Sprint 222 — Multi-alert administration: the panel keeps a presentational
- * collection (`alerts`) of named alert intents (key + name + description).
- * The administrator creates intents with "＋ Nueva alerta", selects one, and edits
- * it through the reused AlertConfigurationForm.
- *
- * Sprint 227 — COLLECTION ADMINISTRATION (MASTER SSOT):
- *   - The panel is now the OWNER/ADMINISTRATOR of the alert collection.
- *   - It creates, selects, edits, DUPLICATES and DELETES alert intents.
- *   - Each intent keeps its own per-alert configuration draft (`configs`), so
- *     multiple alerts are truly independent.
- *   - The form only ever receives the SELECTED (active) alert (selectedAlert);
- *     it does not know about the collection.
- *   - Cards expose only per-alert SUMMARY: name, short description, schedule,
- *     priority, and operational status (Activa / Deshabilitada). No due-date
- *     calculation happens here (that belongs to Sprint 228 + the Alert Engine).
- *   - Compatibility is PRESERVED: persistence continues through the Application
- *     Service / PersistencePort as the single compatible `alertConfiguration`
- *     metadata (the ACTIVE alert is the one written, retrocompatible scenario).
- *
- * CONTAINER ONLY. The panel loads, validates and persists; it NEVER interacts
- * with the Runtime, the Engine or the Consumption Layer.
+ * CONTAINER ONLY. Loads, validates and persists. Never interacts with the
+ * Runtime, the Engine or the Consumption Layer.
  *
  * Props:
  *   - resource       RAW resource metadata (form / repository row)
@@ -38,12 +24,7 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
  *   - onSaved / onClose / showClose
  */
 
-const emptyState = Object.freeze({
-  source: 'default',
-  resourceId: null,
-  configuration: null,
-  formState: null,
-});
+const empty = { source: 'default', resourceId: null, collection: null, formStates: [] };
 
 function scheduleLabel(f) {
   if (!f) return 'Sin programación';
@@ -71,26 +52,41 @@ export default function AlertConfigurationPanel({
     serviceRef.current = new AlertConfigurationApplicationService({ persistence });
   }
 
-  const load = useMemo(() => ({ ...emptyState, ...(resource && typeof resource === 'object' ? serviceRef.current.load(resource) : {}) }), [resource]);
+  const load = useMemo(
+    () => (resource && typeof resource === 'object' ? serviceRef.current.loadCollection(resource) : empty),
+    [resource],
+  );
 
-  const initialAlertKey = 'alert-1';
-  const [alerts, setAlerts] = useState(() => [
-    { key: initialAlertKey, name: resource?.name || resource?.slug || resource?.id || 'Nueva alerta', description: '' },
-  ]);
-  const [configs, setConfigs] = useState(() => ({ [initialAlertKey]: load.formState }));
-  const [activeKey, setActiveKey] = useState(initialAlertKey);
+  const buildInitial = () => {
+    const fs = load.formStates;
+    const alertsList = fs.map((f, i) => ({
+      key: `alert-${i + 1}`,
+      name: f?.name || `Alerta ${i + 1}`,
+      description: f?.description || '',
+    }));
+    const configMap = {};
+    fs.forEach((f, i) => { configMap[`alert-${i + 1}`] = f; });
+    return { alerts: alertsList, configs: configMap };
+  };
+
+  const initialRef = useRef(null);
+  if (!initialRef.current) initialRef.current = buildInitial();
+
+  const [alerts, setAlerts] = useState(initialRef.current.alerts);
+  const [configs, setConfigs] = useState(initialRef.current.configs);
+  const [activeKey, setActiveKey] = useState(initialRef.current.alerts[0]?.key || null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(null);
-  const counterRef = useRef(1);
+  const counterRef = useRef(initialRef.current.alerts.length);
 
   const title = useMemo(() => {
     if (resourceKind === 'documentRepository') return 'Configuración de alertas del repositorio';
     return 'Configuración de alertas del formulario';
   }, [resourceKind]);
 
-  const activeConfig = configs[activeKey] || {};
+  const activeConfig = activeKey ? configs[activeKey] : null;
 
   const makeAlert = (name, description) => {
     counterRef.current += 1;
@@ -113,7 +109,7 @@ export default function AlertConfigurationPanel({
 
   const addAlert = () => {
     const next = makeAlert('Nueva alerta', '');
-    const base = configs[activeKey] || load.formState || {};
+    const base = configs[activeKey] || {};
     setAlerts((prev) => [...prev, next]);
     setConfigs((prev) => ({ ...prev, [next.key]: { ...base, name: '', description: '' } }));
     setActiveKey(next.key);
@@ -144,26 +140,31 @@ export default function AlertConfigurationPanel({
     });
     setErrors({});
     setSaved(false);
-    if (activeKey === key) {
-      const nextActive = remaining[0]?.key || null;
-      setActiveKey(nextActive);
-    }
+    if (activeKey === key) setActiveKey(remaining[0]?.key || null);
   };
 
   const onReset = () => {
     setSaved(false);
     setSaveError(null);
     setErrors({});
-    setConfigs((prev) => ({ ...prev, [activeKey]: serviceRef.current.load(resource).formState }));
+    const fresh = serviceRef.current.loadCollection(resource);
+    const rebuilt = fresh.formStates;
+    const map = {};
+    rebuilt.forEach((f, i) => { map[`alert-${i + 1}`] = f; });
+    const alertsList = rebuilt.map((f, i) => ({ key: `alert-${i + 1}`, name: f?.name || `Alerta ${i + 1}`, description: f?.description || '' }));
+    setAlerts(alertsList);
+    setConfigs(map);
+    setActiveKey(alertsList[0]?.key || null);
   };
 
   const onSubmit = async () => {
-    if (!resource || !activeConfig) return;
+    if (!resource || alerts.length === 0) return;
     setSaving(true);
     setSaved(false);
     setSaveError(null);
     try {
-      const result = await serviceRef.current.saveConfiguration({ resource, formState: activeConfig });
+      const formStates = alerts.map((a) => configs[a.key] || {});
+      const result = await serviceRef.current.saveCollection({ resource, formStates });
       if (result.success) {
         setSaved(true);
         setErrors({});
@@ -207,7 +208,7 @@ export default function AlertConfigurationPanel({
         )}
       </div>
 
-      {!resource || !load.formState ? (
+      {!resource || alerts.length === 0 ? (
         <div className="py-10 text-center text-gray-500 text-sm">
           No se pudo cargar la configuración de este recurso.
         </div>
@@ -217,7 +218,7 @@ export default function AlertConfigurationPanel({
             <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3">
               <CheckCircle2 className="w-4 h-4 text-green-600" />
               <p className="text-sm font-bold text-green-700">
-                Configuración guardada como metadata del recurso.
+                Colección de alertas guardada como metadata del recurso.
               </p>
             </div>
           )}
@@ -229,7 +230,6 @@ export default function AlertConfigurationPanel({
             </div>
           )}
 
-          {/* Sprint 222/227 — Colección de alertas */}
           <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
             <div className="px-4 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">

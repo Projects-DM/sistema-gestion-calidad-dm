@@ -37,7 +37,55 @@ import { createAlertConfiguration } from './AlertConfiguration.js';
  */
 export function extractResourceAlertMetadata(resource) {
   if (!resource || typeof resource !== 'object') return null;
-  return resource.alertConfiguration ?? resource.alert_config ?? null;
+  const raw = resource.alertConfiguration ?? resource.alert_config ?? null;
+  // Sprint 229 — collection envelope backward compatible: expose the primary item.
+  if (raw && typeof raw === 'object' && Array.isArray(raw.alertConfigurations) && raw.alertConfigurations.length > 0) {
+    return raw.alertConfigurations[0];
+  }
+  return raw;
+}
+
+/**
+ * Sprint 229 — extracts the RAW alert collection from a resource.
+ *
+ * Accepts both storage shapes, with full backward compatibility:
+ *   - `alertConfigurations` (collection array under the envelope) → the array
+ *   - `alertConfiguration` / `alert_config` single → a one-element array
+ *   - absent → null (never-configured)
+ *
+ * @param {Object} resource Form or Repository resource metadata.
+ * @returns {Array<Object>|null} Raw alert configurations.
+ */
+export function extractResourceAlertCollection(resource) {
+  if (!resource || typeof resource !== 'object') return null;
+  const raw = resource.alertConfiguration ?? resource.alert_config ?? null;
+  if (raw && typeof raw === 'object' && Array.isArray(raw.alertConfigurations)) {
+    return raw.alertConfigurations;
+  }
+  return raw && typeof raw === 'object' ? [raw] : null;
+}
+
+/**
+ * Sprint 229 — resolves the COMPLETE alert COLLECTION of a resource as a list
+ * of IMMUTABLE AlertConfiguration Value Objects. Reuses the certified
+ * per-item normalizer + Value Object; no new model. When a resource only
+ * carried a single configuration, a collection with one element is produced
+ * (backward compatible, no mandatory migration).
+ *
+ * @param {Object} resource Form or Repository resource metadata.
+ * @returns {Object} { source, resourceId, collection }
+ */
+export function resolveResourceAlertCollection(resource) {
+  const raw = extractResourceAlertCollection(resource);
+  const list = raw && raw.length
+    ? raw
+    : [null];
+  const collection = Object.freeze(list.map((cfg) => createAlertConfiguration(normalizeAlertConfiguration(cfg))));
+  return Object.freeze({
+    source: raw && raw.length ? 'metadata' : 'default',
+    resourceId: resource?.id ?? resource?.slug ?? null,
+    collection,
+  });
 }
 
 /**

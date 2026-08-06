@@ -30,8 +30,8 @@
  * Orchestration ONLY. Never executes the Alert Capability.
  */
 
-import { resolveResourceAlertConfiguration } from './AlertConfigurationResolver.js';
-import { mapMetadataToFormState, mapFormStateToMetadata } from './AlertConfigurationMapper.js';
+import { resolveResourceAlertConfiguration, resolveResourceAlertCollection } from './AlertConfigurationResolver.js';
+import { mapMetadataToFormState, mapFormStateToMetadata, mapCollectionToFormStates, mapFormStatesToCollection } from './AlertConfigurationMapper.js';
 import { validateAlertConfiguration, validateAlertConfigurationForm } from './AlertConfigurationValidation.js';
 import { hasAlertConfigurationPersistencePort } from './AlertConfigurationPersistencePort.js';
 
@@ -144,6 +144,62 @@ export class AlertConfigurationApplicationService {
     const persisted = await port.saveConfiguration(resource, metadata);
 
     return { success: true, metadata, errors: null, persisted };
+  }
+
+  /**
+   * Sprint 229 — loads the CURRENT alert COLLECTION of a resource.
+   *
+   * Reuses the certified Resolver + per-item Mapper. Produces the editable
+   * draft array (one per alert) so the Panel can rebuild the full collection.
+   *
+   * @param {Object} resource Form or Repository resource metadata.
+   * @returns {{ source: string, resourceId: string|null, collection: Object, formStates: Object[] }}
+   */
+  loadCollection(resource) {
+    const resolution = resolveResourceAlertCollection(resource);
+    return {
+      source: resolution.source,
+      resourceId: resolution.resourceId,
+      collection: resolution.collection,
+      formStates: mapCollectionToFormStates(resolution.collection),
+    };
+  }
+
+  /**
+   * Sprint 229 — persists the COMPLETE alert collection as canonical metadata
+   * through the PersistencePort. Each element is mapped/validated with the
+   * certified per-item Mapper/Validation (no new model). Refuses when any
+   * element is invalid.
+   *
+   * @param {Object} options
+   * @param {Object} options.resource Resource reference (form / repository row).
+   * @param {Object[]} options.formStates Editable drafts (the whole collection).
+   * @param {Object} [options.persistence] Optional override port.
+   * @returns {Promise<{ success: boolean, metadata: Object[]|null, errors: Object|null, persisted: Object|null }>}
+   */
+  async saveCollection({ resource, formStates, persistence } = {}) {
+    const port = persistence || this.persistence;
+    if (!hasAlertConfigurationPersistencePort(port)) {
+      throw new Error(
+        'AlertConfigurationApplicationService: se requiere un PersistencePort (loadConfiguration/saveConfiguration).',
+      );
+    }
+
+    const drafts = Array.isArray(formStates) ? formStates : [];
+    const collection = mapFormStatesToCollection(drafts);
+
+    const errors = {};
+    for (let i = 0; i < collection.length; i += 1) {
+      const metaValidation = validateAlertConfiguration(collection[i]);
+      if (!metaValidation.valid) errors[i] = metaValidation.errors;
+    }
+    if (Object.keys(errors).length > 0) {
+      return { success: false, metadata: collection, errors, persisted: null };
+    }
+
+    const persisted = await port.saveConfiguration(resource, { alertConfigurations: collection });
+
+    return { success: true, metadata: collection, errors: null, persisted };
   }
 
   /**

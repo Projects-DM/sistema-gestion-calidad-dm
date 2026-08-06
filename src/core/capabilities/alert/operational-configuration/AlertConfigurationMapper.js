@@ -164,3 +164,26 @@ export function mapFormStateToMetadata(formState) {
 }
 
 export default mapFormStateToMetadata;
+
+/**
+ * Maps a COLLECTION of canonical Alert Configuration metadata into editable
+ * drafts (Sprint 229 — collection persistence). Reuses the certified per-item
+ * `mapMetadataToFormState`; no new mapper.
+ *
+ * @param {Array<Object>} collection Canonical configuration list.
+ * @returns {Array<Object>} Editable drafts, one per element.
+ */
+export function mapCollectionToFormStates(collection) {
+  return (Array.isArray(collection) ? collection : []).map((cfg) => mapMetadataToFormState(cfg));
+}
+
+/**
+ * Maps a COLLECTION of editable drafts into canonical metadata (Sprint 229).
+ * Reuses the certified per-item `mapFormStateToMetadata`; no new mapper.
+ *
+ * @param {Array<Object>} formStates Editable drafts.
+ * @returns {Array<Object>} Canonical configuration list.
+ */
+export function mapFormStatesToCollection(formStates) {
+  return (Array.isArray(formStates) ? formStates : []).map((fs) => mapFormStateToMetadata(fs));
+}
