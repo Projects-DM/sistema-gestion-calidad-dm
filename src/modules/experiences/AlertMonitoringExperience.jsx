@@ -5,9 +5,9 @@ import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteResolver.js';
 import {
-  projectOperationalAlertCards,
-  OperationalAlertCollectionCards,
-} from './OperationalAlertCollection.jsx';
+  resolveResourceAlertCollection,
+  extractResourceAlertCollection,
+} from '../../core/capabilities/alert/operational-configuration/AlertConfigurationResolver.js';
 
 /**
  * AlertMonitoringExperience
@@ -41,6 +41,72 @@ import {
  * in location.state: the Repository locates the document, scrolls to it
  * and highlights it TEMPORARILY — it is NEVER left selected.
  */
+
+/*
+ * Sprint 231 — Consolidated single representation. The persisted
+ * alertConfigurations[] collection (Sprint 229) is the SINGLE source for the
+ * operational alert cards: one card per alert, each carrying the existing
+ * navigation (open-form / go-to-document). The second representation created
+ * in Sprint 230 (OperationalAlertCollection) is removed.
+ */
+const PRIORITY_VISUAL = Object.freeze({
+  low: { color: 'green', icon: 'Bell' },
+  medium: { color: 'yellow', icon: 'AlertTriangle' },
+  high: { color: 'orange', icon: 'AlertOctagon' },
+  critical: { color: 'red', icon: 'AlertOctagon' },
+});
+
+/**
+ * Sprint 231 — Projects the persisted alert collections of the existing
+ * resources into navigable alert cards (read-only; single representation).
+ * Reuses the certified Resolver. Legacy single `alertConfiguration` resolves
+ * to a one-element collection (backward compatible). Resources NEVER
+ * configured are skipped (no spurious cards). The UI never evaluates.
+ */
+function projectConfigCards(resources) {
+  const out = [];
+  for (const s of ['forms', 'repositories']) {
+    const list = Array.isArray(resources?.[s]) ? resources[s] : [];
+    for (const resource of list) {
+      const raw = extractResourceAlertCollection(resource);
+      if (!Array.isArray(raw) || raw.length === 0) continue;
+      let resolution;
+      try {
+        resolution = resolveResourceAlertCollection(resource);
+      } catch {
+        continue;
+      }
+      (resolution?.collection ?? []).forEach((cfg, idx) => {
+        const isForm = s === 'forms';
+        const enabled = cfg?.enabled !== false;
+        const priority = cfg?.priority || 'medium';
+        const priorityLabel = priority === 'high' ? 'Alta' : priority === 'low' ? 'Baja' : 'Media';
+        const visual = PRIORITY_VISUAL[priority] || PRIORITY_VISUAL.medium;
+        const meta = [cfg?.description, cfg?.notification?.channel ? `Canal: ${cfg.notification.channel}` : null]
+          .filter(Boolean)
+          .join(' · ');
+        out.push({
+          id: `${s}:${resource?.id}:${idx}`,
+          title: cfg?.description || (cfg?.periodicity === 'once' ? 'Una vez' : 'Alerta'),
+          tipo: isForm ? 'Formulario' : 'Repositorio',
+          origen: resource?.name || resource?.slug || resource?.id || null,
+          priority,
+          priorityLabel,
+          estado: enabled ? 'Activa' : 'Deshabilitada',
+          color: visual.color,
+          icon: visual.icon,
+          message: meta,
+          navigable: true,
+          navigationLabel: isForm ? 'Ir al formulario' : 'Ir al repositorio',
+          action: isForm
+            ? { action: 'open-form', resourceId: resource?.id }
+            : { action: 'go-to-document', tab: 'repository', documentId: resource?.id },
+        });
+      });
+    }
+  }
+  return out;
+}
 
 const ACTION_ROUTE = Object.freeze({
   'open-form': (moduleSlug, action) => {
@@ -134,18 +200,27 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
     return (viewModel.groups?.byPriority ?? []).filter((g) => g.count > 0);
   }, [viewModel]);
 
-  // Sprint 230 — Operational Read Model projection: the persisted alert
-  // collection (Sprint 229) rendered as independent per-alert cards. Pure
-  // read projection; NEVER evaluates, edits or persists. Falls back to
-  // legacy single configuration transparently.
-  const configuredCards = useMemo(
-    () => projectOperationalAlertCards(existing),
-    [existing],
-  );
+// Sprint 231 — Consolidated single representation: the persisted alert
+  // collection (Sprint 229) feeds the SAME alert-card surface (navigable,
+  // one card per alert). Pure read projection; never evaluates, never persists.
+  const configCards = useMemo(() => projectConfigCards(existing), [existing]);
 
   return (
     <div className="space-y-6">
-      {configuredCards.length > 0 && <OperationalAlertCollectionCards cards={configuredCards} />}
+      {configCards.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-bold text-gray-900">Alertas configuradas</h3>
+            <span className="text-xs text-gray-400">({configCards.length})</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {configCards.map((card) => (
+              <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
+            ))}
+          </div>
+        </div>
+      )}
+
       <AlertMonitoringBody
         viewModel={viewModel}
         priorityGroups={priorityGroups}
