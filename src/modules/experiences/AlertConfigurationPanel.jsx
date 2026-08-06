@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { CheckCircle2, X, Loader2 } from 'lucide-react';
+import { CheckCircle2, X, Loader2, Plus, BellRing } from 'lucide-react';
 import { AlertConfigurationApplicationService } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationApplicationService.js';
 import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
@@ -10,30 +10,26 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
  * `alertConfiguration` metadata of a resource (form or document repository).
  *
  * Sprint 201.R — The panel only knows the AlertConfigurationApplicationService
- * (already constructed with the injected PersistencePort adapter). The panel
- * never receives a concrete persistence service nor a resourceKind→backend
- * selection; it passes a raw `resource` reference and the Application Port
- * routes persistence internally.
+ * (already constructed with the injected PersistencePort adapter). It never
+ * receives a concrete persistence service nor a resourceKind→backend selection;
+ * it passes a raw `resource` reference and the Application Port routes
+ * persistence internally.
  *
- * CONTAINER ONLY. The panel:
- *   1. Loads the current configuration through the certified
- *      AlertConfigurationResolver (via the Application Service) → editable
- *      draft.
- *   2. Renders the AlertConfigurationForm (pure presentation).
- *   3. On submit, orchestrates VALIDATION + PERSISTENCE through the
- *      Application Service using the injected `persistence` persister.
+ * Sprint 222 — Multi-alert administration: the panel keeps a presentational
+ * collection (`alerts`) of named alert intents (key + name + description). The
+ * administrator creates intents with "＋ Nueva alerta", selects one, and edits it
+ * through the reused AlertConfigurationForm. Persistence continues through the
+ * Application Service / PersistencePort as the single compatible
+ * `alertConfiguration` metadata.
  *
- * The panel NEVER interacts with the Runtime, the Engine or the Consumption
- * Layer. It edits METADATA ONLY and never computes severity / risk / due
- * dates / status.
+ * CONTAINER ONLY. The panel loads, validates and persists; it NEVER interacts
+ * with the Runtime, the Engine or the Consumption Layer.
  *
  * Props:
- *   - resource       the RAW resource metadata (form / repository row)
- *   - persistence    PersistencePort adapter (contract: loadConfiguration/saveConfiguration)
- *   - onSaved        optional callback after a successful save
- *   - onClose        optional close button handler
- *   - showClose      boolean, renders the close button
- *   - resourceKind   optional, display label only (kept for the container title)
+ *   - resource       RAW resource metadata (form / repository row)
+ *   - persistence    PersistencePort adapter (loadConfiguration/saveConfiguration)
+ *   - resourceKind   optional, display label only
+ *   - onSaved / onClose / showClose
  */
 
 const emptyState = Object.freeze({
@@ -61,6 +57,10 @@ export default function AlertConfigurationPanel({
     ...(resource && typeof resource === 'object' ? serviceRef.current.load(resource) : {}),
   }));
   const [formState, setFormState] = useState(load.formState);
+  const [alerts, setAlerts] = useState(() => [
+    { key: 'alert-1', name: resource?.name || resource?.slug || resource?.id || 'Nueva alerta', description: '' },
+  ]);
+  const [activeKey, setActiveKey] = useState('alert-1');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -80,6 +80,21 @@ export default function AlertConfigurationPanel({
       return next;
     });
     setFormState((prev) => ({ ...prev, [field]: value }));
+    if (field === 'name' || field === 'description') {
+      setAlerts((prev) => prev.map((a) => (a.key === activeKey ? { ...a, [field]: value } : a)));
+    }
+  };
+
+  const addAlert = () => {
+    const key = `alert-${alerts.length + 1}`;
+    setAlerts((prev) => [...prev, { key, name: 'Nueva alerta', description: '' }]);
+    setActiveKey(key);
+  };
+
+  const selectAlert = (key) => {
+    setActiveKey(key);
+    const active = alerts.find((a) => a.key === key);
+    setFormState((prev) => ({ ...(prev || {}), name: active?.name || '', description: active?.description || '' }));
   };
 
   const onReset = () => {
@@ -95,10 +110,7 @@ export default function AlertConfigurationPanel({
     setSaved(false);
     setSaveError(null);
     try {
-      const result = await serviceRef.current.saveConfiguration({
-        resource,
-        formState,
-      });
+      const result = await serviceRef.current.saveConfiguration({ resource, formState });
       if (result.success) {
         setSaved(true);
         setErrors({});
@@ -112,6 +124,8 @@ export default function AlertConfigurationPanel({
       setSaving(false);
     }
   };
+
+  const active = alerts.find((a) => a.key === activeKey);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -162,8 +176,46 @@ export default function AlertConfigurationPanel({
             </div>
           )}
 
+          {/* Sprint 222 — Colección de alertas */}
+          <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                <BellRing className="w-4 h-4 text-primary" /> Alertas
+              </h3>
+              <button
+                type="button"
+                onClick={addAlert}
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+              >
+                <Plus className="w-4 h-4" /> Nueva alerta
+              </button>
+            </div>
+            <div className="p-3 space-y-1" data-testid="alerts-collection">
+              {alerts.map((a) => {
+                const selected = a.key === activeKey;
+                return (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={() => selectAlert(a.key)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl border text-sm text-left transition-colors ${
+                      selected ? 'border-primary bg-primary/5 text-gray-900' : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <span aria-hidden="true" className="text-xs">{selected ? '✓' : '•'}</span>
+                    <span className="truncate font-medium">{a.name || 'Sin nombre'}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <AlertConfigurationForm
-            formState={formState}
+            formState={{
+              ...formState,
+              name: active?.name || formState?.name,
+              description: active?.description || formState?.description,
+            }}
             errors={errors}
             onChange={onChange}
             onSubmit={onSubmit}
