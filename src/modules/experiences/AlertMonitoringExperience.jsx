@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, AlertTriangle } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteResolver.js';
@@ -188,65 +188,43 @@ function CardButton({ card, moduleSlug }) {
 }
 
 export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
-  const { workspace, existing } = useAlertRuntime({
+  // Runtime Bridge collection: `existing` carries the resource snapshot whose
+  // persisted alert collections feed the SINGLE alert experience. The bridge is
+  // still the runtime reuse point (Sprint 232); no parallel navigation/engine.
+  const { existing } = useAlertRuntime({
     module: moduleSlug,
     moduleSlug,
   });
 
-  const viewModel = workspace?.workspace ?? null;
-
-  const priorityGroups = useMemo(() => {
-    if (!viewModel) return [];
-    return (viewModel.groups?.byPriority ?? []).filter((g) => g.count > 0);
-  }, [viewModel]);
-
-// Sprint 231 — Consolidated single representation: the persisted alert
-  // collection (Sprint 229) feeds the SAME alert-card surface (navigable,
-  // one card per alert). Pure read projection; never evaluates, never persists.
+// Sprint 232 — SINGLE Alert Experience. alertConfigurations[] is the ONLY
+  // source of operational alert cards: one card per alert, each rendered
+  // through the SAME certified navigation mechanism (open-in-form /
+  // go-to-document). No "Alertas configuradas" vs "Alertas Activas" coexistence.
+  // Pure read projection; the UI never evaluates, never persists.
   const configCards = useMemo(() => projectConfigCards(existing), [existing]);
 
-  return (
-    <div className="space-y-6">
-      {configCards.length > 0 && (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-sm font-bold text-gray-900">Alertas configuradas</h3>
-            <span className="text-xs text-gray-400">({configCards.length})</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {configCards.map((card) => (
-              <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
-            ))}
-          </div>
-        </div>
-      )}
+  const grouped = useMemo(() => {
+    const order = ['high', 'medium', 'low'];
+    const out = [];
+    for (const p of order) {
+      const cards = configCards.filter((c) => c.priority === p);
+      if (cards.length) {
+        out.push({
+          priority: p,
+          label: p === 'high' ? 'Prioridad alta' : p === 'medium' ? 'Prioridad media' : 'Prioridad baja',
+          cards,
+        });
+      }
+    }
+    return out;
+  }, [configCards]);
 
-      <AlertMonitoringBody
-        viewModel={viewModel}
-        priorityGroups={priorityGroups}
-        moduleSlug={moduleSlug}
-        moduleName={moduleName}
-      />
-    </div>
-  );
-}
-
-function AlertMonitoringBody({ viewModel, priorityGroups, moduleSlug, moduleName }) {
-  if (!viewModel) {
-    return (
-      <div className="py-10 text-center text-gray-500 flex flex-col items-center gap-2">
-        <AlertTriangle className="w-10 h-10 text-gray-300" />
-        <span>No existen alertas activas</span>
-      </div>
-    );
-  }
-
-  if (viewModel.empty) {
+  if (configCards.length === 0) {
     return (
       <div className="py-10 text-center text-gray-500 flex flex-col items-center gap-2">
         <Bell className="w-10 h-10 text-gray-300" />
-        <span className="font-medium text-gray-900">{viewModel.emptyMessage}</span>
-        <span className="text-sm">Sin alertas activas para {moduleName || moduleSlug}.</span>
+        <span className="font-medium text-gray-900">Sin alertas configuradas</span>
+        <span className="text-sm">No existen alertas configuradas para {moduleName || moduleSlug}.</span>
       </div>
     );
   }
@@ -258,22 +236,22 @@ function AlertMonitoringBody({ viewModel, priorityGroups, moduleSlug, moduleName
           <Bell className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Alertas Activas</h2>
+          <h2 className="text-lg font-bold text-gray-900">Alertas</h2>
           <p className="text-sm text-gray-500">
-            {viewModel.summary.total} alertas · {viewModel.summary.forms} formularios · {viewModel.summary.records} registros · {viewModel.summary.documents} documentos
+            {configCards.length} {configCards.length === 1 ? 'alerta configurada' : 'alertas configuradas'}
           </p>
         </div>
       </div>
 
-      {priorityGroups.map((group) => (
+      {grouped.map((group) => (
         <div key={group.priority}>
           <div className="flex items-center gap-2 mb-3">
             <h3 className="text-sm font-bold text-gray-900">{group.label}</h3>
-            <span className="text-xs text-gray-400">({group.count})</span>
+            <span className="text-xs text-gray-400">({group.cards.length})</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {group.cards.map((card) => (
-              <CardButton key={card.id || `${card.source}-${card.title}`} card={card} moduleSlug={moduleSlug} />
+              <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
             ))}
           </div>
         </div>
