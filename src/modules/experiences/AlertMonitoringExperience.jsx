@@ -4,6 +4,10 @@ import { Bell, AlertTriangle } from 'lucide-react';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteResolver.js';
+import {
+  projectOperationalAlertCards,
+  OperationalAlertCollectionCards,
+} from './OperationalAlertCollection.jsx';
 
 /**
  * AlertMonitoringExperience
@@ -118,7 +122,7 @@ function CardButton({ card, moduleSlug }) {
 }
 
 export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
-  const { workspace } = useAlertRuntime({
+  const { workspace, existing } = useAlertRuntime({
     module: moduleSlug,
     moduleSlug,
   });
@@ -130,6 +134,29 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
     return (viewModel.groups?.byPriority ?? []).filter((g) => g.count > 0);
   }, [viewModel]);
 
+  // Sprint 230 — Operational Read Model projection: the persisted alert
+  // collection (Sprint 229) rendered as independent per-alert cards. Pure
+  // read projection; NEVER evaluates, edits or persists. Falls back to
+  // legacy single configuration transparently.
+  const configuredCards = useMemo(
+    () => projectOperationalAlertCards(existing),
+    [existing],
+  );
+
+  return (
+    <div className="space-y-6">
+      {configuredCards.length > 0 && <OperationalAlertCollectionCards cards={configuredCards} />}
+      <AlertMonitoringBody
+        viewModel={viewModel}
+        priorityGroups={priorityGroups}
+        moduleSlug={moduleSlug}
+        moduleName={moduleName}
+      />
+    </div>
+  );
+}
+
+function AlertMonitoringBody({ viewModel, priorityGroups, moduleSlug, moduleName }) {
   if (!viewModel) {
     return (
       <div className="py-10 text-center text-gray-500 flex flex-col items-center gap-2">
