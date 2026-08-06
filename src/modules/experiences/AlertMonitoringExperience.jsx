@@ -99,7 +99,10 @@ function projectConfigCards(resources) {
           navigable: true,
           navigationLabel: isForm ? 'Ir al formulario' : 'Ir al repositorio',
           action: isForm
-            ? { action: 'open-form', resourceId: resource?.id }
+            ? {
+                action: 'open-form',
+                resourceId: resource?.slug ?? resource?.formSlug ?? resource?.identifier ?? resource?.id,
+              }
             : { action: 'go-to-document', tab: 'repository', documentId: resource?.id },
         });
       });
