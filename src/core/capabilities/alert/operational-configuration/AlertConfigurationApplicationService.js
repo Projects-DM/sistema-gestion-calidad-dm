@@ -203,10 +203,13 @@ export class AlertConfigurationApplicationService {
   }
 
   /**
-   * @deprecated Sprint 201 — backward compatibility surface. Persists through
-   * the legacy `saveAlertConfiguration` port shape. Kept so the Sprint 201
-   * certification (O5) and any legacy adapter continue to work; the operational
-   * experience uses saveConfiguration (Sprint 201.R).
+   * @deprecated Sprint 201 — LEGACY SINGLE-WRITE (compatibility surface ONLY,
+   * retained so past certifications keep resolving). Persists through the
+   * legacy `saveAlertConfiguration` port shape. Per Sprint 242 this SINGLE path
+   * writes a bare canonical metadata (NO `alertConfigurations` envelope) and is
+   * the hazardous clobbering vector when a collection exists — The UI must
+   * ALWAYS use `saveCollection`; this method must never be reached by the UI.
+   * The operational experience uses saveCollection (Sprint 201.R).
    *
    * @param {Object} options
    * @param {string} options.resourceKind 'dynamicForms' | 'documentRepository'.

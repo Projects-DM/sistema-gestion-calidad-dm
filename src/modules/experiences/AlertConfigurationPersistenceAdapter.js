@@ -114,14 +114,27 @@ export const alertConfigurationPersistence = Object.freeze({
   },
 
   /**
-   * Port operation — persists the CANONICAL configuration for a resource.
-   * Resolves the backend exclusively, writes the column, returns the copy.
+   * Port operation — persists the CANONICAL configuration COLLECTION for a
+   * resource. Resolves the backend exclusively, writes the field, returns the
+   * copy.
+   *
+   * Hardening (Sprint 242): the official write path ONLY accepts the enveloped
+   * collection `{ alertConfigurations: [...] }`. A bare canonical metadata
+   * (legacy single save) is REJECTED here so no caller can clobber an existing
+   * collection with a single alert.
    */
   async saveConfiguration(resourceReference, configuration) {
     const reference =
       resourceReference && typeof resourceReference === 'object'
         ? { ...resourceReference }
         : { id: resourceReference };
+    if (!configuration || !Array.isArray(configuration.alertConfigurations)) {
+      throw new Error(
+        'AlertConfigurationPersistenceAdapter: el Write Path oficial exige el envelope ' +
+          '{ alertConfigurations: [...] } (use saveCollection). Un write single no puede ' +
+          'sobrescribir la colección existente.',
+      );
+    }
     const handler = resolveResourceHandler(reference);
     if (!handler) {
       throw new Error(
