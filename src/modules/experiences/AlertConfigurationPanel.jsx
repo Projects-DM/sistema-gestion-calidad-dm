@@ -1,10 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import { CheckCircle2, X, Loader2, Plus, Bell, Copy, Trash2 } from 'lucide-react';
+import { CheckCircle2, X, Loader2, Plus, Bell, Copy, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertConfigurationApplicationService } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationApplicationService.js';
 import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
 /**
- * AlertConfigurationPanel — COLLECTION ADMINISTRATOR (Sprint 201/222/227/229).
+ * AlertConfigurationPanel — COLLECTION ADMINISTRATOR (Sprint 201/222/227/229/243).
  *
  * Sprint 229 — ALERT COLLECTION PERSISTENCE. The panel now loads and persists
  * the WHOLE alert collection through the Application Service:
@@ -13,6 +13,19 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
  *     as canonical `alertConfigurations` (backward compatible with single-config).
  * The panel creates/selects/edits/duplicates/deletes alert intents; the reused
  * AlertConfigurationForm edits only the SELECTED alert. It never evaluates.
+ *
+ * Sprint 243 — COLLAPSIBLE COLLECTION NAVIGATOR (presentation-only). The alert
+ * collection is no longer a permanent list at the top of the workspace; it
+ * becomes a collapsible SELECTOR/Navigator:
+ *   - Initial state: collapsed, showing ONLY a summary of the selected alert.
+ *   - Expanded: lists every alert (summary preview only — never the full form),
+ *     with create/duplicate/delete actions and explicit selection.
+ *   - Selecting an alert updates the form and AUTO-COLLAPSES the navigator.
+ *   - Selection is EXPLICIT: activeKey changes only via user selection (or the
+ *     initial load when no selection exists) — it is never auto-reset to the
+ *     first alert on every render.
+ * Reuses the existing `alerts[]`/`configs[]`/`activeKey` model and
+ * `saveCollection()`/`loadCollection()`. No new components, engines or services.
  *
  * CONTAINER ONLY. Loads, validates and persists. Never interacts with the
  * Runtime, the Engine or the Consumption Layer.
@@ -79,6 +92,7 @@ export default function AlertConfigurationPanel({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const counterRef = useRef(initialRef.current.alerts.length);
 
   const title = useMemo(() => {
@@ -113,12 +127,14 @@ export default function AlertConfigurationPanel({
     setAlerts((prev) => [...prev, next]);
     setConfigs((prev) => ({ ...prev, [next.key]: { ...base, name: '', description: '' } }));
     setActiveKey(next.key);
+    setExpanded(false);
   };
 
   const selectAlert = (key) => {
     setActiveKey(key);
     setErrors({});
     setSaved(false);
+    setExpanded(false);
   };
 
   const duplicateAlert = (key) => {
@@ -128,6 +144,7 @@ export default function AlertConfigurationPanel({
     setAlerts((prev) => [...prev, next]);
     setConfigs((prev) => ({ ...prev, [next.key]: { ...srcConfig, name: next.name, description: next.description } }));
     setActiveKey(next.key);
+    setExpanded(false);
   };
 
   const deleteAlert = (key) => {
@@ -230,71 +247,112 @@ export default function AlertConfigurationPanel({
             </div>
           )}
 
-          <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-primary" /> Alertas
-                <span className="text-[11px] font-medium text-gray-400">({alerts.length})</span>
-              </h3>
+          <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden" data-testid="alert-configuration-workspace">
+            {!expanded ? (
               <button
                 type="button"
-                onClick={addAlert}
-                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
+                onClick={() => setExpanded(true)}
+                className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-gray-50/70 transition-colors"
+                aria-expanded="false"
               >
-                <Plus className="w-4 h-4" /> Nueva alerta
+                <span className="flex items-center gap-2 min-w-0">
+                  <span
+                    aria-hidden="true"
+                    className={`w-2 h-2 rounded-full shrink-0 ${activeConfig?.enabled === true ? 'bg-green-500' : 'bg-gray-300'}`}
+                  />
+                  <span className="truncate font-bold text-sm text-gray-900">
+                    {active?.name || 'Sin alerta'}
+                  </span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${activeConfig?.enabled === true ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                    {activeConfig?.enabled === true ? 'Activa' : 'Deshabilitada'}
+                  </span>
+                </span>
+                <span className="flex items-center gap-3 shrink-0">
+                  <span className="hidden sm:block text-[11px] text-gray-400">
+                    {scheduleLabel(activeConfig)}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                </span>
               </button>
-            </div>
-            <div className="p-3 space-y-1.5" data-testid="alerts-collection">
-              {alerts.map((a) => {
-                const selected = a.key === activeKey;
-                const cfg = configs[a.key] || {};
-                return (
-                  <div
-                    key={a.key}
-                    className={`rounded-xl border p-2.5 transition-colors ${
-                      selected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
+            ) : (
+              <>
+                <div className="px-4 py-3 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-primary" /> Alertas configuradas
+                    <span className="text-[11px] font-medium text-gray-400">({alerts.length})</span>
+                  </h3>
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => selectAlert(a.key)}
-                      className="w-full flex items-center justify-between gap-2 text-left"
+                      onClick={addAlert}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
                     >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <span aria-hidden="true" className="text-xs text-primary">{selected ? '✓' : '•'}</span>
-                        <span className="truncate font-medium text-sm text-gray-900">{a.name || 'Sin nombre'}</span>
-                      </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg?.enabled === true ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                        {cfg?.enabled === true ? 'Activa' : 'Deshabilitada'}
-                      </span>
+                      <Plus className="w-4 h-4" /> Nueva alerta
                     </button>
-                    <div className="mt-1.5 pl-5 space-y-0.5">
-                      {a.description && <p className="text-[11px] text-gray-500 truncate">{a.description}</p>}
-                      <p className="text-[11px] text-gray-400">{scheduleLabel(cfg)}</p>
-                      <p className="text-[11px] text-gray-400">Prioridad: {cfg?.priority || 'media'} · Canal: {cfg?.notificationChannel || 'email'}</p>
-                    </div>
-                    <div className="mt-1.5 pl-5 flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => duplicateAlert(a.key)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-primary"
-                        title="Duplicar"
-                      >
-                        <Copy className="w-3.5 h-3.5" /> Duplicar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteAlert(a.key)}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-600"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Eliminar
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpanded(false)}
+                      className="p-1 text-gray-400 hover:text-gray-700 rounded-lg transition-colors"
+                      aria-label="Contraer"
+                      title="Contraer"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+                <div className="p-3 space-y-1.5" data-testid="alerts-collection">
+                  {alerts.map((a) => {
+                    const selected = a.key === activeKey;
+                    const cfg = configs[a.key] || {};
+                    return (
+                      <div
+                        key={a.key}
+                        className={`rounded-xl border p-2.5 transition-colors ${
+                          selected ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => selectAlert(a.key)}
+                          className="w-full flex items-center justify-between gap-2 text-left"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span aria-hidden="true" className="text-xs text-primary">{selected ? '✓' : '•'}</span>
+                            <span className="truncate font-medium text-sm text-gray-900">{a.name || 'Sin nombre'}</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg?.enabled === true ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
+                            {cfg?.enabled === true ? 'Activa' : 'Deshabilitada'}
+                          </span>
+                        </button>
+                        <div className="mt-1.5 pl-5 space-y-0.5">
+                          {a.description && <p className="text-[11px] text-gray-500 truncate">{a.description}</p>}
+                          <p className="text-[11px] text-gray-400">{scheduleLabel(cfg)}</p>
+                          <p className="text-[11px] text-gray-400">Prioridad: {cfg?.priority || 'media'} · Canal: {cfg?.notificationChannel || 'email'}</p>
+                        </div>
+                        <div className="mt-1.5 pl-5 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => duplicateAlert(a.key)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-primary"
+                            title="Duplicar"
+                          >
+                            <Copy className="w-3.5 h-3.5" /> Duplicar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteAlert(a.key)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-500 hover:text-red-600"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           {active && (
