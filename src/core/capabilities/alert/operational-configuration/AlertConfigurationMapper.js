@@ -73,6 +73,10 @@ export function mapMetadataToFormState(metadata) {
   return {
     enabled: source.enabled !== false,
     priority: source.priority || 'medium',
+    name: typeof source.name === 'string' ? source.name : source.name ?? '',
+    description: typeof source.description === 'string' ? source.description : source.description ?? '',
+    startDate: source.startDate ?? '',
+    startTime: source.startTime ?? '',
     periodicityMode,
     periodicityAmount: periodicity?.amount ?? 1,
     periodicityUnit: PERIODICITY_UNITS.includes(periodicity?.unit)
@@ -146,6 +150,10 @@ export function mapFormStateToMetadata(formState) {
 
   return {
     enabled: f.enabled === true,
+    name: typeof f.name === 'string' ? f.name : (f.name ?? ''),
+    description: typeof f.description === 'string' ? f.description : (f.description ?? ''),
+    startDate: typeof f.startDate === 'string' ? f.startDate : (f.startDate ?? ''),
+    startTime: typeof f.startTime === 'string' ? f.startTime : (f.startTime ?? ''),
     periodicity,
     expiration: f.expiration || 'none',
     risk: Object.freeze({
