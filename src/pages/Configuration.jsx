@@ -439,6 +439,7 @@ export default function Configuration() {
             icon={Save}
             onClose={handleCancelEditForm}
           >
+            {editFormDef && (
             <form onSubmit={handleUpdateFormDef} className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Módulo Destino *</label>
@@ -515,6 +516,7 @@ export default function Configuration() {
                 </button>
               </div>
             </form>
+            )}
           </ModalShell>
 
           {/* Modal: Configurar Campos */}
