@@ -29,7 +29,7 @@ import { X } from 'lucide-react';
  *   - children   contenido del panel
  */
 export default function ModalShell({ open, title, icon, onClose, children, saving }) {
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
