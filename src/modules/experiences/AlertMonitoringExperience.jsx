@@ -49,59 +49,103 @@ const STATUS_VISUAL = Object.freeze({
   active: Object.freeze({ label: 'Activa', color: 'green' }),
   disabled: Object.freeze({ label: 'Deshabilitada', color: 'gray' }),
 });
-const STATUS_ORDER = Object.freeze({ overdue: 0, today: 1, upcoming: 2, active: 3, disabled: 4 });
 const PRIORITY_LABELS = Object.freeze({ low: 'Baja', medium: 'Media', high: 'Alta' });
-const PERIOD_UNITS_DAYS = Object.freeze({ hours: 1 / 24, days: 1, weeks: 7, months: 30, years: 365 });
-const UNIT_LABELS = Object.freeze({ hours: 'hora', days: 'día', weeks: 'semana', months: 'mes', years: 'año' });
-const CHANNEL_LABELS = Object.freeze({ email: 'Email', 'in-app': 'Sistema', push: 'Push', bluetooth: 'Bluetooth' });
+const CHANNEL_LABELS = Object.freeze({ email: 'Email', 'in-app': 'Sistema', push: 'Push', bluetooth: 'Bluetooth', whatsapp: 'WhatsApp' });
+const MONTHS = Object.freeze(['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']);
+const UNIT_MS = Object.freeze({ hours: 3.6e6, days: 8.64e7, weeks: 6.048e8, months: 2.592e9, years: 3.1536e10 });
 
 /**
- * Sprint 235 — OPERATIONAL STATUS PROJECTION (read-only, provisional).
- *
- * Derives a deterministic operational ordering/status from the ALREADY
- * PERSISTED canonical fields (periodicity, expiration, priority, notification,
- * enabled). The UI NEVER evaluates the Alert Engine and NEVER persists:
- * this is a TEMPORARY projection that the UI will later replace with the
- * ENGINE's certified operational states without changing the design/UX.
+ * Sprint 237 — OPERATIONAL TEMPORAL VIEWMODEL (read-only, never persisted,
+ * never consumed by the Alert Engine). Builds, from the PERSISTED metadata of
+ * each alert, the real temporal state: anchor (startDate + startTime), target,
+ * remaining milliseconds, next execution, relative remaining/overdue text and a
+ * chronological sort date. All logic is presentation-only; no cronómetros,
+ * no schedulers, no engines. The projection merely computes; the UI consumes.
  */
-function operationalState(cfg) {
-  if (cfg?.enabled === false) {
+function parseAnchor(item) {
+  if (!item || typeof item !== 'object') return null;
+  const dateLiteral = item.startDate ?? item.start_time ?? null;
+  if (!dateLiteral) return null;
+  let ms = new Date(dateLiteral).getTime();
+  if (Number.isNaN(ms)) return null;
+  const time = item.startTime ?? item.start_time ?? null;
+  if (time) {
+    const m = String(time).match(/(\d{1,2}):(\d{2})/);
+    if (m) {
+      const d = new Date(ms);
+      d.setHours(Number(m[1]) || 0, Number(m[2]) || 0, 0, 0);
+      ms = d.getTime();
+    }
+  }
+  return ms;
+}
+
+function cadenceMs(periodicity) {
+  if (periodicity === 'once') return 0;
+  if (!periodicity || typeof periodicity !== 'object') return null;
+  const unit = UNIT_MS[periodicity.unit];
+  const amount = Number(periodicity.amount) || 1;
+  return unit ? amount * unit : null;
+}
+
+function computeTarget(anchorMs, cadence, nowMs) {
+  if (anchorMs === null || Number.isNaN(anchorMs)) return null;
+  if (cadence === null || cadence === 0) return anchorMs; // once / fixed single
+  if (nowMs <= anchorMs) return anchorMs;
+  const occurrences = Math.ceil((nowMs - anchorMs) / cadence);
+  return anchorMs + occurrences * cadence;
+}
+
+function humanDuration(milliseconds) {
+  let v = Math.abs(milliseconds) / 1000;
+  if (v < 60) return 'menos de un minuto';
+  let minutes = v / 60;
+  if (minutes < 60) return `${Math.round(minutes)} minuto${Math.round(minutes) === 1 ? '' : 's'}`;
+  let hours = minutes / 60;
+  if (hours < 48) return `${Math.round(hours)} hora${Math.round(hours) === 1 ? '' : 's'}`;
+  const days = hours / 24;
+  if (days < 30) return `${Math.round(days)} día${Math.round(days) === 1 ? '' : 's'}`;
+  const months = days / 30;
+  if (months < 12) return `${Math.round(months)} mes${Math.round(months) === 1 ? '' : 'es'}`;
+  return `${Math.round(days / 365)} año${Math.round(days / 365) === 1 ? '' : 's'}`;
+}
+
+function formattedExecution(targetMs) {
+  if (targetMs === null || Number.isNaN(targetMs)) return null;
+  const d = new Date(targetMs);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const hm = `${hh}:${mm}`;
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const tomorrow = new Date(now.getTime() + 8.64e7);
+  if (sameDay) return `Hoy ${hm}`;
+  if (d.toDateString() === tomorrow.toDateString()) return `Mañana ${hm}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} ${hm}`;
+}
+
+function derivedState(enabled, remainingMs) {
+  if (enabled === false) {
     return { key: 'disabled', label: STATUS_VISUAL.disabled.label, color: STATUS_VISUAL.disabled.color };
   }
-  const days = cadenceDays(cfg?.periodicity);
-  if (days === null) {
-    // Once / no cadence → the configured single event is closest.
-    return { key: 'upcoming', label: STATUS_VISUAL.upcoming.label, color: STATUS_VISUAL.upcoming.color };
+  if (remainingMs === null || Number.isNaN(remainingMs)) {
+    return { key: 'active', label: STATUS_VISUAL.active.label, color: STATUS_VISUAL.active.color };
   }
-  if (days <= 1) return { key: 'today', label: STATUS_VISUAL.today.label, color: STATUS_VISUAL.today.color };
-  if (days <= 7) return { key: 'upcoming', label: STATUS_VISUAL.upcoming.label, color: STATUS_VISUAL.upcoming.color };
+  if (remainingMs < 0) return { key: 'overdue', label: STATUS_VISUAL.overdue.label, color: STATUS_VISUAL.overdue.color };
+  if (remainingMs <= 8.64e7) return { key: 'today', label: STATUS_VISUAL.today.label, color: STATUS_VISUAL.today.color };
+  if (remainingMs <= 2.592e8) return { key: 'upcoming', label: STATUS_VISUAL.upcoming.label, color: STATUS_VISUAL.upcoming.color };
   return { key: 'active', label: STATUS_VISUAL.active.label, color: STATUS_VISUAL.active.color };
 }
 
-function cadenceDays(periodicity) {
-  if (periodicity === 'once') return 0;
-  if (!periodicity || typeof periodicity !== 'object') return null;
-  const mult = PERIOD_UNITS_DAYS[periodicity.unit];
-  const amount = Number(periodicity.amount) || 1;
-  return mult ? amount * mult : amount;
-}
-
 function frequencyLabel(periodicity) {
-  if (periodicity === 'once') return 'Una vez';
-  if (!periodicity || typeof periodicity !== 'object') return 'Sin periodicidad';
+  if (periodicity === 'once') return 'Una sola vez';
+  if (!periodicity || typeof periodicity !== 'object') return 'Sin frecuencia';
   const a = Number(periodicity.amount) || 1;
-  const u = UNIT_LABELS[periodicity.unit] || periodicity.unit || 'día';
+  const u = UNIT_MS_LABEL(periodicity.unit);
   return `Cada ${a} ${u}${a === 1 ? '' : 's'}`;
 }
-
-function relativeLabel(days) {
-  if (days === null) return '—';
-  const d = Math.round(days);
-  if (days <= 0) return 'Hoy';
-  if (days < 1) return `En ${Math.round(days * 24)} horas`;
-  if (d <= 30) return `En ${d} día${d === 1 ? '' : 's'}`;
-  if (d <= 365) return `En ~${Math.round(d / 30)} meses`;
-  return `En ~${Math.round(d / 365)} año${d / 365 >= 2 ? 's' : ''}`;
+function UNIT_MS_LABEL(unit) {
+  return UNIT_MS[unit] ? { hours: 'hora', days: 'día', weeks: 'semana', months: 'mes', years: 'año' }[unit] : unit || 'día';
 }
 
 function channelLabel(cfg) {
@@ -111,13 +155,14 @@ function channelLabel(cfg) {
 }
 
 /**
- * Sprint 231+235 — Projects the persisted alert collections into navigable
- * OPERATIONAL alert cards. Reuses the certified Resolver; legacy single
- * `alertConfiguration` resolves to a one-element collection (backward
- * compatible); never-configured resources are skipped. The cards carry the
- * operational status projection + the certified navigation. UI never evaluates.
+ * Sprint 231+235+237 — Projects the persisted alert collection into navigable
+ * OPERATIONAL cards carrying the temporal ViewModel. Reuses the certified
+ * Resolver and the persisted metadata (startDate/startTime/periodicity/
+ * expiration/priority/notification/enabled). Legacy single → one-element
+ * collection; never-configured → skipped. UI never evaluates, never persists.
  */
-function projectConfigCards(resources) {
+function projectConfigCards(resources, nowMs) {
+  const now = Number.isFinite(nowMs) ? nowMs : Date.now();
   const out = [];
   for (const s of ['forms', 'repositories']) {
     const list = Array.isArray(resources?.[s]) ? resources[s] : [];
@@ -131,19 +176,25 @@ function projectConfigCards(resources) {
         continue;
       }
       (resolution?.collection ?? []).forEach((cfg, idx) => {
+        const rawItem = raw[idx];
+        const anchorMs = parseAnchor(rawItem || cfg);
+        const cadence = cadenceMs(rawItem?.periodicity ?? cfg?.periodicity);
+        const targetMs = computeTarget(anchorMs, cadence, now);
+        const remainingMs = targetMs === null ? null : targetMs - now;
+        const enabled = cfg?.enabled !== false;
+        const state = derivedState(enabled, remainingMs);
         const isForm = s === 'forms';
-        const state = operationalState(cfg);
-        const days = cadenceDays(cfg?.periodicity);
         const priority = cfg?.priority || 'medium';
         const channel = channelLabel(cfg);
-        const meta = [frequencyLabel(cfg?.periodicity), channel ? `Canal: ${channel}` : null]
-          .filter(Boolean)
-          .join(' · ');
+        const nextExecution = formattedExecution(targetMs);
+        const remainingTextValue = remainingMs === null
+          ? null
+          : (remainingMs >= 0 ? `Vence en ${humanDuration(remainingMs)}` : `Venció hace ${humanDuration(remainingMs)}`);
         out.push({
           id: `${s}:${resource?.id}:${idx}`,
-          order: STATUS_ORDER[state.key],
-          days,
-          title: cfg?.description || (cfg?.periodicity === 'once' ? 'Una vez' : 'Alerta'),
+          remainingMs,
+          sortDate: remainingMs ?? Number.MAX_SAFE_INTEGER,
+          title: cfg?.description || (rawItem?.name) || (cfg?.periodicity === 'once' ? 'Una sola vez' : 'Alerta'),
           tipo: isForm ? 'Formulario' : 'Repositorio',
           origen: resource?.name || resource?.slug || resource?.id || null,
           priority,
@@ -152,12 +203,11 @@ function projectConfigCards(resources) {
           statusLabel: state.label,
           color: state.color,
           icon: state.key === 'disabled' ? 'Bell' : 'AlertOctagon',
-          frequency: frequencyLabel(cfg?.periodicity),
+          frequency: frequencyLabel(rawItem?.periodicity ?? cfg?.periodicity),
           expiration: cfg?.expiration || 'none',
-          nextExecution: relativeLabel(days === 0 ? 0 : days),
-          remainingTime: relativeLabel(days === 0 ? 0 : days),
+          nextExecution,
+          remainingText: remainingTextValue,
           channel,
-          message: meta,
           navigable: true,
           navigationLabel: isForm ? 'Ir al formulario' : 'Ir al repositorio',
           action: isForm
@@ -170,7 +220,7 @@ function projectConfigCards(resources) {
       });
     }
   }
-  out.sort((a, b) => a.order - b.order || (a.days === null ? 1 : a.days) - (b.days === null ? 1 : b.days));
+  out.sort((a, b) => a.sortDate - b.sortDate);
   return out;
 }
 
@@ -235,7 +285,7 @@ function CardButton({ card, moduleSlug }) {
       <div className="grid grid-cols-1 gap-1 text-[11px] text-gray-600">
         <p><span className="font-semibold text-gray-400">Frecuencia:</span> {card.frequency}</p>
         <p><span className="font-semibold text-gray-400">Próxima ejecución:</span> {card.nextExecution || '—'}</p>
-        <p><span className="font-semibold text-gray-400">Tiempo:</span> {card.remainingTime || '—'}</p>
+        <p><span className="font-semibold text-gray-400">Tiempo:</span> {card.remainingText || '—'}</p>
         {card.channel && <p><span className="font-semibold text-gray-400">Canal:</span> {card.channel}</p>}
       </div>
 
@@ -266,33 +316,11 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
     moduleSlug,
   });
 
-// Sprint 232 — SINGLE Alert Experience. alertConfigurations[] is the ONLY
-  // source of operational alert cards: one card per alert, each rendered
-  // through the SAME certified navigation mechanism (open-in-form /
-  // go-to-document). No "Alertas configuradas" vs "Alertas Activas" coexistence.
-  // Pure read projection; the UI never evaluates, never persists.
+// Sprint 237 — TEMPORAL READ MODEL. alertConfigurations[] is the ONLY source.
+  // projectConfigCards computes the temporal ViewModel (targetDate/remaining/
+  // nextExecution/state/sortDate) and sorts chronologically by remaining
+  // (most urgent first); the UI just renders the single ordered grid.
   const configCards = useMemo(() => projectConfigCards(existing), [existing]);
-
-  // Sprint 235 — the cards are grouped by OPERATIONAL status (not load order):
-// Vencidas → Hoy → Próximas → Activas → Deshabilitadas. projectConfigCards
-// already sorts each card's `order` + closest next, so groups stay ordered.
-  const grouped = useMemo(() => {
-    const order = ['overdue', 'today', 'upcoming', 'active', 'disabled'];
-    const labels = {
-      overdue: 'Vencidas',
-      today: 'Hoy',
-      upcoming: 'Próximas',
-      active: 'Activas',
-      disabled: 'Deshabilitadas',
-    };
-    return order
-      .map((key) => ({
-        key,
-        label: labels[key],
-        cards: configCards.filter((c) => c.status === key),
-      }))
-      .filter((g) => g.cards.length > 0);
-  }, [configCards]);
 
   if (configCards.length === 0) {
     return (
@@ -318,19 +346,11 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
         </div>
       </div>
 
-      {grouped.map((group) => (
-        <div key={group.key}>
-          <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-sm font-bold text-gray-900">{group.label}</h3>
-            <span className="text-xs text-gray-400">({group.cards.length})</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {group.cards.map((card) => (
-              <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
-            ))}
-          </div>
-        </div>
-      ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {configCards.map((card) => (
+          <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
+        ))}
+      </div>
     </div>
   );
 }
