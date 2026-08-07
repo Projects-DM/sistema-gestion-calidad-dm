@@ -30,11 +30,14 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
  * Sprint 247 — ACTIVE WORKSPACE SYNCHRONIZATION (presentation-only). The
  * collapsed workspace header now represents ONLY the collection identity
  * ("Alertas configuradas (N) — Seleccionar alerta"), fully decoupled from the
- * active alert. The active alert is shown in an independent, non-expandable
- * "Alerta activa" preview block below the selector. The form is remounted per
- * alert (`key={activeKey}`) so all its internal state (frequency / repetition /
- * scheme) rebuilds deterministically on selection change. Persistence,
- * activeKey, saveCollection and alertConfigurations[] are untouched.
+ * active alert. The form is remounted per alert (`key={activeKey}`) so all its
+ * internal state (frequency / repetition / scheme) rebuilds deterministically.
+ * Persistence, activeKey, saveCollection and alertConfigurations[] untouched.
+ *
+ * Sprint 248 — DIRECT EDITING WORKSPACE (presentation-only). The redundant
+ * "Alerta activa" preview block is REMOVED: the alert form is the SOLE visual
+ * representation of the selected alert (consuming `configs[activeKey]`), so no
+ * parallel summary/preview exists. Workspace = expandable Selector → Form.
  *
  * CONTAINER ONLY. Loads, validates and persists. Never interacts with the
  * Runtime, the Engine or the Consumption Layer.
@@ -108,8 +111,6 @@ export default function AlertConfigurationPanel({
     if (resourceKind === 'documentRepository') return 'Configuración de alertas del repositorio';
     return 'Configuración de alertas del formulario';
   }, [resourceKind]);
-
-  const activeConfig = activeKey ? configs[activeKey] : null;
 
   const makeAlert = (name, description) => {
     counterRef.current += 1;
@@ -354,29 +355,6 @@ export default function AlertConfigurationPanel({
               </>
             )}
           </div>
-
-          {active && (
-            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden" data-testid="active-alert-preview">
-              <div className="px-4 py-2 bg-gray-50/70 border-b border-gray-100">
-                <h4 className="text-[11px] font-bold uppercase tracking-wide text-gray-400">Alerta activa</h4>
-              </div>
-              <div className="px-4 py-3 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-sm text-gray-900">{active?.name || 'Sin nombre'}</p>
-                  {active?.description && (
-                    <p className="text-[11px] text-gray-500 truncate mt-0.5">{active.description}</p>
-                  )}
-                  <p className="text-[11px] text-gray-400 mt-1.5">Frecuencia: {scheduleLabel(activeConfig)}</p>
-                  {(activeConfig?.startDate || activeConfig?.startTime) && (
-                    <p className="text-[11px] text-gray-400">Inicio: {activeConfig?.startDate}{activeConfig?.startTime ? ` · ${activeConfig?.startTime}` : ''}</p>
-                  )}
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${activeConfig?.enabled === true ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                  {activeConfig?.enabled === true ? 'Activa' : 'Deshabilitada'}
-                </span>
-              </div>
-            </div>
-          )}
 
           {active && (
             <AlertConfigurationForm
