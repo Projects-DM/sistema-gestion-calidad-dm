@@ -8,7 +8,6 @@ import {
   MoveDown,
   FileText,
   Save,
-  X,
   ShieldCheck,
   Beaker,
   Package,
@@ -25,6 +24,7 @@ import { createApplicationRequest } from '../../core/applicationLayer/common/con
 import { onModuleChange } from '../../core/applicationLayer/moduleAdministration/ModuleChangeBus.js';
 import AlertConfigurationPanel from '../../modules/experiences/AlertConfigurationPanel.jsx';
 import { alertConfigurationPersistence } from '../../modules/experiences/AlertConfigurationPersistenceAdapter.js';
+import ModalShell from '../../shared/components/ModalShell.jsx';
 
 const persistenceProvider = new ModuleCapabilityPersistenceAdapter();
 const appService = new ModuleAdministrationApplicationService({ persistenceProvider });
@@ -63,59 +63,6 @@ function IconPreview({ iconKey, className = '' }) {
   const normalized = normalizeIconKey(iconKey) || 'FileText';
   const Icon = ICON_COMPONENTS[normalized] || FileText;
   return <Icon className={className} />;
-}
-
-function ModalShell({ open, title, icon, onClose, children, saving }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const Icon = icon;
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <div
-        className="absolute inset-0"
-        aria-hidden="true"
-        onMouseDown={(e) => {
-          // click fuera: solo si el click inicia en el overlay
-          if (e.target === e.currentTarget) onClose();
-        }}
-      />
-
-      <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="p-5 bg-primary text-white flex items-center justify-between flex-none">
-          <div className="flex items-center gap-3">
-            <Icon className="w-5 h-5" />
-            <h3 className="font-bold text-lg">{title}</h3>
-          </div>
-          <button
-            type="button"
-            className="p-2 hover:bg-white/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={onClose}
-            disabled={saving}
-            aria-label="Cerrar"
-            title="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="overflow-auto">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function DocumentRepositoriesAdmin() {
