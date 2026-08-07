@@ -49,6 +49,23 @@ const STATUS_VISUAL = Object.freeze({
   active: Object.freeze({ label: 'Activa', color: 'green' }),
   disabled: Object.freeze({ label: 'Deshabilitada', color: 'gray' }),
 });
+// Sprint 240 — certified iconography per operational status.
+const STATUS_ICON = Object.freeze({
+  overdue: 'AlertTriangle',
+  today: 'Clock',
+  upcoming: 'Calendar',
+  active: 'CheckCircle2',
+  disabled: 'Bell',
+});
+// Sprint 240 — operational hierarchy: Vencidas → Hoy → Próximas → Activas → Deshabilitadas.
+const STATUS_HIERARCHY = Object.freeze(['overdue', 'today', 'upcoming', 'active', 'disabled']);
+const STATUS_GROUP_LABELS = Object.freeze({
+  overdue: 'Vencidas',
+  today: 'Hoy',
+  upcoming: 'Próximas',
+  active: 'Activas',
+  disabled: 'Deshabilitadas',
+});
 const PRIORITY_LABELS = Object.freeze({ low: 'Baja', medium: 'Media', high: 'Alta' });
 const CHANNEL_LABELS = Object.freeze({ email: 'Email', 'in-app': 'Sistema', push: 'Push', bluetooth: 'Bluetooth', whatsapp: 'WhatsApp' });
 const MONTHS = Object.freeze(['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']);
@@ -202,7 +219,7 @@ function projectConfigCards(resources, nowMs) {
           status: state.key,
           statusLabel: state.label,
           color: state.color,
-          icon: state.key === 'disabled' ? 'Bell' : 'AlertOctagon',
+          icon: STATUS_ICON[state.key] || 'AlertOctagon',
           frequency: frequencyLabel(rawItem?.periodicity ?? cfg?.periodicity),
           expiration: cfg?.expiration || 'none',
           nextExecution,
@@ -285,7 +302,7 @@ function CardButton({ card, moduleSlug }) {
       <div className="grid grid-cols-1 gap-1 text-[11px] text-gray-600">
         <p><span className="font-semibold text-gray-400">Frecuencia:</span> {card.frequency}</p>
         <p><span className="font-semibold text-gray-400">Próxima ejecución:</span> {card.nextExecution || '—'}</p>
-        <p><span className="font-semibold text-gray-400">Tiempo:</span> {card.remainingText || '—'}</p>
+        <p><span className="font-semibold text-gray-400">Tiempo restante:</span> {card.remainingText || '—'}</p>
         {card.channel && <p><span className="font-semibold text-gray-400">Canal:</span> {card.channel}</p>}
       </div>
 
@@ -316,11 +333,32 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
     moduleSlug,
   });
 
-// Sprint 237 — TEMPORAL READ MODEL. alertConfigurations[] is the ONLY source.
+  // Sprint 237 — TEMPORAL READ MODEL. alertConfigurations[] is the ONLY source.
   // projectConfigCards computes the temporal ViewModel (targetDate/remaining/
-  // nextExecution/state/sortDate) and sorts chronologically by remaining
-  // (most urgent first); the UI just renders the single ordered grid.
+  // nextExecution/state/sortDate). The UI only consumes.
   const configCards = useMemo(() => projectConfigCards(existing), [existing]);
+
+  // Sprint 240 — OPERATIONAL STATUS CLASSIFICATION. Cards are grouped by the
+  // certified status hierarchy (Vencidas → Hoy → Próximas → Activas →
+  // Deshabilitadas) and within each group ordered by remainingMilliseconds ASC
+  // (most urgent first). States derive EXCLUSIVELY from remainingMs + enabled
+  // (projectConfigCards/derivedState); the UI only arranges what it consumes.
+  const groups = useMemo(() => {
+    const byStatus = {};
+    for (const card of configCards) {
+      const list = byStatus[card.status] || (byStatus[card.status] = []);
+      list.push(card);
+    }
+    return STATUS_HIERARCHY
+      .map((key) => ({
+        key,
+        label: STATUS_GROUP_LABELS[key],
+        cards: (byStatus[key] || [])
+          .slice()
+          .sort((a, b) => (a.remainingMs ?? Number.MAX_SAFE_INTEGER) - (b.remainingMs ?? Number.MAX_SAFE_INTEGER)),
+      }))
+      .filter((group) => group.cards.length > 0);
+  }, [configCards]);
 
   if (configCards.length === 0) {
     return (
@@ -346,11 +384,19 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {configCards.map((card) => (
-          <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
-        ))}
-      </div>
+      {groups.map((group) => (
+        <div key={group.key}>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-bold text-gray-900">{group.label}</h3>
+            <span className="text-xs text-gray-400">({group.cards.length})</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {group.cards.map((card) => (
+              <CardButton key={card.id} card={card} moduleSlug={moduleSlug} />
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
