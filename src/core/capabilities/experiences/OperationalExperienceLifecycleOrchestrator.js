@@ -195,7 +195,20 @@ export class OperationalExperienceLifecycleOrchestrator {
     }
     const updated = await this._service.updateBatch(ids, { estado: newStatus });
     OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'bulk_status_updated', newStatus, count: updated.length, ids }, user });
-    OperationalEventBus.publish('RECORDS_STATUS_UPDATED', { experienceKey: this.experienceKey, count: updated.length, newStatus, action: 'bulk_status_updated' });
+    OperationalEventBus.publish('RECORDS_STATUS_UPDATED', { experienceKey: this.experienceKey, count: updated.length, newStatus, recordIds: ids, action: 'bulk_status_updated' });
+    if (newStatus === 'completado') {
+      // Sprint 257 — semantically-final operational signal (OCC-CERT-10/11):
+      // completion is emitted ONLY upon reaching a final state; RECORD_CREATED
+      // never emits it. The payload carries recordIds for the occurrence bridge.
+      OperationalEventBus.publish('RESOURCE_COMPLETED', {
+        experienceKey: this.experienceKey,
+        count: updated.length,
+        recordIds: ids,
+        resourceKind: 'dynamicRecords',
+        action: 'record_completed',
+        completedAt: Date.now(),
+      });
+    }
     return { success: true, count: updated.length, records: updated, action: 'bulk_status_updated' };
   }
 
@@ -222,7 +235,7 @@ export class OperationalExperienceLifecycleOrchestrator {
     });
     const updated = await this._service.updateBatch(validIds, { estado: 'approved' });
     OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'approved', count: updated.length, ids: validIds }, user });
-    OperationalEventBus.publish('RECORDS_APPROVED', { experienceKey: this.experienceKey, count: updated.length, action: 'approved' });
+    OperationalEventBus.publish('RECORDS_APPROVED', { experienceKey: this.experienceKey, count: updated.length, recordIds: validIds, action: 'approved' });
     return { success: true, count: updated.length, records: updated, action: 'approved' };
   }
 
@@ -241,7 +254,7 @@ export class OperationalExperienceLifecycleOrchestrator {
     });
     const updated = await this._service.updateBatch(validIds, { estado: 'cerrado' });
     OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'closed', count: updated.length, ids: validIds }, user });
-    OperationalEventBus.publish('RECORDS_CLOSED', { experienceKey: this.experienceKey, count: updated.length, action: 'closed' });
+    OperationalEventBus.publish('RECORDS_CLOSED', { experienceKey: this.experienceKey, count: updated.length, recordIds: validIds, action: 'closed' });
     return { success: true, count: updated.length, records: updated, action: 'closed' };
   }
 

@@ -12,6 +12,8 @@ import { dynamicService } from '../services/dynamicService.js';
 import { documentsService } from '../services/documentsService.js';
 import { documentRepositoriesService } from '../services/documentRepositoriesService.js';
 import { dashboardService } from '../modules/dashboard/services/dashboardService.js';
+import projectCurrentOccurrences from '../core/capabilities/alert/occurrence/OccurrenceProjection.js';
+import { wireCompletionBridge } from '../core/capabilities/alert/occurrence/CompletionBridge.js';
 
 /**
  * useAlertRuntime — Sprint 186 (Operational Resource Integrity Audit)
@@ -487,6 +489,21 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
     });
   }, [base, consumption]);
 
+  // Sprint 257 — OCCURRENCE SURFACE. The runtime wires the ONE operational
+  // completion signal (single subscription, idempotent) and projects the
+  // current occurrences of the visible enrolled collections via the certified
+  // schedule (pure read, OCC-CERT-01..05). Additive: the existing CD surfaces
+  // are untouched.
+  useEffect(() => {
+    const unwire = wireCompletionBridge();
+    return () => unwire?.();
+  }, []);
+
+  const occurrences = useMemo(() => {
+    if (!existing) return null;
+    return projectCurrentOccurrences(existing, base.moduleId ?? moduleSlug ?? module);
+  }, [existing, base, moduleId, module, moduleSlug]);
+
   return {
     consumption,
     visibility,
@@ -500,6 +517,7 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
     visibleExisting,
     audit,
     binding,
+    occurrences,
   };
 }
 
