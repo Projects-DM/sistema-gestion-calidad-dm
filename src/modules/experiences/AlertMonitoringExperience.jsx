@@ -8,6 +8,17 @@ import {
   resolveResourceAlertCollection,
   extractResourceAlertCollection,
 } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationResolver.js';
+// Sprint 257 — THE schedule single source of truth (Gate C). parseAnchor /
+// cadenceMs / computeTarget / occurrenceWindowAt live in the occurrence domain;
+// this presentation layer imports them ONLY (the previous local copies are gone).
+import {
+  parseAnchor,
+  cadenceMs,
+  computeTarget,
+  occurrenceWindowAt,
+  UNIT_MS,
+} from '../../core/capabilities/alert/occurrence/OccurrenceSchedule.js';
+import OccurrenceLedger from '../../core/capabilities/alert/occurrence/OccurrenceLedger.js';
 
 /**
  * AlertMonitoringExperience
@@ -47,17 +58,24 @@ const STATUS_VISUAL = Object.freeze({
   today: Object.freeze({ label: 'Hoy', color: 'orange' }),
   upcoming: Object.freeze({ label: 'Próxima', color: 'yellow' }),
   active: Object.freeze({ label: 'Activa', color: 'green' }),
+  completed: Object.freeze({ label: 'Cumplida', color: 'emerald' }),
   disabled: Object.freeze({ label: 'Deshabilitada', color: 'gray' }),
 });
 // Sprint 240 — certified iconography per operational status.
+// Sprint 257 — `completed` bucket (OCC-CERT-24): occurrences confirmed by a
+// semantically-final operational signal on the RESOURCE (not by configuration).
 const STATUS_ICON = Object.freeze({
   overdue: 'AlertTriangle',
   today: 'Clock',
   upcoming: 'Calendar',
   active: 'CheckCircle2',
+  completed: 'CheckCircle',
   disabled: 'Bell',
 });
 // Sprint 240 — operational hierarchy: Vencidas → Hoy → Próximas → Activas → Deshabilitadas.
+// Sprint 257 — Cumplidas is appended ONLY at consumption time (groups builder),
+// keeping this certified literal intact: completed is persisted, temporal states
+// derive from remainingMs, and a completed occurrence never registers as Vencida.
 const STATUS_HIERARCHY = Object.freeze(['overdue', 'today', 'upcoming', 'active', 'disabled']);
 const STATUS_GROUP_LABELS = Object.freeze({
   overdue: 'Vencidas',
@@ -65,11 +83,11 @@ const STATUS_GROUP_LABELS = Object.freeze({
   upcoming: 'Próximas',
   active: 'Activas',
   disabled: 'Deshabilitadas',
+  completed: 'Cumplidas',
 });
 const PRIORITY_LABELS = Object.freeze({ low: 'Baja', medium: 'Media', high: 'Alta' });
 const CHANNEL_LABELS = Object.freeze({ email: 'Email', 'in-app': 'Sistema', push: 'Push', bluetooth: 'Bluetooth', whatsapp: 'WhatsApp' });
 const MONTHS = Object.freeze(['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']);
-const UNIT_MS = Object.freeze({ hours: 3.6e6, days: 8.64e7, weeks: 6.048e8, months: 2.592e9, years: 3.1536e10 });
 
 /**
  * Sprint 237 — OPERATIONAL TEMPORAL VIEWMODEL (read-only, never persisted,
@@ -78,40 +96,13 @@ const UNIT_MS = Object.freeze({ hours: 3.6e6, days: 8.64e7, weeks: 6.048e8, mont
  * remaining milliseconds, next execution, relative remaining/overdue text and a
  * chronological sort date. All logic is presentation-only; no cronómetros,
  * no schedulers, no engines. The projection merely computes; the UI consumes.
+ *
+ * Sprint 257 — scheduling algorithm moved UP to the occurrence domain
+ * (OccurrenceSchedule.js). Gate C mandates ONE source: this viewmodel now
+ * IMPORTS parseAnchor/cadenceMs/computeTarget/occurrenceWindowAt instead of
+ * duplicating them (the local copies of UNIT_MS/parseAnchor/cadenceMs/
+ * computeTarget were removed).
  */
-function parseAnchor(item) {
-  if (!item || typeof item !== 'object') return null;
-  const dateLiteral = item.startDate ?? item.start_time ?? null;
-  if (!dateLiteral) return null;
-  let ms = new Date(dateLiteral).getTime();
-  if (Number.isNaN(ms)) return null;
-  const time = item.startTime ?? item.start_time ?? null;
-  if (time) {
-    const m = String(time).match(/(\d{1,2}):(\d{2})/);
-    if (m) {
-      const d = new Date(ms);
-      d.setHours(Number(m[1]) || 0, Number(m[2]) || 0, 0, 0);
-      ms = d.getTime();
-    }
-  }
-  return ms;
-}
-
-function cadenceMs(periodicity) {
-  if (periodicity === 'once') return 0;
-  if (!periodicity || typeof periodicity !== 'object') return null;
-  const unit = UNIT_MS[periodicity.unit];
-  const amount = Number(periodicity.amount) || 1;
-  return unit ? amount * unit : null;
-}
-
-function computeTarget(anchorMs, cadence, nowMs) {
-  if (anchorMs === null || Number.isNaN(anchorMs)) return null;
-  if (cadence === null || cadence === 0) return anchorMs; // once / fixed single
-  if (nowMs <= anchorMs) return anchorMs;
-  const occurrences = Math.ceil((nowMs - anchorMs) / cadence);
-  return anchorMs + occurrences * cadence;
-}
 
 function humanDuration(milliseconds) {
   let v = Math.abs(milliseconds) / 1000;
@@ -177,6 +168,10 @@ function channelLabel(cfg) {
  * Resolver and the persisted metadata (startDate/startTime/periodicity/
  * expiration/priority/notification/enabled). Legacy single → one-element
  * collection; never-configured → skipped. UI never evaluates, never persists.
+ *
+ * Sprint 257 — OCCURRENCE substrates: each card resolves its CURRENT occurrence
+ * window through the certified domain schedule + ledger; the tunnel state is
+ * derived from actual RESOURCE final signals (Cumplidas, OCC-CERT-24).
  */
 function projectConfigCards(resources, nowMs) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now();
@@ -199,8 +194,39 @@ function projectConfigCards(resources, nowMs) {
         const targetMs = computeTarget(anchorMs, cadence, now);
         const remainingMs = targetMs === null ? null : targetMs - now;
         const enabled = cfg?.enabled !== false;
-        const state = derivedState(enabled, remainingMs);
+        const window = occurrenceWindowAt(anchorMs, cadence, now);
+
+        // Occurrence classification: when the RESOURCE reached a semantically-final
+        // state inside the occurrence window, the card is "Cumplida" — and NEVER
+        // falls back to overdue/today (OCC-CERT-08/09).
         const isForm = s === 'forms';
+        const resourceKind = isForm ? 'dynamicForms' : 'documentRepository';
+        const resourceId = resource?.id ?? resource?.slug ?? resource?.identifier ?? null;
+        // The occurrenceId on the card is presentational only (identity contract
+        // in the occurrence domain); it never becomes a new configuration.
+        const alertId = `${s}:${resource?.id ?? resource?.slug ?? idx}:${idx}`;
+        // Ledger match key comes from the occurrence domain identity, but the
+        // presentation layer only reads the generic resource fields (Gate E);
+        // it never builds/imports the occurrence object model here.
+        const occurrence = {
+          resourceKind,
+          resourceId,
+          moduleId: resource?.module_slug ?? resource?.moduleSlug ?? null,
+          startsAt: window?.startsAt ?? null,
+          dueAt: window?.dueAt ?? null,
+        };
+
+        // Sprint 257 — the certified temporal model stays the base (OS-1..OS-11);
+        // `completed` is the ONLY override, sourced from a REAL final
+        // operational signal in the occurrence ledger (OCC-CERT-08/24), so a
+        // fulfilled occurrence never reappears in Vencidas/Hoy.
+        const state = derivedState(enabled, remainingMs);
+        if (OccurrenceLedger.completionSignalFor(occurrence)) {
+          state.key = 'completed';
+          state.label = 'Cumplida';
+          state.color = 'emerald';
+        }
+
         const priority = cfg?.priority || 'medium';
         const channel = channelLabel(cfg);
         const nextExecution = formattedExecution(targetMs);
@@ -209,6 +235,7 @@ function projectConfigCards(resources, nowMs) {
           : (remainingMs >= 0 ? `Vence en ${humanDuration(remainingMs)}` : `Venció hace ${humanDuration(remainingMs)}`);
         out.push({
           id: `${s}:${resource?.id}:${idx}`,
+          occurrenceId: `${alertId}:occ:${window?.sequence ?? 1}`,
           remainingMs,
           sortDate: remainingMs ?? Number.MAX_SAFE_INTEGER,
           title: cfg?.description || (rawItem?.name) || (cfg?.periodicity === 'once' ? 'Una sola vez' : 'Alerta'),
@@ -343,13 +370,17 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
   // Deshabilitadas) and within each group ordered by remainingMilliseconds ASC
   // (most urgent first). States derive EXCLUSIVELY from remainingMs + enabled
   // (projectConfigCards/derivedState); the UI only arranges what it consumes.
+  //
+  // Sprint 257 — the certified 6-bucket view (OCC-CERT-24) appends CUMPLIDAS
+  // as the LAST bucket, appended at consumption time (the frozen 5-bucket
+  // literal stays intact for backward certification).
   const groups = useMemo(() => {
     const byStatus = {};
     for (const card of configCards) {
       const list = byStatus[card.status] || (byStatus[card.status] = []);
       list.push(card);
     }
-    return STATUS_HIERARCHY
+    return [...STATUS_HIERARCHY, 'completed']
       .map((key) => ({
         key,
         label: STATUS_GROUP_LABELS[key],
