@@ -16,7 +16,15 @@ import { buildAlertConfigurationDescriptor } from './AlertConfigurationDescripto
 import { OPERATIONAL_CONFIGURATION_BOUNDARY } from './OperationalConfigurationBoundary.js';
 
 export { AlertConfigurationContract, OPERATIONAL_CONFIGURATION_VERSION } from './AlertConfigurationContract.js';
-export { resolveOperationalConfiguration, resolveResourceAlertConfiguration, extractResourceAlertMetadata } from './AlertConfigurationResolver.js';
+export {
+  resolveOperationalConfiguration,
+  resolveResourceAlertConfiguration,
+  resolveResourceAlertCollection,
+  resolveResourceAlertConfigurations,
+  resolveResourceAlertEnvelope,
+  extractResourceAlertMetadata,
+  alertConfigIdOf,
+} from './AlertConfigurationResolver.js';
 export { buildAlertRuleDescriptor } from './AlertRuleDescriptor.js';
 export { resolvePriority, ALERT_PRIORITY_LEVELS, PRIORITY_LABELS } from './AlertPriorityPolicy.js';
 export { buildAlertOperationalContext } from './AlertOperationalContext.js';
@@ -49,6 +57,7 @@ export { shouldProduceAlert } from './AlertConfigurationResolver.js';
 // enters the Runtime when explicitly configured AND enabled AND valid.
 export {
   evaluateAlertEnrollment,
+  evaluateAlertEnrollments,
   isExplicitlyEnrolled,
   shouldEnrollResource,
   ENROLLMENT_REASONS,

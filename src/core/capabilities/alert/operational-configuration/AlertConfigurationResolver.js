@@ -35,10 +35,30 @@ import { createAlertConfiguration } from './AlertConfiguration.js';
  * @param {Object} resource Form or Repository resource metadata.
  * @returns {Object|null} Raw alert configuration metadata.
  */
+/**
+ * SINGLE-CONFIGURATION contract (DEC-261-05). Extracts the PRIMARY alert
+ * metadata from a resource object.
+ *
+ * This accessor is explicitly single-configuration: for a collection envelope
+ * it returns the FIRST element only. It MUST be used exclusively by consumers
+ * that define a SINGLE-configuration precondition (e.g. the legacy single
+ * `resolveResourceAlertConfiguration` contract). Runtime / Enrollment paths
+ * that must transport or evaluate ALL configurations MUST use
+ * `extractResourceAlertCollection` / `resolveResourceAlertConfigurations`
+ * instead — never this accessor.
+ *
+ * Accepts both the official `alertConfiguration` field and the raw
+ * `alert_config` column. Returns null when absent (never-configured).
+ *
+ * This is the ONLY place in the codebase allowed to read storage keys.
+ *
+ * @param {Object} resource Form or Repository resource metadata.
+ * @returns {Object|null} Raw single alert configuration metadata.
+ */
 export function extractResourceAlertMetadata(resource) {
   if (!resource || typeof resource !== 'object') return null;
   const raw = resource.alertConfiguration ?? resource.alert_config ?? null;
-  // Sprint 229 — collection envelope backward compatible: expose the primary item.
+  // Single-configuration contract: expose ONLY the primary collection element.
   if (raw && typeof raw === 'object' && Array.isArray(raw.alertConfigurations) && raw.alertConfigurations.length > 0) {
     return raw.alertConfigurations[0];
   }
@@ -95,6 +115,12 @@ export function resolveResourceAlertCollection(resource) {
  * - `source: 'metadata'`  → the resource carried `alertConfiguration`.
  * - `source: 'default'`   → the resource was never configured; DEFAULT used.
  *
+ * SINGLE-CONFIGURATION contract (DEC-261-01/05): this API intentionally
+ * returns exactly ONE configuration (the primary element when a collection
+ * envelope exists). It serves legacy single-configuration consumers ONLY.
+ * Operations that require ALL configurations of a resource must use
+ * `resolveResourceAlertConfigurations`.
+ *
  * @param {Object} resource Form or Repository resource metadata.
  * @returns {Object} { source, resourceId, configuration }
  */
@@ -106,6 +132,136 @@ export function resolveResourceAlertConfiguration(resource) {
     resourceId: resource?.id ?? resource?.slug ?? null,
     configuration,
   });
+}
+
+/**
+ * Sprint 261 — MULTI-ALERT RESOURCE RESOLUTION (DEC-261-01/04/06).
+ *
+ * Resolves EVERY configuration of a resource as an immutable
+ * AlertConfiguration Value Object, each preserving its own identity.
+ *
+ * Identity rule (DEC-261-06 / §9): an alert is identified by
+ * `resource identity + configuration identity`, never by resourceId alone.
+ * When a resource carries MULTIPLE configurations (A/B/C), each VO is
+ * returned with its own `index` and `alertId`:
+ *
+ *   configA  →  { index: 0, alertId: "<resourceId>:alert:0" }
+ *   configB  →  { index: 1, alertId: "<resourceId>:alert:1" }
+ *
+ * The single-element case (solo alerta) is backward compatible with
+ * `resolveResourceAlertConfiguration` (AC-01/AC-13): one element, no dummy.
+ * Never-configured resources resolve to an EMPTY collection (AC-14):
+ * the Runtime never fabricates an artificial alert.
+ *
+ * @param {Object} resource Form or Repository resource metadata.
+ * @returns {Object} {
+ *   source: 'metadata' | 'default',
+ *   resourceId,
+ *   configurations: [{ index, alertId, configuration }]
+ * }
+ */
+export function resolveResourceAlertConfigurations(resource) {
+  const collectionRes = resolveResourceAlertCollection(resource);
+  const resourceId = collectionRes.resourceId;
+
+  const configurations = Object.freeze(
+    (collectionRes.collection || []).map((configuration, index) =>
+      Object.freeze({
+        index,
+        alertId: alertConfigIdOf(resourceId, index),
+        configuration,
+      }),
+    ),
+  );
+
+  return Object.freeze({
+    source: collectionRes.source,
+    resourceId,
+    configurations,
+  });
+}
+
+/**
+ * Sprint 261 — deterministic configuration identity (O-02/§9).
+ *
+ * `resourceId` alone is NOT a sufficient alert identity when the resource
+ * holds multiple configurations. The configuration identity is:
+ *
+ *   `<resourceId>:alert:<index>`
+ *
+ * and its occurrence identity is derived below with the certified
+ * occurrenceIdOf(alertId, sequence) in the occurrence domain.
+ *
+ * @param {string|null} resourceId Resource id (or null for orphan).
+ * @param {number} index Configuration index (0-based within the collection).
+ * @returns {string} Configuration identity string.
+ */
+export function alertConfigIdOf(resourceId, index) {
+  return `${String(resourceId ?? 'resource')}:alert:${String(index)}`;
+}
+
+/**
+ * Sprint 263 — RESOLUTION METADATA ENVELOPE (DEC-263-01..13, Strategy A).
+ *
+ * The canonical AlertConfiguration Value Object keeps its EXACT 9-field
+ * contract (`CONFIGURATION_KEYS`) — it is the runtime/occurrence identity
+ * surface (isAlertConfiguration, resolveResourceAlertConfigurations,
+ * OccurrenceProjection) and MUST NOT be polluted with presentation fields.
+ * The PRESENTATION metadata (`name`, `description`, `startDate`, `startTime`,
+ * `timezone`) is transported as a per-index SIBLING envelope so the editor
+ * reload round-trip survives (Sprint 262 ROOT CAUSE, DEC-263-10).
+ *
+ * Identity rule (DEC-263-11): every item keeps its OWN alertId derived from
+ * `alertConfigIdOf(resourceId, index)` — never global previousMetadata and
+ * never `alertConfigurations[0]`.
+ *
+ * This accessor is read-only and additive. It NEVER changes
+ * `resolveResourceAlertConfiguration` / `resolveResourceAlertCollection` and
+ * never touches the occurrence domain.
+ *
+ * @param {Object} resource Form or Repository resource metadata.
+ * @returns {Object} { source, resourceId, items: [{ index, alertId, configuration, metadata }] }
+ */
+export function resolveResourceAlertEnvelope(resource) {
+  const resolution = resolveResourceAlertCollection(resource);
+  const raw = extractResourceAlertCollection(resource);
+  const rawItems = Array.isArray(raw) && raw.length > 0 ? raw : null;
+
+  const items = Object.freeze(
+    (resolution.collection || []).map((configuration, index) => {
+      const rawItem = rawItems ? rawItems[index] : null;
+      return Object.freeze({
+        index,
+        alertId: alertConfigIdOf(resolution.resourceId, index),
+        configuration,
+        metadata: Object.freeze(
+          pickPresentationMetadata(rawItem && typeof rawItem === 'object' ? rawItem : {}),
+        ),
+      });
+    }),
+  );
+
+  return Object.freeze({
+    source: resolution.source,
+    resourceId: resolution.resourceId,
+    items,
+  });
+}
+
+const PRESENTATION_KEYS = Object.freeze([
+  'name',
+  'description',
+  'startDate',
+  'startTime',
+  'timezone',
+]);
+
+function pickPresentationMetadata(rawItem) {
+  const out = {};
+  for (const key of PRESENTATION_KEYS) {
+    out[key] = typeof rawItem[key] === 'string' ? rawItem[key] : '';
+  }
+  return out;
 }
 
 /**

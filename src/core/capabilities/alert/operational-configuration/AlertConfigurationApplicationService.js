@@ -30,7 +30,7 @@
  * Orchestration ONLY. Never executes the Alert Capability.
  */
 
-import { resolveResourceAlertConfiguration, resolveResourceAlertCollection } from './AlertConfigurationResolver.js';
+import { resolveResourceAlertConfiguration, resolveResourceAlertEnvelope } from './AlertConfigurationResolver.js';
 import { mapMetadataToFormState, mapFormStateToMetadata, mapCollectionToFormStates, mapFormStatesToCollection } from './AlertConfigurationMapper.js';
 import { validateAlertConfiguration, validateAlertConfigurationForm } from './AlertConfigurationValidation.js';
 import { hasAlertConfigurationPersistencePort } from './AlertConfigurationPersistencePort.js';
@@ -149,19 +149,34 @@ export class AlertConfigurationApplicationService {
   /**
    * Sprint 229 — loads the CURRENT alert COLLECTION of a resource.
    *
+   * Sprint 263 — the editable drafts are reconciled from the RESOLUTION
+   * METADATA ENVELOPE (resolveResourceAlertEnvelope): the canonical VO (9
+   * operational fields) is merged with the per-index PRESENTATION metadata
+   * (name/description/startDate/startTime/timezone). This closes the
+   * round-trip loss certified in Sprint 262: the editor no longer rebuilds
+   * drafts from a stripped Value Object.
+   *
    * Reuses the certified Resolver + per-item Mapper. Produces the editable
-   * draft array (one per alert) so the Panel can rebuild the full collection.
+   * draft array (one per alert) so the Panel can rebuild the full collection,
+   * preserving A/B/C identity and metadata independently (DEC-263-11).
    *
    * @param {Object} resource Form or Repository resource metadata.
-   * @returns {{ source: string, resourceId: string|null, collection: Object, formStates: Object[] }}
+   * @returns {{ source: string, resourceId: string|null, items: Object[], collection: Object[], formStates: Object[] }}
    */
   loadCollection(resource) {
-    const resolution = resolveResourceAlertCollection(resource);
+    const envelope = resolveResourceAlertEnvelope(resource);
+    const formStates = mapCollectionToFormStates(
+      envelope.items.map((item) => ({
+        ...item.configuration,
+        ...item.metadata,
+      })),
+    );
     return {
-      source: resolution.source,
-      resourceId: resolution.resourceId,
-      collection: resolution.collection,
-      formStates: mapCollectionToFormStates(resolution.collection),
+      source: envelope.source,
+      resourceId: envelope.resourceId,
+      items: envelope.items,
+      collection: envelope.items.map((item) => item.configuration),
+      formStates,
     };
   }
 
