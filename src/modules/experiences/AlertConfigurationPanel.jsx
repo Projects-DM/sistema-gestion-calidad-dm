@@ -1,10 +1,26 @@
 import { useMemo, useRef, useState } from 'react';
 import { CheckCircle2, X, Loader2, Plus, Bell, Copy, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertConfigurationApplicationService } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationApplicationService.js';
+import { createEmptyFormState } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationMapper.js';
+import { getCurrentLocalDateTime } from './getCurrentLocalDateTime.js';
 import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
 /**
  * AlertConfigurationPanel — COLLECTION ADMINISTRATOR (Sprint 201/222/227/229/243).
+ *
+ * Sprint 259 — EDITOR UX INITIALIZATION (presentation-only, DEC-259-01).
+ *   - The editor OPENS in NEW ALERT MODE: `activeKey === null`. It NEVER
+ *     auto-selects `alerts[0]` on mount (AC-01/02/03/05).
+ *   - The form edits a transient DRAFT (`draft`) while `activeKey === null`;
+ *     the draft carries LOCAL temporal defaults (startDate = today, startTime =
+ *     now) via the presentation helper getCurrentLocalDateTime (AC-07..10).
+ *   - Defaults apply ONLY when entering NEW ALERT MODE — clearing the fields
+ *     afterwards stays respected (AC-11). Persistence for a created alert runs
+ *     through the EXISTING saveCollection pipeline (AC-12, no auto-save).
+ *   - Existing alerts keep their persisted values; YYYYY-MM-DD/HH:mm formats.
+ *   - The collapsible navigator (Sprint 243) is untouched except the removal
+ *     of the automatic first selection.
+ *   No infrastructure file is modified (occurrence domain, resolver, runtime).
  *
  * Sprint 229 — ALERT COLLECTION PERSISTENCE. The panel now loads and persists
  * the WHOLE alert collection through the Application Service:
@@ -72,14 +88,14 @@ export default function AlertConfigurationPanel({
   onClose,
   showClose = false,
 }) {
-  const serviceRef = useRef(null);
-  if (!serviceRef.current) {
-    serviceRef.current = new AlertConfigurationApplicationService({ persistence });
-  }
+  const service = useMemo(
+    () => new AlertConfigurationApplicationService({ persistence }),
+    [persistence],
+  );
 
   const load = useMemo(
-    () => (resource && typeof resource === 'object' ? serviceRef.current.loadCollection(resource) : empty),
-    [resource],
+    () => (resource && typeof resource === 'object' ? service.loadCollection(resource) : empty),
+    [resource, service],
   );
 
   const buildInitial = () => {
@@ -94,18 +110,34 @@ export default function AlertConfigurationPanel({
     return { alerts: alertsList, configs: configMap };
   };
 
-  const initialRef = useRef(null);
-  if (!initialRef.current) initialRef.current = buildInitial();
+  // Sprint 259 — NEW ALERT MODE DRAFT. Temporal defaults come from the LOCAL
+  // clock (presentation helper); they are applied when entering NEW ALERT
+  // MODE, never re-imposed on later renders (AC-11) and never auto-persisted.
+  const newAlertInitial = () => {
+    const { startDate, startTime } = getCurrentLocalDateTime();
+    return {
+      ...createEmptyFormState(),
+      name: '',
+      description: '',
+      startDate,
+      startTime,
+      enabled: true,
+      automaticClose: true,
+    };
+  };
 
-  const [alerts, setAlerts] = useState(initialRef.current.alerts);
-  const [configs, setConfigs] = useState(initialRef.current.configs);
-  const [activeKey, setActiveKey] = useState(initialRef.current.alerts[0]?.key || null);
+  const [alerts, setAlerts] = useState(() => buildInitial().alerts);
+  const [configs, setConfigs] = useState(() => buildInitial().configs);
+  const [draft, setDraft] = useState(() => newAlertInitial());
+  // Sprint 259 — NO automatic first selection: the editor opens in NEW ALERT
+  // MODE. `activeKey === null` IS the presentation contract for NEW ALERT.
+  const [activeKey, setActiveKey] = useState(null);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [expanded, setExpanded] = useState(false);
-  const counterRef = useRef(initialRef.current.alerts.length);
+  const counterRef = useRef(buildInitial().alerts.length);
 
   const title = useMemo(() => {
     if (resourceKind === 'documentRepository') return 'Configuración de alertas del repositorio';
@@ -125,6 +157,11 @@ export default function AlertConfigurationPanel({
       delete next[field];
       return next;
     });
+    if (activeKey === null) {
+      // NEW ALERT MODE — edits go to the transient draft (never auto-persisted).
+      setDraft((prev) => ({ ...prev, [field]: value }));
+      return;
+    }
     setConfigs((prev) => ({ ...prev, [activeKey]: { ...(prev[activeKey] || {}), [field]: value } }));
     if (field === 'name' || field === 'description') {
       setAlerts((prev) => prev.map((a) => (a.key === activeKey ? { ...a, [field]: value } : a)));
@@ -132,11 +169,13 @@ export default function AlertConfigurationPanel({
   };
 
   const addAlert = () => {
-    const next = makeAlert('Nueva alerta', '');
-    const base = configs[activeKey] || {};
-    setAlerts((prev) => [...prev, next]);
-    setConfigs((prev) => ({ ...prev, [next.key]: { ...base, name: '', description: '' } }));
-    setActiveKey(next.key);
+    const { startDate, startTime } = getCurrentLocalDateTime();
+    setDraft({ ...createEmptyFormState(), name: '', description: '', startDate, startTime, enabled: true, automaticClose: true });
+    setSaved(false);
+    setSaveError(null);
+    setErrors({});
+    // Explicit NEW ALERT MODE (Sprint 259): selection is a user action.
+    setActiveKey(null);
     setExpanded(false);
   };
 
@@ -174,7 +213,7 @@ export default function AlertConfigurationPanel({
     setSaved(false);
     setSaveError(null);
     setErrors({});
-    const fresh = serviceRef.current.loadCollection(resource);
+    const fresh = service.loadCollection(resource);
     const rebuilt = fresh.formStates;
     const map = {};
     rebuilt.forEach((f, i) => { map[`alert-${i + 1}`] = f; });
@@ -185,13 +224,44 @@ export default function AlertConfigurationPanel({
   };
 
   const onSubmit = async () => {
-    if (!resource || alerts.length === 0) return;
+    if (!resource) return;
+    if (activeKey === null) {
+      // NEW ALERT MODE — the transient draft becomes a new alert only HERE,
+      // through the EXISTING saveCollection pipeline (AC-12, no auto-save).
+      const next = makeAlert(draft.name || 'Nueva alerta', draft.description || '');
+      const rows = [...alerts, { key: next.key, name: next.name, description: next.description }];
+      const config = { ...draft, name: next.name, description: next.description };
+      setSaving(true);
+      setSaved(false);
+      setSaveError(null);
+      try {
+        const formStates = rows.map((a) => (a.key === next.key ? config : configs[a.key] || {}));
+        const result = await service.saveCollection({ resource, formStates });
+        if (result.success) {
+          const nextConfigs = { ...configs, [next.key]: config };
+          setAlerts(rows);
+          setConfigs(nextConfigs);
+          setActiveKey(next.key);
+          setExpanded(false);
+          setSaved(true);
+          setErrors({});
+          if (typeof onSaved === 'function') onSaved(result);
+        } else {
+          setErrors(result.errors || {});
+        }
+      } catch (err) {
+        setSaveError(err?.message || 'No fue posible guardar la configuración.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     setSaving(true);
     setSaved(false);
     setSaveError(null);
     try {
       const formStates = alerts.map((a) => configs[a.key] || {});
-      const result = await serviceRef.current.saveCollection({ resource, formStates });
+      const result = await service.saveCollection({ resource, formStates });
       if (result.success) {
         setSaved(true);
         setErrors({});
@@ -356,7 +426,18 @@ export default function AlertConfigurationPanel({
             )}
           </div>
 
-          {active && (
+          {activeKey === null ? (
+            <AlertConfigurationForm
+              key="nueva-alerta"
+              formState={draft}
+              errors={errors}
+              onChange={onChange}
+              onSubmit={onSubmit}
+              onReset={onReset}
+              saving={saving}
+              canReset={false}
+            />
+          ) : active ? (
             <AlertConfigurationForm
               key={activeKey}
               formState={{
@@ -371,7 +452,7 @@ export default function AlertConfigurationPanel({
               saving={saving}
               canReset={load.source === 'metadata'}
             />
-          )}
+          ) : null}
         </>
       )}
     </div>
