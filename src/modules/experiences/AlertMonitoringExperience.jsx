@@ -19,6 +19,13 @@ import {
   UNIT_MS,
 } from '../../core/capabilities/alert/occurrence/OccurrenceSchedule.js';
 import OccurrenceLedger from '../../core/capabilities/alert/occurrence/OccurrenceLedger.js';
+// Sprint 265 — THE domain classifier becomes the UI classification.
+// AlertMonitoringExperience no longer re-derives temporal state from
+// `remainingMs` (Sprint 264 DIVERGENCE): for FORM alerts it classifies with
+// the certified OccurrenceLifecycle.classifyOccurrence (window + completion),
+// and maps the derived key to a human label/color ONLY (mandate §13). No
+// alternative classifier is reintroduced (mandate §14).
+import { classifyOccurrence } from '../../core/capabilities/alert/occurrence/OccurrenceLifecycle.js';
 
 /**
  * AlertMonitoringExperience
@@ -163,6 +170,41 @@ function channelLabel(cfg) {
 }
 
 /**
+ * Sprint 265 — SINGLE temporal semantics (mandate §13/§14, AC-01..05).
+ *
+ * Builds the card state for a FORM occurrence using the CERTIFIED domain
+ * classifier (OccurrenceLifecycle.classifyOccurrence: window [startsAt, dueAt)
+ * + completion precedence). The ledger supplies the window-aware completion
+ * signal (OCC-CERT-12); classifies NEVER fall back to overdue/today for a
+ * fulfilled occurrence (OCC-CERT-08) and NEVER decide by `remainingMs`
+ * (Sprint 264 DIVERGENCE closed).
+ *
+ * `enabled === false` keeps the DISABLED presentation bucket (existing
+ * lifecycle), but only when the occurrence is NOT fulfilled.
+ */
+function deriveFormState(enabled, occurrence, nowMs) {
+  const completion = occurrence?.completion || null;
+  if (completion) {
+    const domain = classifyOccurrence(
+      { startsAt: occurrence?.startsAt, dueAt: occurrence?.dueAt, completion },
+      Number.isFinite(nowMs) ? nowMs : Date.now(),
+    );
+    if (domain.key === 'completed') {
+      return { key: 'completed', label: STATUS_VISUAL.completed.label, color: STATUS_VISUAL.completed.color };
+    }
+    if (domain.key === 'cancelled') {
+      return { key: 'cancelled', label: 'Cancelada', color: 'gray' };
+    }
+  }
+  if (enabled === false) {
+    return { key: 'disabled', label: STATUS_VISUAL.disabled.label, color: STATUS_VISUAL.disabled.color };
+  }
+  const domain = classifyOccurrence(occurrence, Number.isFinite(nowMs) ? nowMs : Date.now());
+  const visual = STATUS_VISUAL[domain.key] || STATUS_VISUAL.active;
+  return { key: domain.key, label: visual.label, color: visual.color };
+}
+
+/**
  * Sprint 231+235+237 — Projects the persisted alert collection into navigable
  * OPERATIONAL cards carrying the temporal ViewModel. Reuses the certified
  * Resolver and the persisted metadata (startDate/startTime/periodicity/
@@ -173,7 +215,7 @@ function channelLabel(cfg) {
  * window through the certified domain schedule + ledger; the tunnel state is
  * derived from actual RESOURCE final signals (Cumplidas, OCC-CERT-24).
  */
-function projectConfigCards(resources, nowMs) {
+function projectConfigCards(resources, nowMs, moduleSlug) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now();
   const out = [];
   for (const s of ['forms', 'repositories']) {
@@ -211,20 +253,37 @@ function projectConfigCards(resources, nowMs) {
         const occurrence = {
           resourceKind,
           resourceId,
-          moduleId: resource?.module_slug ?? resource?.moduleSlug ?? null,
+          moduleId: resource?.module_slug ?? resource?.moduleSlug ?? moduleSlug ?? null,
           startsAt: window?.startsAt ?? null,
           dueAt: window?.dueAt ?? null,
         };
+        // Window-aware completion signal from the certified ledger
+        // (OCC-CERT-12): only a signal whose completedAt lands inside
+        // [startsAt, dueAt) counts (AC-09/AC-16).
+        const completionSignal = OccurrenceLedger.completionSignalFor(occurrence);
 
-        // Sprint 257 — the certified temporal model stays the base (OS-1..OS-11);
-        // `completed` is the ONLY override, sourced from a REAL final
-        // operational signal in the occurrence ledger (OCC-CERT-08/24), so a
-        // fulfilled occurrence never reappears in Vencidas/Hoy.
-        const state = derivedState(enabled, remainingMs);
-        if (OccurrenceLedger.completionSignalFor(occurrence)) {
-          state.key = 'completed';
-          state.label = 'Cumplida';
-          state.color = 'emerald';
+        // Sprint 265 — DOMAIN SSOT classification (AC-01..AC-05, AC-15).
+        // FORMS are classified by the certified OccurrenceLifecycle
+        // (window-based, completion-first). Repositories stay on the legacy
+        // presentation classifier (Sprint 257) — OUT OF SCOPE for Sprint 265.
+        let state;
+        if (isForm) {
+          state = deriveFormState(
+            enabled,
+            {
+              startsAt: occurrence.startsAt,
+              dueAt: occurrence.dueAt,
+              completion: completionSignal
+                ? { status: completionSignal.status ?? 'COMPLETED', completedAt: completionSignal.completedAt ?? null }
+                : null,
+            },
+            now,
+          );
+        } else {
+          state = derivedState(enabled, remainingMs);
+          if (completionSignal) {
+            state = { key: 'completed', label: STATUS_VISUAL.completed.label, color: STATUS_VISUAL.completed.color };
+          }
         }
 
         const priority = cfg?.priority || 'medium';
@@ -363,7 +422,7 @@ export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
   // Sprint 237 — TEMPORAL READ MODEL. alertConfigurations[] is the ONLY source.
   // projectConfigCards computes the temporal ViewModel (targetDate/remaining/
   // nextExecution/state/sortDate). The UI only consumes.
-  const configCards = useMemo(() => projectConfigCards(existing), [existing]);
+  const configCards = useMemo(() => projectConfigCards(existing, undefined, moduleSlug), [existing, moduleSlug]);
 
   // Sprint 240 — OPERATIONAL STATUS CLASSIFICATION. Cards are grouped by the
   // certified status hierarchy (Vencidas → Hoy → Próximas → Activas →

@@ -10,6 +10,14 @@ import EvidenceUploader from '../components/EvidenceUploader';
 import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
 import { useAlertRuntime } from '../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
+import { OperationalEventBus } from '../core/capabilities/experiences/OperationalEventBus';
+import { RESOURCE_COMPLETED_EVENT } from '../core/capabilities/alert/occurrence/CompletionBridge';
+// Sprint 265 — FORM-SAVE → OCCURRENCE COMPLETION. Submitting the form is a
+// semantically-FINAL operational signal for the `dynamicForms` resource
+// (Gate E, OCC-CERT-11): the occurrence ledger records it window-aware, so the
+// monitoring experience surfaces the occurrence as "Cumplida". The existing
+// RESOURCE_COMPLETED channel and the already-wired CompletionBridge are reused
+// (no new bus, no new service, no new scheduler).
 
 const authorization = CapabilityDiscovery.discover('authorization');
 const navigation = CapabilityDiscovery.discover('navigation');
@@ -174,6 +182,17 @@ export default function DynamicForm() {
       if (result && result.__runtime_internal_event) {
         await runtimeActivationLayer.activate(result.__runtime_internal_event);
       }
+      // Sprint 265 — publish the semantically-final resource signal. The
+      // CompletionBridge records it in the OccurrenceLedger (window-aware,
+      // keyed by resourceKind::resourceId::moduleId); the completed form never
+      // vanishes once the window ends (OCC-CERT-12).
+      OperationalEventBus.publish(RESOURCE_COMPLETED_EVENT, {
+        resourceKind: 'dynamicForms',
+        resourceId: formDef.id,
+        moduleId: moduleSlug,
+        completedAt: Date.now(),
+        action: 'form_completed_form_saved',
+      });
       setSuccess(true);
       setTimeout(() => {
         navigate(`/${moduleSlug}`);
