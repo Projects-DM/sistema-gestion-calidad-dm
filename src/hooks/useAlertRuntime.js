@@ -5,7 +5,7 @@ import { provideNotificationRequests } from '../core/capabilities/alert/notifica
 import { provideLifecycleRecords } from '../core/capabilities/alert/lifecycle/AlertLifecycleProvider.js';
 import { provideOperationalActions } from '../core/capabilities/alert/operational-actions/AlertOperationalActionProvider.js';
 import {
-  evaluateAlertEnrollment,
+  evaluateAlertEnrollments,
   PRIORITY_LABELS,
 } from '../core/capabilities/alert/operational-configuration/index.js';
 import { dynamicService } from '../services/dynamicService.js';
@@ -253,63 +253,69 @@ export function deriveRulesFromBinding(binding, collected, runtimeResources) {
   const resources = runtimeResources || snapshot;
 
   return binding.boundAlerts
-    .map((alert) => {
+    .flatMap((alert) => {
       const resource = resolveResourceForAlert(alert, resources);
 
-      // Sprint 211 — EXPLICIT ENROLLMENT (LEVEL 5). A resource ONLY enters
-      // the Runtime when it holds explicit, non-empty, ENABLED configuration
-      // (E1–E4). Creating a Form/Repository/Document/Record NEVER generates
-      // an implicit alert. Resources never configured by the user are IGNORED
-      // entirely: no rule, no descriptor, no Dashboard/Workspace card, no
-      // notification, no lifecycle record, no operational action. The
-      // decision is delegated to the Enrollment Validator, which reuses the
-      // Resolver (sole owner of metadata + the `shouldProduceAlert` decision).
-      const enrollment = evaluateAlertEnrollment(resource);
-      if (!enrollment.enrolled) return null;
+      // Sprint 211 / 261 — EXPLICIT ENROLLMENT (LEVEL 5). A resource ONLY
+      // enters the Runtime when it holds explicit, non-empty, ENABLED
+      // configuration (E1–E4). Creating a Form/Repository/Document/Record
+      // NEVER generates an implicit alert; resources never configured by the
+      // user are IGNORED entirely: no rule, no descriptor, no Dashboard card.
+      // Sprint 261 — MULTI-ALERT: `evaluateAlertEnrollments` evaluates E1–E4
+      // per configuration, so ONE resource with MULTIPLE enrolled configs
+      // produces ONE rule (and one alert identity) PER enrolled configuration.
+      // The single-configuration case is backward compatible (one item → one
+      // rule, AC-01/AC-13).
+      const enrollments = evaluateAlertEnrollments(resource);
+      const enrolled = enrollments.items.filter((i) => i.enrolled === true);
+      if (enrolled.length === 0) return [];
 
-      const configuration = enrollment.resolution.configuration;
+      return enrolled.map((item) => {
+        const configuration = item.configuration;
 
-      const transport = transportConfiguration(configuration);
-      const priority = transport.priority;
-      const priorityLabel = PRIORITY_LABELS[priority] || 'Media';
-      const base = {
-        source: null,
-        condition: alert.condition,
-        priority,
-        priorityLabel,
-        active: transport.enabled,
-        ...transport,
-        prioritySource: enrollment.resolution.source,
-      };
+        const transport = transportConfiguration(configuration);
+        const priority = transport.priority;
+        const priorityLabel = PRIORITY_LABELS[priority] || 'Media';
+        const base = {
+          source: null,
+          alertId: item.alertId,
+          condition: alert.condition,
+          priority,
+          priorityLabel,
+          active: transport.enabled,
+          ...transport,
+          prioritySource: enrollments.source,
+        };
 
-      if (alert.source === 'dynamicForms') {
-        const form = (snapshot?.forms || []).find((f) => String(f.id) === String(alert.resourceId)) || null;
+        if (alert.source === 'dynamicForms') {
+          const form = (snapshot?.forms || []).find((f) => String(f.id) === String(alert.resourceId)) || null;
+          return Object.freeze({
+            ...base,
+            source: 'dynamicForms',
+            formId: alert.resource,
+            message: form?.name ? `Formulario ${form.name}` : `Formulario ${alert.resource}`,
+          });
+        }
+
+        if (alert.source === 'dynamicRecords') {
+          const record = (snapshot?.records || []).find((r) => String(r.id) === String(alert.resourceId)) || null;
+          const issues = record?.criticalIssues?.length ? record.criticalIssues.join('; ') : null;
+          return Object.freeze({
+            ...base,
+            source: 'dynamicRecords',
+            recordType: alert.resource,
+            message: issues || `Registro ${record?.formName || alert.resource} requiere atención`,
+          });
+        }
+
+        const doc = (snapshot?.documents || []).find((d) => String(d.id) === String(alert.resourceId)) || null;
         return Object.freeze({
           ...base,
-          source: 'dynamicForms',
-          formId: alert.resource,
-          message: form?.name ? `Formulario ${form.name}` : `Formulario ${alert.resource}`,
+          source: 'documentRepository',
+          documentType: alert.resource,
+          documentId: doc?.id ?? doc?.type ?? alert.resourceId ?? null,
+          message: doc?.name ? `Documento ${doc.name} en repositorio` : `Documento ${alert.resource}`,
         });
-      }
-
-      if (alert.source === 'dynamicRecords') {
-        const record = (snapshot?.records || []).find((r) => String(r.id) === String(alert.resourceId)) || null;
-        const issues = record?.criticalIssues?.length ? record.criticalIssues.join('; ') : null;
-        return Object.freeze({
-          ...base,
-          source: 'dynamicRecords',
-          recordType: alert.resource,
-          message: issues || `Registro ${record?.formName || alert.resource} requiere atención`,
-        });
-      }
-
-      const doc = (snapshot?.documents || []).find((d) => String(d.id) === String(alert.resourceId)) || null;
-      return Object.freeze({
-        ...base,
-        source: 'documentRepository',
-        documentType: alert.resource,
-        documentId: doc?.id ?? doc?.type ?? alert.resourceId ?? null,
-        message: doc?.name ? `Documento ${doc.name} en repositorio` : `Documento ${alert.resource}`,
       });
     })
     .filter(Boolean);

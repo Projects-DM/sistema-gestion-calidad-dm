@@ -77,6 +77,7 @@ export function mapMetadataToFormState(metadata) {
     description: typeof source.description === 'string' ? source.description : source.description ?? '',
     startDate: source.startDate ?? '',
     startTime: source.startTime ?? '',
+    timezone: typeof source.timezone === 'string' ? source.timezone : source.timezone ?? '',
     periodicityMode,
     periodicityAmount: periodicity?.amount ?? 1,
     periodicityUnit: PERIODICITY_UNITS.includes(periodicity?.unit)
@@ -154,6 +155,7 @@ export function mapFormStateToMetadata(formState) {
     description: typeof f.description === 'string' ? f.description : (f.description ?? ''),
     startDate: typeof f.startDate === 'string' ? f.startDate : (f.startDate ?? ''),
     startTime: typeof f.startTime === 'string' ? f.startTime : (f.startTime ?? ''),
+    timezone: typeof f.timezone === 'string' ? f.timezone : (f.timezone ?? ''),
     periodicity,
     expiration: f.expiration || 'none',
     risk: Object.freeze({
