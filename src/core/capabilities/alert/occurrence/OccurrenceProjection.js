@@ -104,17 +104,25 @@ export function projectCurrentOccurrences(resources, moduleId, nowMs) {
 
         const alertId = alertIdOf(s, resource, idx);
         const resourceId = resourceIdOf(resource);
+        const occurrenceId = occurrenceIdOf(alertId, window.sequence);
+        // Sprint 280 — F9. The projection queries the occurrence-SPECIFIC
+        // completion first (OccurrenceLedger resolves
+        // `occurrence::alertId::occurrenceId`), falling back to the legacy
+        // resource-scoped key only for compatibility. A completion of A:occ:001
+        // never satisfies B:occ:001/C:occ:001 though they share a resource.
         const signal = OccurrenceLedger.completionSignalFor({
           resourceKind: RESOURCE_KIND[s],
           resourceId,
           moduleId,
           startsAt: window.startsAt,
           dueAt: window.dueAt,
+          alertId,
+          occurrenceId,
         });
         // Second boundary gate: only FULL contract VOs are accepted. The
         // assert/validators are the contract's own (no V2 clone).
         const occurrence = createAlertOccurrence({
-          occurrenceId: occurrenceIdOf(alertId, window.sequence),
+          occurrenceId,
           alertId,
           resourceKind: RESOURCE_KIND[s],
           resourceId,
@@ -128,9 +136,11 @@ export function projectCurrentOccurrences(resources, moduleId, nowMs) {
             ? {
                 status: signal.status ?? 'COMPLETED',
                 completedAt: signal.completedAt ?? null,
-                signalKey: signal.resourceKind && signal.resourceId
-                  ? `${signal.resourceKind}:${signal.resourceId}`
-                  : null,
+                signalKey: signal.alertId && signal.occurrenceId
+                  ? `occurrence::${signal.alertId}::${signal.occurrenceId}`
+                  : signal.resourceKind && signal.resourceId
+                    ? `${signal.resourceKind}:${signal.resourceId}`
+                    : null,
               }
             : null,
           createdAt: now,

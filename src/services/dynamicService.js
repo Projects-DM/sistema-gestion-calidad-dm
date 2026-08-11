@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase.js';
 
 /**
  * Sprint 195 — Existing Query Layer consolidation.
@@ -395,6 +395,7 @@ export const dynamicService = {
   },
 
   async updateForm(formId, updates) {
+    if (!formId) throw new Error('dynamicService.updateForm: formId is required');
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('sgc_forms')
@@ -403,6 +404,7 @@ export const dynamicService = {
       .select()
       .single();
     if (error) throw error;
+    if (!data) throw new Error(`Form with ID "${formId}" not found or update failed.`);
     return data;
   },
 

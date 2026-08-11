@@ -128,6 +128,11 @@ export const alertConfigurationPersistence = Object.freeze({
       resourceReference && typeof resourceReference === 'object'
         ? { ...resourceReference }
         : { id: resourceReference };
+    if (!reference || (!reference.id && reference.id !== 0)) {
+      throw new Error(
+        'AlertConfigurationPersistenceAdapter: resourceId es obligatorio y debe ser válido.',
+      );
+    }
     if (!configuration || !Array.isArray(configuration.alertConfigurations)) {
       throw new Error(
         'AlertConfigurationPersistenceAdapter: el Write Path oficial exige el envelope ' +
@@ -142,6 +147,11 @@ export const alertConfigurationPersistence = Object.freeze({
       );
     }
     const row = await handler.write(reference, configuration);
+    if (!row || typeof row !== 'object') {
+      throw new Error(
+        'AlertConfigurationPersistenceAdapter: el recurso de destino no existe o 0 filas fueron actualizadas.',
+      );
+    }
     return Object.freeze({
       reference: Object.freeze(reference),
       configuration,

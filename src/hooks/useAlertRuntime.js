@@ -13,7 +13,10 @@ import { documentsService } from '../services/documentsService.js';
 import { documentRepositoriesService } from '../services/documentRepositoriesService.js';
 import { dashboardService } from '../modules/dashboard/services/dashboardService.js';
 import projectCurrentOccurrences from '../core/capabilities/alert/occurrence/OccurrenceProjection.js';
-import { wireCompletionBridge } from '../core/capabilities/alert/occurrence/CompletionBridge.js';
+import {
+  wireCompletionBridge,
+  registerCompletionOccurrenceProvider,
+} from '../core/capabilities/alert/occurrence/CompletionBridge.js';
 
 /**
  * useAlertRuntime — Sprint 186 (Operational Resource Integrity Audit)
@@ -500,10 +503,18 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
   // current occurrences of the visible enrolled collections via the certified
   // schedule (pure read, OCC-CERT-01..05). Additive: the existing CD surfaces
   // are untouched.
+  //
+  // Sprint 280 — F6. Registers the certified projection as the bridge's
+  // OccurrenceProvider so `origin='resource'` intents select ONE eligible
+  // occurrence deterministically (DeterministicCompletionResolver) without the
+  // bridge fetching or re-evaluating anything.
   useEffect(() => {
     const unwire = wireCompletionBridge();
+    registerCompletionOccurrenceProvider(() =>
+      projectCurrentOccurrences(existing, base.moduleId ?? moduleSlug ?? module),
+    );
     return () => unwire?.();
-  }, []);
+  }, [existing, base, moduleId, module, moduleSlug]);
 
   const occurrences = useMemo(() => {
     if (!existing) return null;

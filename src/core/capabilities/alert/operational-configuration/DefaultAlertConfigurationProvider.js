@@ -10,7 +10,10 @@
 
 export const DEFAULT_ALERT_CONFIGURATION = Object.freeze({
   enabled: true,
-  periodicity: null,
+  periodicity: Object.freeze({
+    amount: 1,
+    unit: 'days',
+  }),
   expiration: 'none',
   risk: Object.freeze({
     model: 'relative',

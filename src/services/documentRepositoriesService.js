@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase.js';
 
 /**
  * Abstracción preparada para reemplazar el backend.
@@ -104,6 +104,7 @@ export const documentRepositoriesService = {
   },
 
   async updateRepository(repositoryId, payload) {
+    if (!repositoryId) throw new Error('documentRepositoriesService.updateRepository: repositoryId is required');
     const sb = getClientOrThrow();
 
     const updatePayload = {
@@ -129,6 +130,7 @@ export const documentRepositoriesService = {
       .single();
 
     if (error) throw error;
+    if (!data) throw new Error(`Document repository with ID "${repositoryId}" not found or update failed.`);
     return mapRepositoryRow(data);
   },
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
@@ -11,13 +11,20 @@ import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
 import { useAlertRuntime } from '../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
 import { OperationalEventBus } from '../core/capabilities/experiences/OperationalEventBus';
-import { RESOURCE_COMPLETED_EVENT } from '../core/capabilities/alert/occurrence/CompletionBridge';
+import { COMPLETION_INTENT_EVENT } from '../core/capabilities/alert/occurrence/CompletionBridge';
+import { extractResourceAlertCollection } from '../core/capabilities/alert/operational-configuration/AlertConfigurationResolver.js';
 // Sprint 265 — FORM-SAVE → OCCURRENCE COMPLETION. Submitting the form is a
 // semantically-FINAL operational signal for the `dynamicForms` resource
 // (Gate E, OCC-CERT-11): the occurrence ledger records it window-aware, so the
 // monitoring experience surfaces the occurrence as "Cumplida". The existing
 // RESOURCE_COMPLETED channel and the already-wired CompletionBridge are reused
 // (no new bus, no new service, no new scheduler).
+//
+// Sprint 280 — F4. MULTI-ENTRY COMPLETION INTENT. The form builds a
+// CompletionIntent: explicit identity when it ARRIVED from an alert card
+// (location.state.alertContext), deterministic resource resolution otherwise.
+// WITHOUT alerts the form does NOT emit any completion signal (guardrail:
+// normal save, no alert logic). Never re-decides which alert is fulfilled.
 
 const authorization = CapabilityDiscovery.discover('authorization');
 const navigation = CapabilityDiscovery.discover('navigation');
@@ -28,6 +35,7 @@ export default function DynamicForm() {
   const { moduleSlug, formSlug } = useParams();
   const { user, rol } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [formDef, setFormDef] = useState(null);
   const [fields, setFields] = useState([]);
@@ -182,17 +190,38 @@ export default function DynamicForm() {
       if (result && result.__runtime_internal_event) {
         await runtimeActivationLayer.activate(result.__runtime_internal_event);
       }
-      // Sprint 265 — publish the semantically-final resource signal. The
-      // CompletionBridge records it in the OccurrenceLedger (window-aware,
-      // keyed by resourceKind::resourceId::moduleId); the completed form never
-      // vanishes once the window ends (OCC-CERT-12).
-      OperationalEventBus.publish(RESOURCE_COMPLETED_EVENT, {
-        resourceKind: 'dynamicForms',
-        resourceId: formDef.id,
-        moduleId: moduleSlug,
-        completedAt: Date.now(),
-        action: 'form_completed_form_saved',
-      });
+      // Sprint 280 — F4. CompletionDecision AFTER the resource was persisted.
+      // The save NEVER changes when there are no alerts (guardrail):
+      //   - no alert configuration      → NO completion signal at all
+      //   - arrived from an alert card  → origin='alert' (explicit identity)
+      //   - direct form with alerts     → origin='resource' (bridge resolves
+      //     deterministically AT MOST ONE eligible occurrence)
+      const hasAlerts =
+        Array.isArray(extractResourceAlertCollection(formDef)) &&
+        extractResourceAlertCollection(formDef).length > 0;
+      if (hasAlerts) {
+        const alertContext = location.state?.alertContext ?? null;
+        const completedAt = Date.now();
+        if (alertContext?.alertId && alertContext?.occurrenceId) {
+          OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
+            origin: 'alert',
+            resourceKind: 'dynamicForms',
+            resourceId: formDef.id,
+            moduleId: moduleSlug,
+            alertId: alertContext.alertId,
+            occurrenceId: alertContext.occurrenceId,
+            completedAt,
+          });
+        } else {
+          OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
+            origin: 'resource',
+            resourceKind: 'dynamicForms',
+            resourceId: formDef.id,
+            moduleId: moduleSlug,
+            completedAt,
+          });
+        }
+      }
       setSuccess(true);
       setTimeout(() => {
         navigate(`/${moduleSlug}`);
