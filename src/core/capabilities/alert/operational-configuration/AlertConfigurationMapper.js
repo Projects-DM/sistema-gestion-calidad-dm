@@ -36,10 +36,22 @@ function toPositiveNumber(value, fallback) {
  * Creates an EMPTY editable draft from the canonical DEFAULT configuration.
  * Used when a resource was never configured (source 'default').
  *
+ * Sprint 275 — CANONICAL NEW-ALERT DEFAULT (CONTROLLED CORRECTION).
+ * The default draft starts with a VALID recurring periodicity
+ * (`recurring` / 1 / `days`) paired with `repeatPolicy:'repeat'`, so the
+ * existing `mapFormStateToMetadata` + `validateAlertConfiguration` contract
+ * accepts it WITHOUT weakening validation (Sprint 274 Root Cause C).
+ *
  * @returns {Object} Editable form state (plain object).
  */
 export function createEmptyFormState() {
-  return mapMetadataToFormState(null);
+  return {
+    ...mapMetadataToFormState(null),
+    periodicityMode: 'recurring',
+    periodicityAmount: 1,
+    periodicityUnit: 'days',
+    repeatPolicy: 'repeat',
+  };
 }
 
 /**

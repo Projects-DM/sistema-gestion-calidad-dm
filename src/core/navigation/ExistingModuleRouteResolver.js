@@ -76,7 +76,7 @@ export function resolveFormRoute({ moduleSlug, formSlug, moduleId } = {}) {
   });
 }
 
-export function resolveActionRoute(action, { moduleSlug, moduleId, resourceId } = {}) {
+export function resolveActionRoute(action, { moduleSlug, moduleId, resourceId, alertId, occurrenceId } = {}) {
   if (!action) {
     return Object.freeze({
       resolved: false,
@@ -88,7 +88,15 @@ export function resolveActionRoute(action, { moduleSlug, moduleId, resourceId } 
 
   if (action === 'open-form') {
     const form = resolveFormRoute({ moduleSlug, formSlug: resourceId, moduleId });
-    return Object.freeze({ resolved: form.resolved, action, ...form, reasons: form.reasons });
+    // Sprint 280 — F2. Optional alert context travels as navigation metadata.
+    // The canonical route NEVER changes: `/modulo/:moduleSlug/:formSlug`.
+    // No mandatory URL params are introduced; normal `open-form` without
+    // identity remains fully valid.
+    const alertContext =
+      alertId && occurrenceId
+        ? Object.freeze({ alertId, occurrenceId })
+        : null;
+    return Object.freeze({ resolved: form.resolved, action, ...form, alertContext, reasons: form.reasons });
   }
 
   if (action === 'open-record' || action === 'go-to-document') {

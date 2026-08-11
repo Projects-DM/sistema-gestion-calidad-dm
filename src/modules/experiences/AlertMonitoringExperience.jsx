@@ -257,10 +257,19 @@ function projectConfigCards(resources, nowMs, moduleSlug) {
           startsAt: window?.startsAt ?? null,
           dueAt: window?.dueAt ?? null,
         };
-        // Window-aware completion signal from the certified ledger
-        // (OCC-CERT-12): only a signal whose completedAt lands inside
-        // [startsAt, dueAt) counts (AC-09/AC-16).
-        const completionSignal = OccurrenceLedger.completionSignalFor(occurrence);
+        // Sprint 265 — DOMAIN SSOT classification (AC-01..AC-05, AC-15).
+        // FORMS are classified by the certified OccurrenceLifecycle
+        // (window-based, completion-first). Repositories stay on the legacy
+        // presentation classifier (Sprint 257) — OUT OF SCOPE for Sprint 265.
+        //
+        // Sprint 280 — F9. The ledger query carries the occurrence identity so
+        // an explicit completion of THIS occurrence (A:occ:001) is reflected
+        // HERE only — never leaking to B:occ:001/C:occ:001 of the same form.
+        const completionSignal = OccurrenceLedger.completionSignalFor({
+          ...occurrence,
+          alertId,
+          occurrenceId: `${alertId}:occ:${window?.sequence ?? 1}`,
+        });
 
         // Sprint 265 — DOMAIN SSOT classification (AC-01..AC-05, AC-15).
         // FORMS are classified by the certified OccurrenceLifecycle
@@ -317,6 +326,12 @@ function projectConfigCards(resources, nowMs, moduleSlug) {
             ? {
                 action: 'open-form',
                 resourceId: resource?.slug ?? resource?.formSlug ?? resource?.identifier ?? resource?.id,
+                // Sprint 280 — F1. The card ALREADY owns the alert identity
+                // (alertId built above, occurrenceId from the projected window).
+                // The descriptor conserves it so DynamicForm never re-decides
+                // which alert is being fulfilled. No new query.
+                alertId,
+                occurrenceId: `${alertId}:occ:${window?.sequence ?? 1}`,
               }
             : { action: 'go-to-document', tab: 'repository', documentId: resource?.id },
         });
@@ -329,8 +344,19 @@ function projectConfigCards(resources, nowMs, moduleSlug) {
 
 const ACTION_ROUTE = Object.freeze({
   'open-form': (moduleSlug, action) => {
-    const resolved = resolveActionRoute('open-form', { moduleSlug, resourceId: action.resourceId });
-    return resolved.canonicalRoute;
+    // Sprint 280 — F3. The canonical route unchanged; the optional alert
+    // identity travels as location.state so DynamicForm can build the
+    // CompletionIntent (origin='alert'). Normal navigation keeps state empty.
+    const resolved = resolveActionRoute('open-form', {
+      moduleSlug,
+      resourceId: action.resourceId,
+      alertId: action.alertId,
+      occurrenceId: action.occurrenceId,
+    });
+    return {
+      path: resolved.canonicalRoute,
+      state: resolved.alertContext ? { alertContext: resolved.alertContext } : undefined,
+    };
   },
   'open-record': (moduleSlug) => {
     const resolved = resolveActionRoute('open-record', { moduleSlug });

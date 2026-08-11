@@ -212,9 +212,15 @@ export class AlertConfigurationApplicationService {
       return { success: false, metadata: collection, errors, persisted: null };
     }
 
-    const persisted = await port.saveConfiguration(resource, { alertConfigurations: collection });
-
-    return { success: true, metadata: collection, errors: null, persisted };
+    try {
+      const persisted = await port.saveConfiguration(resource, { alertConfigurations: collection });
+      if (!persisted || !persisted.row) {
+        return { success: false, metadata: collection, errors: { general: ['Fallo en la persistencia de la alerta: recurso no encontrado o 0 filas actualizadas.'] }, persisted: null };
+      }
+      return { success: true, metadata: collection, errors: null, persisted };
+    } catch (err) {
+      return { success: false, metadata: collection, errors: { general: [err.message || 'Error guardando la configuración de la alerta.'] }, persisted: null };
+    }
   }
 
   /**

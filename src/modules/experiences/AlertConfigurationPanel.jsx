@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { CheckCircle2, X, Loader2, Plus, Bell, Copy, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertConfigurationApplicationService } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationApplicationService.js';
 import { createEmptyFormState } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationMapper.js';
+import { buildVisibleErrors } from './alertConfigurationErrorPresenter.js';
 import { getCurrentLocalDateTime } from './getCurrentLocalDateTime.js';
 import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
@@ -67,6 +68,9 @@ import AlertConfigurationForm from './AlertConfigurationForm.jsx';
 
 const empty = { source: 'default', resourceId: null, collection: null, formStates: [] };
 
+// Sprint 274 (E) — error presentation (see alertConfigurationErrorPresenter.js).
+// `buildVisibleErrors` comes from the presentation helper; no inline copy.
+
 function scheduleLabel(f) {
   if (!f) return 'Sin programación';
   if (f.periodicityMode === 'recurring') {
@@ -113,6 +117,9 @@ export default function AlertConfigurationPanel({
   // Sprint 259 — NEW ALERT MODE DRAFT. Temporal defaults come from the LOCAL
   // clock (presentation helper); they are applied when entering NEW ALERT
   // MODE, never re-imposed on later renders (AC-11) and never auto-persisted.
+  // Sprint 275 — the canonical NEW-ALERT default (recurring/1/days/repeat) is
+  // owned by AlertConfigurationMapper.createEmptyFormState() (single source of
+  // authority). The Panel is a pure consumer: no inline periodicity override.
   const newAlertInitial = () => {
     const { startDate, startTime } = getCurrentLocalDateTime();
     return {
@@ -247,7 +254,7 @@ export default function AlertConfigurationPanel({
           setErrors({});
           if (typeof onSaved === 'function') onSaved(result);
         } else {
-          setErrors(result.errors || {});
+          setErrors(buildVisibleErrors(result.errors || {}, rows.map((a) => a.name)));
         }
       } catch (err) {
         setSaveError(err?.message || 'No fue posible guardar la configuración.');
@@ -267,7 +274,7 @@ export default function AlertConfigurationPanel({
         setErrors({});
         if (typeof onSaved === 'function') onSaved(result);
       } else {
-        setErrors(result.errors || {});
+        setErrors(buildVisibleErrors(result.errors || {}, alerts.map((a) => a.name)));
       }
     } catch (err) {
       setSaveError(err?.message || 'No fue posible guardar la configuración.');
