@@ -4,27 +4,23 @@ import { Bell } from 'lucide-react';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 import { resolveActionRoute } from '../../core/navigation/ExistingModuleRouteResolver.js';
-import {
-  resolveResourceAlertCollection,
-  extractResourceAlertCollection,
-} from '../../core/capabilities/alert/operational-configuration/AlertConfigurationResolver.js';
-// Sprint 257 — THE schedule single source of truth (Gate C). parseAnchor /
-// cadenceMs / computeTarget / occurrenceWindowAt live in the occurrence domain;
-// this presentation layer imports them ONLY (the previous local copies are gone).
-import {
-  parseAnchor,
-  cadenceMs,
-  computeTarget,
-  occurrenceWindowAt,
-  UNIT_MS,
-} from '../../core/capabilities/alert/occurrence/OccurrenceSchedule.js';
-import OccurrenceLedger from '../../core/capabilities/alert/occurrence/OccurrenceLedger.js';
-// Sprint 265 — THE domain classifier becomes the UI classification.
-// AlertMonitoringExperience no longer re-derives temporal state from
-// `remainingMs` (Sprint 264 DIVERGENCE): for FORM alerts it classifies with
-// the certified OccurrenceLifecycle.classifyOccurrence (window + completion),
-// and maps the derived key to a human label/color ONLY (mandate §13). No
-// alternative classifier is reintroduced (mandate §14).
+// Sprint 285 — F3. CONSUMPTION BOUNDARY. The Resolver SSOT is used ONLY for
+// ENRICHMENT (presentation metadata: name/description → title, priority,
+// channel, frequency, enabled). Identity, schedule and completion come from
+// the projected occurrences (useAlertRuntime.occurrences) — never rebuilt here.
+import { resolveResourceAlertEnvelope } from '../../core/capabilities/alert/operational-configuration/AlertConfigurationResolver.js';
+// Sprint 285 — F3. Schedule imports REMOVED (Gate C): parseAnchor/cadenceMs/
+// computeTarget/occurrenceWindowAt were the presentation's own re-derivation.
+// The projected occurrence already carries the certified [startsAt, dueAt)
+// window. UNIT_MS is kept ONLY for the periodicity unit label mapping.
+import { UNIT_MS } from '../../core/capabilities/alert/occurrence/OccurrenceSchedule.js';
+// Sprint 285 — F3. OccurrenceLedger import REMOVED: completion is consumed from
+// the projected `occurrence.completion.signalKey` (F9) — never re-queried by
+// the presentation layer.
+// Sprint 265 — THE domain classifier becomes the UI classification. The card
+// classifies the PROJECTED occurrence with the certified
+// OccurrenceLifecycle.classifyOccurrence (window + completion precedence) and
+// maps the derived key to a human label/color ONLY (mandate §13/§14).
 import { classifyOccurrence } from '../../core/capabilities/alert/occurrence/OccurrenceLifecycle.js';
 
 /**
@@ -33,19 +29,25 @@ import { classifyOccurrence } from '../../core/capabilities/alert/occurrence/Occ
  * Sprint 187 — Operational Navigation Consolidation.
  * Sprint 188 — Route Resolution & Existing Navigation Binding Certification.
  * Sprint 189 — Context Navigation Decoupling.
+ * Sprint 285 — F3. REAL RESOURCE CONSUMPTION (Observation/Prioritization layer).
  *
- * Consumes EXCLUSIVELY the Workspace ViewModel produced by
- * AlertCapability.workspace():
- *   - cards (Tipo, Origen, Prioridad, Estado, Mensaje, Acción)
- *   - groups.byPriority / groups.bySource
- *   - summary
- *   - actions (Action Descriptors)
+ * This experience is the OPERATIONAL ALERT MONITORING view. It consumes
+ * EXCLUSIVELY the OCCURRENCES ALREADY PROJECTED over the real operational
+ * resources (useAlertRuntime.occurrences → OccurrenceProjection) plus the raw
+ * resource snapshot (`existing`) for visual enrichment. It is NOT a resource
+ * management layer and NEVER a second record system:
+ *
+ *   - It CAN order, classify, show status/expiration/priority/completion and
+ *     open the REAL resource.
+ *   - It CANNOT create/duplicate records, manage forms/repositories, define
+ *     identity, persist completion or build its own routes.
  *
  * The Action Descriptor (open-form / open-record / go-to-document) is
  * the ONLY navigation intent the UI consumes. This component NEVER
  * creates navigation logic, NEVER calculates routes, NEVER consults
  * Runtime directly, NEVER opens Alert Monitoring again, NEVER
- * administers CRUD.
+ * administers CRUD. Navigation targets the REAL resource using the
+ * resourceId already carried by the projected occurrence.
  *
  * Since Sprint 188 the UI does NOT build routes (`/modulo/${slug}` is
  * forbidden). Every action asks the ExistingModuleRouteResolver for the
@@ -105,10 +107,14 @@ const MONTHS = Object.freeze(['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', '
  * no schedulers, no engines. The projection merely computes; the UI consumes.
  *
  * Sprint 257 — scheduling algorithm moved UP to the occurrence domain
- * (OccurrenceSchedule.js). Gate C mandates ONE source: this viewmodel now
- * IMPORTS parseAnchor/cadenceMs/computeTarget/occurrenceWindowAt instead of
- * duplicating them (the local copies of UNIT_MS/parseAnchor/cadenceMs/
- * computeTarget were removed).
+ * (OccurrenceSchedule.js). Gate C mandates ONE source.
+ *
+ * Sprint 285 — F3. the temporal ViewModel is now a PURE presentation of the
+ * PROJECTED occurrences: the window (startsAt/dueAt) and remaining/overdue
+ * text derive ONLY from the occurrence the projection already computed. The
+ * schedule helpers (parseAnchor/cadenceMs/computeTarget/occurrenceWindowAt)
+ * are no longer imported here — the projection owns them. humanDuration /
+ * formattedExecution / frequencyLabel / channelLabel remain label-only.
  */
 
 function humanDuration(milliseconds) {
@@ -139,19 +145,6 @@ function formattedExecution(targetMs) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} ${hm}`;
 }
 
-function derivedState(enabled, remainingMs) {
-  if (enabled === false) {
-    return { key: 'disabled', label: STATUS_VISUAL.disabled.label, color: STATUS_VISUAL.disabled.color };
-  }
-  if (remainingMs === null || Number.isNaN(remainingMs)) {
-    return { key: 'active', label: STATUS_VISUAL.active.label, color: STATUS_VISUAL.active.color };
-  }
-  if (remainingMs < 0) return { key: 'overdue', label: STATUS_VISUAL.overdue.label, color: STATUS_VISUAL.overdue.color };
-  if (remainingMs <= 8.64e7) return { key: 'today', label: STATUS_VISUAL.today.label, color: STATUS_VISUAL.today.color };
-  if (remainingMs <= 2.592e8) return { key: 'upcoming', label: STATUS_VISUAL.upcoming.label, color: STATUS_VISUAL.upcoming.color };
-  return { key: 'active', label: STATUS_VISUAL.active.label, color: STATUS_VISUAL.active.color };
-}
-
 function frequencyLabel(periodicity) {
   if (periodicity === 'once') return 'Una sola vez';
   if (!periodicity || typeof periodicity !== 'object') return 'Sin frecuencia';
@@ -170,173 +163,107 @@ function channelLabel(cfg) {
 }
 
 /**
- * Sprint 265 — SINGLE temporal semantics (mandate §13/§14, AC-01..05).
- *
- * Builds the card state for a FORM occurrence using the CERTIFIED domain
- * classifier (OccurrenceLifecycle.classifyOccurrence: window [startsAt, dueAt)
- * + completion precedence). The ledger supplies the window-aware completion
- * signal (OCC-CERT-12); classifies NEVER fall back to overdue/today for a
- * fulfilled occurrence (OCC-CERT-08) and NEVER decide by `remainingMs`
- * (Sprint 264 DIVERGENCE closed).
- *
- * `enabled === false` keeps the DISABLED presentation bucket (existing
- * lifecycle), but only when the occurrence is NOT fulfilled.
+ * Sprint 285 — F3. CLASSIFICATION. The card classifies the PROJECTED
+ * occurrence with the certified domain classifier (OccurrenceLifecycle.
+ * classifyOccurrence: window [startsAt, dueAt) + completion precedence).
+ * The completion already travels in the projection (`occurrence.completion`,
+ * OCC-CERT-12, F9); the presentation NEVER re-derives it and NEVER queries the
+ * ledger. `enabled === false` keeps the DISABLED presentation bucket, but only
+ * when the occurrence is NOT fulfilled (OCC-CERT-08).
  */
-function deriveFormState(enabled, occurrence, nowMs) {
-  const completion = occurrence?.completion || null;
-  if (completion) {
-    const domain = classifyOccurrence(
-      { startsAt: occurrence?.startsAt, dueAt: occurrence?.dueAt, completion },
-      Number.isFinite(nowMs) ? nowMs : Date.now(),
-    );
-    if (domain.key === 'completed') {
-      return { key: 'completed', label: STATUS_VISUAL.completed.label, color: STATUS_VISUAL.completed.color };
-    }
-    if (domain.key === 'cancelled') {
-      return { key: 'cancelled', label: 'Cancelada', color: 'gray' };
-    }
+function classifyConsumedOccurrence(occurrence, enabled, nowMs) {
+  const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const domain = classifyOccurrence(occurrence, now);
+  if (domain.key === 'completed') {
+    return { key: 'completed', label: STATUS_VISUAL.completed.label, color: STATUS_VISUAL.completed.color };
+  }
+  if (domain.key === 'cancelled') {
+    return { key: 'cancelled', label: 'Cancelada', color: 'gray' };
   }
   if (enabled === false) {
     return { key: 'disabled', label: STATUS_VISUAL.disabled.label, color: STATUS_VISUAL.disabled.color };
   }
-  const domain = classifyOccurrence(occurrence, Number.isFinite(nowMs) ? nowMs : Date.now());
   const visual = STATUS_VISUAL[domain.key] || STATUS_VISUAL.active;
   return { key: domain.key, label: visual.label, color: visual.color };
 }
 
 /**
- * Sprint 231+235+237 — Projects the persisted alert collection into navigable
- * OPERATIONAL cards carrying the temporal ViewModel. Reuses the certified
- * Resolver and the persisted metadata (startDate/startTime/periodicity/
- * expiration/priority/notification/enabled). Legacy single → one-element
- * collection; never-configured → skipped. UI never evaluates, never persists.
+ * Sprint 285 — F3. REAL RESOURCE CONSUMPTION.
  *
- * Sprint 257 — OCCURRENCE substrates: each card resolves its CURRENT occurrence
- * window through the certified domain schedule + ledger; the tunnel state is
- * derived from actual RESOURCE final signals (Cumplidas, OCC-CERT-24).
+ * The card is a PURE CONSUMER of the occurrences ALREADY projected by
+ * OccurrenceProjection (useAlertRuntime.occurrences). It consumes the identity
+ * the projection produced (alertId / occurrenceId / signalKey — Sprint 284 F1,
+ * Sprint 280 F9) and the certified window (startsAt / dueAt) WITHOUT
+ * reconstructing resources, alertIds, schedules or completions. Metadata
+ * (título, prioridad, canal, frecuencia, habilitado) is ENRICHED from the REAL
+ * resource located in `existing` via the Resolver SSOT envelope (DEC-263);
+ * metadata ≠ identity, and it never becomes a new SSOT.
  */
-function projectConfigCards(resources, nowMs, moduleSlug) {
+function projectConsumedCards(occurrences, existing, nowMs) {
   const now = Number.isFinite(nowMs) ? nowMs : Date.now();
   const out = [];
-  for (const s of ['forms', 'repositories']) {
-    const list = Array.isArray(resources?.[s]) ? resources[s] : [];
-    for (const resource of list) {
-      const raw = extractResourceAlertCollection(resource);
-      if (!Array.isArray(raw) || raw.length === 0) continue;
-      let resolution;
+  if (!Array.isArray(occurrences)) return out;
+  for (const occurrence of occurrences) {
+    if (!occurrence || typeof occurrence !== 'object') continue;
+    const isForm = occurrence.resourceKind === 'dynamicForms';
+    const sourceKey = isForm ? 'forms' : 'repositories';
+    // Enrichment ONLY: locate the REAL resource by the projected resourceId.
+    const resource = (Array.isArray(existing?.[sourceKey]) ? existing[sourceKey] : [])
+      .find((r) => String(r?.id ?? r?.slug ?? '') === String(occurrence.resourceId ?? '')) || null;
+    // Enrichment via the Resolver envelope: match the canonical alertId.
+    let cfg = null;
+    let meta = null;
+    if (resource) {
       try {
-        resolution = resolveResourceAlertCollection(resource);
+        const envelope = resolveResourceAlertEnvelope(resource);
+        const item = (envelope?.items ?? []).find((it) => it?.alertId === occurrence.alertId) ?? null;
+        cfg = item?.configuration ?? null;
+        meta = item?.metadata ?? null;
       } catch {
-        continue;
+        // enrichment failure must not drop the projected occurrence
       }
-      (resolution?.collection ?? []).forEach((cfg, idx) => {
-        const rawItem = raw[idx];
-        const anchorMs = parseAnchor(rawItem || cfg);
-        const cadence = cadenceMs(rawItem?.periodicity ?? cfg?.periodicity);
-        const targetMs = computeTarget(anchorMs, cadence, now);
-        const remainingMs = targetMs === null ? null : targetMs - now;
-        const enabled = cfg?.enabled !== false;
-        const window = occurrenceWindowAt(anchorMs, cadence, now);
-
-        // Occurrence classification: when the RESOURCE reached a semantically-final
-        // state inside the occurrence window, the card is "Cumplida" — and NEVER
-        // falls back to overdue/today (OCC-CERT-08/09).
-        const isForm = s === 'forms';
-        const resourceKind = isForm ? 'dynamicForms' : 'documentRepository';
-        const resourceId = resource?.id ?? resource?.slug ?? resource?.identifier ?? null;
-        // The occurrenceId on the card is presentational only (identity contract
-        // in the occurrence domain); it never becomes a new configuration.
-        const alertId = `${s}:${resource?.id ?? resource?.slug ?? idx}:${idx}`;
-        // Ledger match key comes from the occurrence domain identity, but the
-        // presentation layer only reads the generic resource fields (Gate E);
-        // it never builds/imports the occurrence object model here.
-        const occurrence = {
-          resourceKind,
-          resourceId,
-          moduleId: resource?.module_slug ?? resource?.moduleSlug ?? moduleSlug ?? null,
-          startsAt: window?.startsAt ?? null,
-          dueAt: window?.dueAt ?? null,
-        };
-        // Sprint 265 — DOMAIN SSOT classification (AC-01..AC-05, AC-15).
-        // FORMS are classified by the certified OccurrenceLifecycle
-        // (window-based, completion-first). Repositories stay on the legacy
-        // presentation classifier (Sprint 257) — OUT OF SCOPE for Sprint 265.
-        //
-        // Sprint 280 — F9. The ledger query carries the occurrence identity so
-        // an explicit completion of THIS occurrence (A:occ:001) is reflected
-        // HERE only — never leaking to B:occ:001/C:occ:001 of the same form.
-        const completionSignal = OccurrenceLedger.completionSignalFor({
-          ...occurrence,
-          alertId,
-          occurrenceId: `${alertId}:occ:${window?.sequence ?? 1}`,
-        });
-
-        // Sprint 265 — DOMAIN SSOT classification (AC-01..AC-05, AC-15).
-        // FORMS are classified by the certified OccurrenceLifecycle
-        // (window-based, completion-first). Repositories stay on the legacy
-        // presentation classifier (Sprint 257) — OUT OF SCOPE for Sprint 265.
-        let state;
-        if (isForm) {
-          state = deriveFormState(
-            enabled,
-            {
-              startsAt: occurrence.startsAt,
-              dueAt: occurrence.dueAt,
-              completion: completionSignal
-                ? { status: completionSignal.status ?? 'COMPLETED', completedAt: completionSignal.completedAt ?? null }
-                : null,
-            },
-            now,
-          );
-        } else {
-          state = derivedState(enabled, remainingMs);
-          if (completionSignal) {
-            state = { key: 'completed', label: STATUS_VISUAL.completed.label, color: STATUS_VISUAL.completed.color };
-          }
-        }
-
-        const priority = cfg?.priority || 'medium';
-        const channel = channelLabel(cfg);
-        const nextExecution = formattedExecution(targetMs);
-        const remainingTextValue = remainingMs === null
-          ? null
-          : (remainingMs >= 0 ? `Vence en ${humanDuration(remainingMs)}` : `Venció hace ${humanDuration(remainingMs)}`);
-        out.push({
-          id: `${s}:${resource?.id}:${idx}`,
-          occurrenceId: `${alertId}:occ:${window?.sequence ?? 1}`,
-          remainingMs,
-          sortDate: remainingMs ?? Number.MAX_SAFE_INTEGER,
-          title: cfg?.description || (rawItem?.name) || (cfg?.periodicity === 'once' ? 'Una sola vez' : 'Alerta'),
-          tipo: isForm ? 'Formulario' : 'Repositorio',
-          origen: resource?.name || resource?.slug || resource?.id || null,
-          priority,
-          priorityLabel: PRIORITY_LABELS[priority] || 'Media',
-          status: state.key,
-          statusLabel: state.label,
-          color: state.color,
-          icon: STATUS_ICON[state.key] || 'AlertOctagon',
-          frequency: frequencyLabel(rawItem?.periodicity ?? cfg?.periodicity),
-          expiration: cfg?.expiration || 'none',
-          nextExecution,
-          remainingText: remainingTextValue,
-          channel,
-          navigable: true,
-          navigationLabel: isForm ? 'Ir al formulario' : 'Ir al repositorio',
-          action: isForm
-            ? {
-                action: 'open-form',
-                resourceId: resource?.slug ?? resource?.formSlug ?? resource?.identifier ?? resource?.id,
-                // Sprint 280 — F1. The card ALREADY owns the alert identity
-                // (alertId built above, occurrenceId from the projected window).
-                // The descriptor conserves it so DynamicForm never re-decides
-                // which alert is being fulfilled. No new query.
-                alertId,
-                occurrenceId: `${alertId}:occ:${window?.sequence ?? 1}`,
-              }
-            : { action: 'go-to-document', tab: 'repository', documentId: resource?.id },
-        });
-      });
     }
+    const enabled = cfg?.enabled !== false;
+    const state = classifyConsumedOccurrence(occurrence, enabled, now);
+
+    const dueMs = occurrence.dueAt ?? occurrence.startsAt ?? null;
+    const remainingMs = dueMs === null ? null : dueMs - now;
+    const priority = cfg?.priority || 'medium';
+    const channel = channelLabel(cfg);
+    out.push({
+      id: occurrence.occurrenceId ?? `${occurrence.alertId}:${sourceKey}`,
+      alertId: occurrence.alertId,
+      occurrenceId: occurrence.occurrenceId,
+      signalKey: occurrence.completion?.signalKey ?? null,
+      remainingMs,
+      sortDate: remainingMs ?? Number.MAX_SAFE_INTEGER,
+      title: meta?.description || meta?.name || (cfg?.periodicity === 'once' ? 'Una sola vez' : 'Alerta'),
+      tipo: isForm ? 'Formulario' : 'Repositorio',
+      origen: resource?.name || resource?.slug || occurrence.resourceId || null,
+      priority,
+      priorityLabel: PRIORITY_LABELS[priority] || 'Media',
+      status: state.key,
+      statusLabel: state.label,
+      color: state.color,
+      icon: STATUS_ICON[state.key] || 'AlertOctagon',
+      frequency: frequencyLabel(cfg?.periodicity),
+      expiration: cfg?.expiration || 'none',
+      nextExecution: formattedExecution(occurrence.startsAt ?? dueMs),
+      remainingText: remainingMs === null
+        ? null
+        : (remainingMs >= 0 ? `Vence en ${humanDuration(remainingMs)}` : `Venció hace ${humanDuration(remainingMs)}`),
+      channel,
+      navigable: true,
+      navigationLabel: isForm ? 'Ir al formulario' : 'Ir al repositorio',
+      action: isForm
+        ? {
+            action: 'open-form',
+            resourceId: resource?.slug ?? resource?.formSlug ?? resource?.identifier ?? occurrence.resourceId,
+            alertId: occurrence.alertId,
+            occurrenceId: occurrence.occurrenceId,
+          }
+        : { action: 'go-to-document', tab: 'repository', documentId: resource?.id ?? occurrence.resourceId },
+    });
   }
   out.sort((a, b) => a.sortDate - b.sortDate);
   return out;
@@ -437,24 +364,32 @@ function CardButton({ card, moduleSlug }) {
 }
 
 export default function AlertMonitoringExperience({ moduleSlug, moduleName }) {
-  // Runtime Bridge collection: `existing` carries the resource snapshot whose
-  // persisted alert collections feed the SINGLE alert experience. The bridge is
-  // still the runtime reuse point (Sprint 232); no parallel navigation/engine.
-  const { existing } = useAlertRuntime({
+  // Sprint 285 — F3. The Runtime bridge delivers BOTH surfaces: `occurrences`
+  // (AlertOccurrence VOs ALREADY projected over the real resources by
+  // OccurrenceProjection — identity, window and completion are SSOT there) and
+  // `existing` (raw resource snapshot used ONLY for visual enrichment). No
+  // parallel projection, no ledger queries, no local identity here.
+  const { existing, occurrences } = useAlertRuntime({
     module: moduleSlug,
     moduleSlug,
   });
 
-  // Sprint 237 — TEMPORAL READ MODEL. alertConfigurations[] is the ONLY source.
-  // projectConfigCards computes the temporal ViewModel (targetDate/remaining/
-  // nextExecution/state/sortDate). The UI only consumes.
-  const configCards = useMemo(() => projectConfigCards(existing, undefined, moduleSlug), [existing, moduleSlug]);
+  // Sprint 285 — F3. REAL RESOURCE CONSUMPTION. projectConsumedCards maps each
+  // projected occurrence → card, consuming alertId/occurrenceId/signalKey/
+  // startsAt/dueAt from the projection and enriching title/priority/channel/
+  // frequency/enabled from the real resource (Resolver envelope). The UI only
+  // consumes; it no longer reconstructs resources, alerts or schedules.
+  const configCards = useMemo(
+    () => projectConsumedCards(occurrences, existing, undefined),
+    [occurrences, existing],
+  );
 
   // Sprint 240 — OPERATIONAL STATUS CLASSIFICATION. Cards are grouped by the
   // certified status hierarchy (Vencidas → Hoy → Próximas → Activas →
   // Deshabilitadas) and within each group ordered by remainingMilliseconds ASC
-  // (most urgent first). States derive EXCLUSIVELY from remainingMs + enabled
-  // (projectConfigCards/derivedState); the UI only arranges what it consumes.
+  // (most urgent first). States come from the projected occurrence classified
+  // by OccurrenceLifecycle (classifyConsumedOccurrence); the UI only arranges
+  // what it consumes.
   //
   // Sprint 257 — the certified 6-bucket view (OCC-CERT-24) appends CUMPLIDAS
   // as the LAST bucket, appended at consumption time (the frozen 5-bucket
