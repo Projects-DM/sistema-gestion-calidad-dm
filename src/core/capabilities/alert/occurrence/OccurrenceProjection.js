@@ -40,6 +40,7 @@ import OccurrenceLedger from './OccurrenceLedger.js';
 import {
   resolveResourceAlertCollection,
   extractResourceAlertCollection,
+  alertConfigIdOf,
 } from '../operational-configuration/AlertConfigurationResolver.js';
 
 /**
@@ -102,8 +103,13 @@ export function projectCurrentOccurrences(resources, moduleId, nowMs) {
         // to null for NaN anchors; a null window is NEVER dereferenced.
         if (!window) return;
 
-        const alertId = alertIdOf(s, resource, idx);
-        const resourceId = resourceIdOf(resource);
+        // Sprint 284 — CANONICAL ALERT IDENTITY (F1). The projection NO LONGER
+        // builds a local alertId (`source:resourceId:idx`); it delegates to
+        // AlertConfigurationResolver.alertConfigIdOf (SSOT). The resourceId is
+        // the SAME the Resolver/Enrollment compute (`id ?? slug`), so
+        // projection, enrollment and resolver yield ONE identity: `12:alert:0`.
+        const resourceId = resolution.resourceId;
+        const alertId = alertConfigIdOf(resourceId, idx);
         const occurrenceId = occurrenceIdOf(alertId, window.sequence);
         // Sprint 280 — F9. The projection queries the occurrence-SPECIFIC
         // completion first (OccurrenceLedger resolves
@@ -155,14 +161,6 @@ export function projectCurrentOccurrences(resources, moduleId, nowMs) {
 
 function resolveOperational(resource) {
   return resolveResourceAlertCollection(resource);
-}
-
-function alertIdOf(source, resource, idx) {
-  return `${source}:${resource?.id ?? resource?.slug ?? idx}:${idx}`;
-}
-
-function resourceIdOf(resource) {
-  return resource?.id ?? resource?.slug ?? resource?.identifier ?? null;
 }
 
 export default projectCurrentOccurrences;
