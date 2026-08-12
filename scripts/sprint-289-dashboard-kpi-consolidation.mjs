@@ -60,19 +60,21 @@ check('TEST 04 — A completed NOT active', active === 2, `active=${active} (A c
 check('TEST 04 — B/C remain pending', after.filter((o) => o.completion).length === 1, 'only A completed');
 
 // TEST 05 — RECURRENCE CONSISTENCY. Day 2 (now = Aug 10 10:00) advances the
-// sequence of every occurrence whose window has already elapsed today (A 08:00
-// → occ:3); occurrences whose window has not started yet (B 14:00, C 20:00)
-// keep the current window (occ:2). The KPI MUST NOT collapse occurrence(N) and
+// sequence of the occurrence whose FIRST window has already elapsed (A 08:00 →
+// occ:2 on day 2, seq1 = [Aug 9 08:00, Aug 10 08:00)); occurrences whose FIRST
+// window still spans into day 2 (B 14:00, C 20:00) keep occ:1. Sprint 298:
+// window-correct anchors (CAL383) — the first window ALWAYS starts on the
+// configured startDate (§7). The KPI MUST NOT collapse occurrence(N) and
 // occurrence(N+1) into a single count.
 const NOW_DAY2 = new Date(2026, 7, 10, 10, 0, 0).getTime();
 OccurrenceLedger.clear();
 const day2 = projectCurrentOccurrences(resources, 'mod-ops', NOW_DAY2);
 const activeDay2 = countActiveOccurrences(day2);
 const seqById = Object.fromEntries(day2.map((o) => [o.alertId, o.sequence]));
-check('TEST 05 — recurrence advances (A occ:2 → occ:3 on day 2)',
-  seqById['12:alert:0'] === 3, `A seq=${seqById['12:alert:0']}`);
-check('TEST 05 — unelapsed windows keep current sequence (B/C occ:2)',
-  seqById['12:alert:1'] === 2 && seqById['12:alert:2'] === 2,
+check('TEST 05 — recurrence advances (A occ:1 → occ:2 on day 2)',
+  seqById['12:alert:0'] === 2, `A seq=${seqById['12:alert:0']}`);
+check('TEST 05 — first windows spanning day 2 keep seq 1 (B/C occ:1)',
+  seqById['12:alert:1'] === 1 && seqById['12:alert:2'] === 1,
   `B seq=${seqById['12:alert:1']} C seq=${seqById['12:alert:2']}`);
 check('TEST 05 — occurrence(N) and occurrence(N+1) never collapsed by the KPI',
   activeDay2 === day2.length && day2.length === 3,

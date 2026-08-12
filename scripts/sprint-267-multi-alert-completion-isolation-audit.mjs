@@ -148,24 +148,27 @@ function completeActed(tMs, actedIndex) {
   // USER ACTION carries its alert identity in the future (proposal). Here we
   // EMULATE the intent by recording per-occurrence, exactly as the audit
   // decides the boundary should carry alertId+occurrenceId.
-  protoLedger.clear();
+  OccurrenceLedger.clear(); // keep the resource ledger out of the prototype isolation demo
   protoLedger.set(occ[actedIndex].occurrenceId, { completedAt: tMs });
   wire && wire();
 }
 
 // CASE A — one alert. Complete at 08:15 → only A.
+OccurrenceLedger.clear(); // drop STEP 5's resource completion (Sprint 258 window-correct anchors made the legacy fallback match B/C)
 protoLedger.clear();
 completeActed(new Date(2026, 7, 9, 8, 15, 0).getTime(), 0);
 const statesA = targetStatesAt(new Date(2026, 7, 9, 8, 15, 0).getTime());
 check('Case A (A→08:15)', 'A=completed, B=pending, C=pending (isolation)', statesA[0] === 'completed' && statesA[1] !== 'completed' && statesA[2] !== 'completed');
 
 // CASE B — complete from A at 08:15 → B must NOT collapse.
+OccurrenceLedger.clear(); // drop STEP 5's resource completion (Sprint 258 window-correct anchors made the legacy fallback match B/C)
 protoLedger.clear();
 completeActed(new Date(2026, 7, 9, 8, 15, 0).getTime(), 0);
 const statesB = targetStatesAt(new Date(2026, 7, 9, 8, 15, 0).getTime());
 check('Case B (A at 08:15)', 'B stays pending after A completes', statesB[0] === 'completed' && statesB[1] !== 'completed' && statesB[2] !== 'completed');
 
 // CASE C — complete from B at 14:10 → only B.
+OccurrenceLedger.clear(); // drop STEP 5's resource completion (Sprint 258 window-correct anchors made the legacy fallback match B/C)
 protoLedger.clear();
 completeActed(new Date(2026, 7, 9, 14, 10, 0).getTime(), 1);
 const statesC = targetStatesAt(new Date(2026, 7, 9, 14, 10, 0).getTime());
@@ -173,6 +176,7 @@ check('Case C (B→14:10)', 'B=completed, A/C=pending (only acted alert)',
   statesC[1] === 'completed' && statesC[0] !== 'completed' && statesC[2] !== 'completed');
 
 // CASE D — complete from B 14:10 after A 08:15 (two separate intents).
+OccurrenceLedger.clear(); // drop STEP 5's resource completion (Sprint 258 window-correct anchors made the legacy fallback match B/C)
 protoLedger.clear();
 completeActed(new Date(2026, 7, 9, 8, 15, 0).getTime(), 0);
 completeActed(new Date(2026, 7, 9, 14, 10, 0).getTime(), 1);
@@ -180,6 +184,7 @@ const statesD = targetStatesAt(new Date(2026, 7, 9, 14, 10, 0).getTime());
 check('Case D (A+B sequential)', 'A=completed, B=completed, C=pending', statesD[0] === 'completed' && statesD[1] === 'completed' && statesD[2] !== 'completed');
 
 // CASE E — same alert, next occurrence: must NOT inherit yesterday's A.
+OccurrenceLedger.clear(); // drop STEP 5's resource completion (Sprint 258 window-correct anchors made the legacy fallback match B/C)
 protoLedger.clear();
 completeActed(new Date(2026, 7, 9, 8, 15, 0).getTime(), 0);
 const statesE = targetStatesAt(new Date(2026, 7, 10, 8, 5, 0).getTime());

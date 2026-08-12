@@ -31,11 +31,37 @@
  * 257). The persistence PORT is the map-like interface below; a durable
  * implementation reproduces the same key + the same methods so the bridge,
  * runtime and consumers never change (OCC-CERT-30 boundary).
+ *
+ * Sprint 297 — DURABLE OCCURRENCE LEDGER ADAPTER (controlled, LEVEL 5).
+ * The ledger remains THE business authority; the persistence port only
+ * CONSERVES the completion FACTS (never the schedule, never the next
+ * occurrence — recurrence stays derived). A registered port (optional) is
+ * notified on every `recordCompletion` (write-through) and can be replayed at
+ * boot via `hydrateFromPersistencePort()` — the replay is idempotent because
+ * `recordCompletion` overwrites the same key (OCC-CERT-13). The KEY continues
+ * deriving from identity (resourceKind + resourceId + moduleId + alertId +
+ * occurrenceId); no new identity is introduced (AC-07/AC-18).
  */
 import { occurrenceIdOf } from './OccurrenceContract.js';
 import { hasOccurrenceIdentity, matchExplicitOccurrence } from './CompletionSignal.js';
 
 const signals = new Map(); // specific/legacy key -> controlled signal
+
+// Sprint 297 — optional durable port: { readSignals(), writeSignal(), clearSignals() }.
+// Absence/invalid port → ledger behaves EXACTLY as before (fully backward compatible).
+let persistencePort = null;
+
+/**
+ * The ledger storage key derivation — the ONE authority for the key used by
+ * the durable adapter (same identity-derived key `recordCompletion` uses).
+ * Exported so the adapter stores AND dedupes by the same key (AC-07).
+ */
+export function occurrenceCompletionStorageKey(signal) {
+  if (!signal || typeof signal !== 'object') return null;
+  return hasOccurrenceIdentity(signal)
+    ? specificKeyFor(signal)
+    : resourceKeyFor(signal);
+}
 
 function resourceKeyFor({ resourceKind, resourceId, moduleId }) {
   return `${String(resourceKind ?? '')}::${String(resourceId ?? '')}::${String(moduleId ?? '')}`;
@@ -61,7 +87,18 @@ const OccurrenceLedger = {
     const key = hasOccurrenceIdentity(signal)
       ? specificKeyFor(signal)
       : resourceKeyFor(signal);
-    signals.set(key, Object.freeze({ ...signal }));
+    const frozen = Object.freeze({ ...signal });
+    signals.set(key, frozen);
+    // Sprint 297 — WRITE-THROUGH to the durable port (optional). The port only
+    // conserves the fact; it NEVER decides anything. A failing port must never
+    // break the business path (best-effort, swallow + log once).
+    if (persistencePort && typeof persistencePort.writeSignal === 'function') {
+      try {
+        persistencePort.writeSignal(frozen);
+      } catch (err) {
+        console.error('[OccurrenceLedger] durable write failed', err);
+      }
+    }
     return true;
   },
 
@@ -116,6 +153,57 @@ const OccurrenceLedger = {
   /** Full reset — consumers/devtools ONLY. */
   clear() {
     signals.clear();
+  },
+
+  /**
+   * Sprint 297 — registers the durable persistence port. Optional; when absent
+   * the ledger behaves exactly as before (in-memory). Re-registering replaces
+   * the previous port (last wins). Never throws.
+   *
+   * @param {Object} port Must expose { readSignals(), writeSignal(), clearSignals() }.
+   * @returns {boolean} Whether a valid port was registered.
+   */
+  registerPersistencePort(port) {
+    persistencePort =
+      port && typeof port === 'object' ? port : null;
+    return persistencePort !== null;
+  },
+
+  /**
+   * Sprint 297 — detaches the persistence port (tests/devtools). Idempotent.
+   * @returns {boolean} true
+   */
+  unregisterPersistencePort() {
+    persistencePort = null;
+    return true;
+  },
+
+  /**
+   * Sprint 297 — replays persisted completion FACTS into the ledger. The
+   * replay goes through `recordCompletion`, so it is idempotent by identity
+   * (OCC-CERT-13): a persisted single fact yields exactly ONE transition.
+   * Called once at application boot (refresh / recuperación). It NEVER stores
+   * the next occurrence (AC-18): recurrence keeps being derived.
+   *
+   * @returns {number} How many persisted facts were replayed.
+   */
+  hydrateFromPersistencePort() {
+    if (!persistencePort || typeof persistencePort.readSignals !== 'function') return 0;
+    let persisted;
+    try {
+      persisted = persistencePort.readSignals();
+    } catch (err) {
+      console.error('[OccurrenceLedger] durable read failed', err);
+      return 0;
+    }
+    if (!Array.isArray(persisted)) persisted = [];
+    let replayed = 0;
+    for (const signal of persisted) {
+      if (signal && typeof signal === 'object' && signal.resourceKind && signal.resourceId) {
+        if (this.recordCompletion(signal)) replayed += 1;
+      }
+    }
+    return replayed;
   },
 
   get size() {

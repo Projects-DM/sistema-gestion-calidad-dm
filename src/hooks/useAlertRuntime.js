@@ -16,7 +16,9 @@ import projectCurrentOccurrences from '../core/capabilities/alert/occurrence/Occ
 import {
   wireCompletionBridge,
   registerCompletionOccurrenceProvider,
+  COMPLETION_INTENT_EVENT,
 } from '../core/capabilities/alert/occurrence/CompletionBridge.js';
+import { OperationalEventBus } from '../core/capabilities/experiences/OperationalEventBus.js';
 
 /**
  * useAlertRuntime — Sprint 186 (Operational Resource Integrity Audit)
@@ -362,6 +364,14 @@ function alertsFromDescriptor(descriptor, module) {
 
 export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
   const [existing, setExisting] = useState(null);
+  // Sprint 297 — COMPLETION REACTIVITY (presentation-only). After a completed
+  // action the projected occurrences must reflect the fresh ledger fact in the
+  // SAME session (AC-03 "alert hidden"). The ledger is non-reactive by design
+  // (Sprint 257 documented limitation); a completion tick simply invalidates
+  // the `occurrences` memo so the SAME certified projection re-runs (reads the
+  // ledger live). No engine duplication: the bridge still records, the
+  // projection still derives; this only triggers re-derivation.
+  const [completionTick, setCompletionTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -469,8 +479,12 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
   // to AlertDashboardDataProvider (no parallel derivation, no local algebra).
   const occurrences = useMemo(() => {
     if (!existing) return null;
+    // `completionTick` invalidates this memo after any COMPLETION completion
+    // so the projection re-reads the ledger and reflects the completed fact
+    // in the SAME session (Sprint 297). It never alters the derivation.
+    void completionTick;
     return projectCurrentOccurrences(existing, base.moduleId ?? base.module ?? base.moduleSlug);
-  }, [existing, base]);
+  }, [existing, base, completionTick]);
 
   const workspace = useMemo(() => {
     if (!consumption) return null;
@@ -542,7 +556,17 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
     registerCompletionOccurrenceProvider(() =>
       projectCurrentOccurrences(existing, base.moduleId ?? moduleSlug ?? module),
     );
-    return () => unwire?.();
+    // Sprint 297 — COMPLETION REACTIVITY (presentation-only). On any emitted
+    // COMPLETION_INTENT the certified projection re-runs so the completed
+    // occurrence hides its alert in the SAME session. Ordering is guaranteed:
+    // the bridge (wired first) records the fact, then the tick bumps.
+    const unsubscribeTick = OperationalEventBus.subscribe(COMPLETION_INTENT_EVENT, () => {
+      setCompletionTick((t) => t + 1);
+    });
+    return () => {
+      unwire?.();
+      unsubscribeTick?.();
+    };
   }, [existing, base, moduleId, module, moduleSlug]);
 
   return {

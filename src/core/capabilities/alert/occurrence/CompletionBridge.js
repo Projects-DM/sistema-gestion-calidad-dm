@@ -43,10 +43,20 @@ export const COMPLETION_INTENT_EVENT = 'COMPLETION_INTENT';
 
 const FINAL_SINGLE_EVENTS = [RESOURCE_COMPLETED_EVENT, RECORDS_APPROVED_EVENT, RECORDS_CLOSED_EVENT];
 
-let wired = false;
-
-/** The Runtime hook registers the certified occurrence projection (reuse). */
+/**
+ * The Runtime hook registers the certified occurrence projection (reuse).
+ */
 let occurrenceProvider = null;
+
+/**
+ * Sprint 300 — LISTENER OWNERSHIP. There is NO global boolean flag. The
+ * bridge owns the bus only while its COMPLETION_INTENT handler is truly
+ * registered. If someone clears the bus, ownership is detected as lost and the
+ * next `wireCompletionBridge()` re-subscribes (single handler, no duplicates).
+ */
+let bridgeUnsubs = [];
+
+const completionIntentHandler = (intent) => handleCompletionIntent(intent);
 
 /**
  * Dependency injection (F6): the Runtime supplies the projected occurrences
@@ -146,11 +156,24 @@ export function handleCompletionIntent(intent) {
 }
 
 /**
- * Idempotent subscription. Returns an unsubscribe closure (falsy when already
- * wired). Consumed by the AlertRuntime module once at startup.
+ * Idempotent subscription (Sprint 300 — LISTENER OWNERSHIP). Returns an
+ * unsubscribe closure. Re-wires ONLY when the bridge is NOT actually
+ * registered in the bus anymore (e.g. after a bus clear). Never duplicates a
+ * live handler.
  */
 export function wireCompletionBridge() {
-  if (wired) return () => {};
+  if (OperationalEventBus.hasListener(COMPLETION_INTENT_EVENT, completionIntentHandler)) {
+    // The bridge already owns its COMPLETION_INTENT handler → the whole set is
+    // live; return a no-op so callers can `unwire?.()` safely.
+    return () => {};
+  }
+
+  // Stale state from a previous non-clean wiring/bus lifecycle: dispose
+  // leftovers so the re-wire restarts from ZERO live listeners (no duplicates).
+  if (bridgeUnsubs.length) {
+    bridgeUnsubs.forEach((u) => u?.());
+    bridgeUnsubs = [];
+  }
 
   const unsubs = FINAL_SINGLE_EVENTS.map((eventType) =>
     OperationalEventBus.subscribe(eventType, (payload) => {
@@ -167,16 +190,12 @@ export function wireCompletionBridge() {
     }),
   );
 
-  unsubs.push(
-    OperationalEventBus.subscribe(COMPLETION_INTENT_EVENT, (intent) => {
-      handleCompletionIntent(intent);
-    }),
-  );
+  unsubs.push(OperationalEventBus.subscribe(COMPLETION_INTENT_EVENT, completionIntentHandler));
 
-  wired = true;
+  bridgeUnsubs = unsubs;
   return () => {
-    unsubs.forEach((u) => u?.());
-    wired = false;
+    bridgeUnsubs.forEach((u) => u?.());
+    bridgeUnsubs = [];
   };
 }
 

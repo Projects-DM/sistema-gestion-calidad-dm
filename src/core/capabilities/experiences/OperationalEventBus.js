@@ -28,4 +28,12 @@ export const OperationalEventBus = {
   clear() {
     listeners.clear();
   },
+
+  // Sprint 300 — read-only listener-ownership introspection. The CompletionBridge
+  // re-wires only when its COMPLETION_INTENT handler is NOT actually registered
+  // (avoids the stale global-boolean edge after a bus clear). Never mutates.
+  hasListener(eventType, handler) {
+    const arr = listeners.get(eventType);
+    return !!arr && arr.includes(handler);
+  },
 };
