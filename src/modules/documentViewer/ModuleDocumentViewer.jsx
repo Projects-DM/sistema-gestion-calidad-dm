@@ -9,11 +9,62 @@ import { usePdfViewerStore } from '../../shared/state/viewer/pdfViewer.store';
 import PdfViewerModal from '../../shared/components/viewers/PdfViewerModal';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
+import { projectResourceAlertState, formatExecutionTime } from '../../utils/alertResourceState';
 
 
 function safeFileType(type) {
   if (!type) return 'application/pdf';
   return type;
+}
+
+// Sprint 290/291 — Static icon map resolved once (Sprint 286 F8 pattern).
+const REPOSITORY_STATE_ICON_COMPONENTS = Object.freeze({
+  overdue: resolveAlertIcon('AlertTriangle'),
+  today: resolveAlertIcon('Clock'),
+  upcoming: resolveAlertIcon('Calendar'),
+  active: resolveAlertIcon('CheckCircle2'),
+  completed: resolveAlertIcon('CheckCircle'),
+  cancelled: resolveAlertIcon('AlertOctagon'),
+  disabled: resolveAlertIcon('Bell'),
+  fallback: resolveAlertIcon('Bell'),
+});
+
+// Sprint 291 — RICH REPOSITORY/CATEGORY ALERT STATE BLOCK. Presents the alert
+// state projected over THIS repository (one visual alert per repository, the
+// internal occurrence windows as events). PURE PRESENTATION: consumes the
+// projector output, never rebuilds identity/schedules/completion (AC-05..AC-07).
+function RepositoryAlertStateBlock({ state }) {
+  if (state?.present !== true) return null;
+  const classes = alertVisualClasses(state.color);
+  const IconComponent = REPOSITORY_STATE_ICON_COMPONENTS[state.status] || REPOSITORY_STATE_ICON_COMPONENTS.fallback;
+  return (
+    <div className={`mt-2 p-3 rounded-xl border ${classes.badge}`}>
+      <div className="flex items-start gap-2">
+        <IconComponent className="w-4 h-4 mt-0.5 shrink-0" />
+        <div className="text-[11px] leading-snug">
+          <div className="font-bold mb-1">Alerta operacional</div>
+          <div>
+            Estado: <span className="font-bold">{state.statusLabel}</span>
+            {state.priorityLabel ? <span> · Prioridad {state.priorityLabel}</span> : null}
+            {state.nextExecution ? <span> · Próximo vencimiento: {state.nextExecution}</span> : null}
+          </div>
+          {state.openCount > 0 && (
+            <div className="mt-1 font-semibold">{state.openCount} evento(s) abierto(s)</div>
+          )}
+        </div>
+      </div>
+      {state.events?.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5 text-[11px] font-semibold">
+          {state.events.slice(0, 3).map((ev) => (
+            <li key={ev.occurrenceId ?? `${ev.alertId}:${ev.sequence}`}>
+              {ev.statusLabel}
+              {ev.dueMs ? ` · ${formatExecutionTime(ev.dueMs)}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) {
@@ -36,11 +87,34 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
 
   // Sprint 184 — Operational UI Consumption.
   // Consumes ONLY the Runtime Visibility surface for the Document Repository engine.
-  const { visibility } = useAlertRuntime({
+  // Sprint 290 — the Repository ALSO consumes the projected occurrences to
+  // present the REAL alert state of the active repository (and its categories,
+  // root: category.repository_id → repository). consume → presenta; never
+  // rebuilds identity/schedules/completion (AC-05/AC-06/AC-07, AC-17).
+  const { visibility, occurrences, existing } = useAlertRuntime({
     module: moduleSlug,
     moduleSlug,
   });
   const documentBadge = visibility?.badges?.documentRepository ?? null;
+
+  // Sprint 290/291 — REAL REPOSITORY ALERT STATE (one visual alert per
+  // repository, internal occurrence windows as events). Pure presentation over
+  // the certified projection; the identity stays on the repository (never on
+  // the category — no `category:alert:...` identity is invented, STOP respected).
+  const repositoryAlertStates = useMemo(() => {
+    const byId = new Map();
+    const reps = (existing?.repositories || repositories || []);
+    for (const repo of reps) {
+      const state = projectResourceAlertState({
+        occurrences,
+        resourceKind: 'documentRepository',
+        resourceId: repo.id ?? repo.slug,
+        resource: repo,
+      });
+      if (state) byId.set(String(repo.id ?? repo.slug ?? ''), state);
+    }
+    return byId;
+  }, [occurrences, existing, repositories]);
 
   const uploadInputId = useMemo(() => `upload_${moduleSlug}_${Date.now()}`, [moduleSlug]);
 
@@ -228,27 +302,31 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                 </div>
               ) : (
                 <ul className="divide-y divide-gray-100">
-                  {repositoriesForUI.map((r) => (
-                    <li
-                      key={r.id}
-                      className={`p-4 cursor-pointer hover:bg-primary/[0.03] transition-colors ${
-                        r.id === activeRepositoryId ? 'bg-primary/[0.06]' : ''
-                      }`}
-                      onClick={() => setActiveRepositoryId(r.id)}
-                    >
-                      <div className="font-bold text-gray-900 text-sm">{r.name}</div>
-                      <div className="text-[11px] text-gray-500 mt-1">
-                        {r.slug}
-                      </div>
-                      <div
-                        className={`mt-2 text-[11px] inline-flex px-2 py-0.5 rounded-full font-bold border ${
-                          r.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                  {repositoriesForUI.map((r) => {
+                    const repoAlertState = repositoryAlertStates.get(String(r.id ?? r.slug ?? '')) || null;
+                    return (
+                      <li
+                        key={r.id}
+                        className={`p-4 cursor-pointer hover:bg-primary/[0.03] transition-colors ${
+                          r.id === activeRepositoryId ? 'bg-primary/[0.06]' : ''
                         }`}
+                        onClick={() => setActiveRepositoryId(r.id)}
                       >
-                        {r.is_active ? 'Activo' : 'Inactivo'}
-                      </div>
-                    </li>
-                  ))}
+                        <div className="font-bold text-gray-900 text-sm">{r.name}</div>
+                        <div className="text-[11px] text-gray-500 mt-1">
+                          {r.slug}
+                        </div>
+                        <div
+                          className={`mt-2 text-[11px] inline-flex px-2 py-0.5 rounded-full font-bold border ${
+                            r.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'
+                          }`}
+                        >
+                          {r.is_active ? 'Activo' : 'Inactivo'}
+                        </div>
+                        <RepositoryAlertStateBlock state={repoAlertState} />
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -270,26 +348,32 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {categories.map((c) => {
+{categories.map((c) => {
                     const records = docsByCategory[c.category_key] || [];
+                    // Sprint 290/291 — CATEGORY ALERT STATE (evidence-backed:
+                    //   category.repository_id → repository). The category
+                    //   presents the alert state of its owning repository; the
+                    //   identity NEVER moves to the category.
+                    const categoryOwnerState = repositoryAlertStates.get(String(c?.repository_id ?? '')) || null;
                     return (
                       <div key={c.id} className="p-4 rounded-2xl border border-gray-200">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="font-bold text-gray-900">{c.name}</div>
-                            <div className="text-xs text-gray-500 mt-1">{c.category_key}</div>
-                            <div
-                              className={`mt-2 text-[11px] inline-flex px-2 py-0.5 rounded-full font-bold border ${
-                                c.is_active
-                                  ? 'bg-green-50 text-green-700 border-green-200'
-                                  : 'bg-gray-100 text-gray-600 border-gray-200'
-                              }`}
-                            >
-                              {c.is_active ? 'Activo' : 'Inactivo'}
+<div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="font-bold text-gray-900">{c.name}</div>
+                              <div className="text-xs text-gray-500 mt-1">{c.category_key}</div>
+                              <div
+                                className={`mt-2 text-[11px] inline-flex px-2 py-0.5 rounded-full font-bold border ${
+                                  c.is_active
+                                    ? 'bg-green-50 text-green-700 border-green-200'
+                                    : 'bg-gray-100 text-gray-600 border-gray-200'
+                                }`}
+                              >
+                                {c.is_active ? 'Activo' : 'Inactivo'}
+                              </div>
+                              <RepositoryAlertStateBlock state={categoryOwnerState} />
                             </div>
+                            <div className="text-xs text-gray-500 font-bold">{records.length} PDFs</div>
                           </div>
-                          <div className="text-xs text-gray-500 font-bold">{records.length} PDFs</div>
-                        </div>
                       </div>
                     );
                   })}

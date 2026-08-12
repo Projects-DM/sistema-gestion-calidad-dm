@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, CheckCircle, Bell } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { dynamicService } from '../services/dynamicService';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
@@ -30,7 +30,6 @@ const authorization = CapabilityDiscovery.discover('authorization');
 const navigation = CapabilityDiscovery.discover('navigation');
 const engine = CapabilityDiscovery.discover('engine');
 
-
 export default function DynamicForm() {
   const { moduleSlug, formSlug } = useParams();
   const { user, rol } = useAuth();
@@ -51,6 +50,10 @@ export default function DynamicForm() {
   // Sprint 184 — Operational UI Consumption.
   // Consumes ONLY the Runtime Visibility surface for the Dynamic Forms engine.
   // Never calculates, never consults rules, never queries Runtime directly.
+  // Sprint 291 — the alert state is presented BEFORE entering the form, on the
+  // "Formatos Disponibles" format card (FormsContent). The form itself does NOT
+  // present a ResourceAlertStatePanel: it stays a real form with its exclusive
+  // responsibilities (campos, validaciones, evidencias, acciones, persistencia).
   const { visibility } = useAlertRuntime({
     moduleId: formDef?.module_id ?? null,
     module: moduleSlug,
@@ -263,6 +266,14 @@ export default function DynamicForm() {
   };
 
 
+  // Sprint 286 — F1. ORIGIN CONTEXT (presentation only). When the user arrived
+  // from an alert card, the REAL form presents the alert origin that drove the
+  // arrival. The identity (alertId/occurrenceId) is CONSUMED from the alertContext
+  // the resolver already transported — never rebuilt here. DynamicForm remains
+  // the real form/resource; this banner is contextual, not a new component.
+  const originAlert = location.state?.alertContext ?? null;
+
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
@@ -274,6 +285,19 @@ export default function DynamicForm() {
           <p className="text-sm text-gray-500">{formDef.description}</p>
         </div>
       </div>
+
+      {/* Sprint 286 — F1. Origin alert banner: consumed, never reconstructed. */}
+      {originAlert?.alertId && originAlert?.occurrenceId && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-200 bg-amber-50">
+          <Bell className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+          <div className="text-sm text-amber-900">
+            <div className="font-bold">Vienes de una alerta operacional</div>
+            <div className="text-amber-700">
+              Ocurrencia {originAlert.occurrenceId} · Alerta {originAlert.alertId}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sprint 184 — Alert badge consumed from Runtime Visibility (never computed). */}
       {formBadge?.show === true && formBadge.badge && (

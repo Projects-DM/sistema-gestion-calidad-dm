@@ -27,7 +27,7 @@
  *   DynamicModule renders tabs + content exclusively from capabilityPublicSet
  */
 
-import { useState, useEffect, lazy, useRef, Suspense } from 'react';
+import { useState, useEffect, useMemo, lazy, useRef, Suspense } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -40,6 +40,17 @@ import { CapabilityDiscovery } from '../core/capabilities/CapabilityDiscovery';
 import { useCapabilityPublicSet } from '../core/capabilities/public/useCapabilityPublicSet';
 import { OperationalExperienceRegistry } from '../core/capabilities/experiences/OperationalExperienceRegistry';
 import { isNavigationState, extractNavigationState } from '../core/navigation/NavigationStateContract.js';
+import { useAlertRuntime } from '../hooks/useAlertRuntime';
+import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
+import { projectResourceAlertState, buildScheduleLines } from '../utils/alertResourceState';
+
+// Sprint 290 — HIDE/DETACH (no DELETE). The "Alertas" operational experience
+// leaves the PRIMARY module navigation surface. The domain, the registry, the
+// runtime and AlertMonitoringExperience remain intact (AC-01/AC-02): only the
+// PRESENTATION drops the experience from the user-facing experience list. The
+// alert state is now shown INSIDE the real resources (DynamicForm, Repository),
+// so the monitor is no longer the obliged place to find pending work.
+const DETACHED_EXPERIENCE_KEYS = Object.freeze(['alert-monitoring']);
 
 // Authorization capability — governs form access by role (certified, Sprint 52+)
 const authorization = CapabilityDiscovery.discover('authorization');
@@ -58,7 +69,85 @@ function resolveIcon(iconName) {
 // made entirely by the Capability Public Set, not here.
 // ---------------------------------------------------------------------------
 
-function FormsContent({ forms, moduleSlug }) {
+// Sprint 291 — Static icon map resolved once at module scope (same pattern as
+// the certified monitor, Sprint 286 F8): NO resolveAlertIcon call during render
+// → the format alert block never creates components while rendering.
+const FORMAT_STATE_ICON_COMPONENTS = Object.freeze({
+  overdue: resolveAlertIcon('AlertTriangle'),
+  today: resolveAlertIcon('Clock'),
+  upcoming: resolveAlertIcon('Calendar'),
+  active: resolveAlertIcon('CheckCircle2'),
+  completed: resolveAlertIcon('CheckCircle'),
+  cancelled: resolveAlertIcon('AlertOctagon'),
+  disabled: resolveAlertIcon('Bell'),
+  fallback: resolveAlertIcon('Bell'),
+});
+
+// Sprint 291/292 — FORMAT CARD ALERT INDICATOR. Presentational only: consumes
+// the projector output (projectResourceAlertState) already computed from the
+// certified runtime projection. Sprint 292 compacts it: NO "Estado:", NO
+// "Prioridad:", NO open-count, NO repeated day labels (AC-02..AC-06). The card
+// answers ONLY "¿tiene alerta y cuándo debo prestarle atención?".
+function FormatAlertState({ state }) {
+  if (state?.present !== true) return null;
+  const classes = alertVisualClasses(state.color);
+  const IconComponent = FORMAT_STATE_ICON_COMPONENTS[state.status] || FORMAT_STATE_ICON_COMPONENTS.fallback;
+  const schedule = buildScheduleLines(state.events);
+  if (schedule.length === 0) return null;
+  return (
+    <div className={`mt-2 rounded-lg border px-2.5 py-1.5 ${classes.badge}`}>
+      <div className="flex items-center gap-1.5">
+        <IconComponent className="w-3.5 h-3.5 shrink-0" />
+        <span className="text-[11px] font-bold leading-tight">Alerta operacional</span>
+      </div>
+      <div className="mt-0.5 pl-5 space-y-0.5 text-[11px] leading-tight font-semibold">
+        {schedule.map((line) => (
+          <div key={line.day} className="flex flex-wrap items-center gap-x-1">
+            <span className="opacity-90">{line.day}</span>
+            {line.times.map((t, i) => (
+              <span key={`${line.day}:${i}`} className="whitespace-nowrap">
+                {i === 0 ? '' : '·'} {t}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FormsContent({ forms, moduleSlug, moduleId }) {
+  // Sprint 291 — SINGLE runtime consumption for the format card grid. The alert
+  // state is presented BEFORE entering the form: each format card that carries
+  // a projected alert shows its own visual state. consume → presenta (AC-24);
+  // never rebuilds identity/schedules/completion here.
+  const { occurrences, existing } = useAlertRuntime({
+    moduleId,
+    module: moduleSlug,
+    moduleSlug,
+  });
+
+  // Project per-format alert state ONCE for the whole grid (same certified
+  // projector the form/repository consume). resourceId = form.id (canonical),
+  // resource = real form snapshot for enrichment (Resolver envelope).
+  const alertStatesByForm = useMemo(() => {
+    const map = new Map();
+    if (!Array.isArray(occurrences)) return map;
+    for (const form of forms) {
+      const resource = (existing?.forms || []).find(
+        (f) => String(f.id ?? f.slug ?? '') === String(form.id ?? form.slug ?? ''),
+      ) || form;
+      const state = projectResourceAlertState({
+        occurrences,
+        resourceKind: 'dynamicForms',
+        resourceId: form.id ?? form.slug,
+        resource,
+      });
+      if (state) map.set(String(form.id ?? form.slug ?? ''), state);
+    }
+    return map;
+  }, [occurrences, existing, forms]);
+
   return (
     <div>
       <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -69,6 +158,7 @@ function FormsContent({ forms, moduleSlug }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {forms.map((form) => {
           const IconComponent = resolveIcon(form.icon || 'FileText');
+          const alertState = alertStatesByForm.get(String(form.id ?? form.slug ?? '')) || null;
           return (
             <Link
               to={`/modulo/${moduleSlug}/${form.slug}`}
@@ -76,14 +166,21 @@ function FormsContent({ forms, moduleSlug }) {
               className="group flex flex-col bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
             >
               <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform duration-300 bg-gray-50 text-primary border border-gray-100">
                 <IconComponent className="w-7 h-7" />
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
                 {form.name}
               </h3>
-              <p className="text-sm text-gray-500 mb-6 flex-1">{form.description}</p>
-              <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto">
+
+              {/* Sprint 291/292 — compact format card alert indicator (before
+                  entering the form). Hierarchy: icono → nombre → 8-12px → alerta
+                  → acción (AC-07/AC-08). Tight spacing, no secondary metadata. */}
+              <FormatAlertState state={alertState} />
+
+              <p className="text-sm text-gray-500 mt-2 mb-3">{form.description}</p>
+
+              <div className="flex items-center text-sm font-bold text-primary group-hover:text-accent transition-colors mt-auto pt-2">
                 Ingresar
                 <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -327,7 +424,25 @@ export default function DynamicModule() {
 
   // Tabs are built exclusively from the Capability Public Set.
   // No hardcodes. No moduleSlug conditions. No service calls.
+  //
+  // Sprint 290 — HIDE/DETACH of the "Alertas" operational experience from the
+  // PRIMARY navigation. The experience list shown to the user excludes the
+  // detached alert-monitoring surface (other operational experiences remain).
+  // Presentation-only: the registry/domain and AlertMonitoringExperience stay
+  // intact and reachable through their internal registry contract.
+  const visibleExperiences = useMemo(
+    () => (capabilityPublicSet?.getEnabledExperiences() ?? []).filter(
+      (exp) => !DETACHED_EXPERIENCE_KEYS.includes(exp.experienceKey),
+    ),
+    [capabilityPublicSet],
+  );
+
   const tabs = capabilityPublicSet?.getTabs() ?? [];
+  // When the ONLY enabled experience was the detached alert-monitoring one,
+  // the "Experiencias Operacionales" tab itself is hidden (no dead tab).
+  const visibleTabs = tabs.filter(
+    (tab) => tab.key !== 'operational-experiences' || visibleExperiences.length > 0,
+  );
 
   // ---------------------------------------------------------------------------
   // Loading state: wait for both module data and capabilities to resolve.
@@ -359,7 +474,7 @@ export default function DynamicModule() {
   function renderTabContent() {
     switch (activeTab) {
       case 'forms':
-        return <FormsContent forms={filteredForms} moduleSlug={moduleSlug} />;
+        return <FormsContent forms={filteredForms} moduleSlug={moduleSlug} moduleId={modInfo.id} />;
       case 'records':
         return <RecordsContent moduleId={modInfo.id} />;
       case 'repository':
@@ -367,7 +482,7 @@ export default function DynamicModule() {
       case 'operational-experiences':
         return (
           <OperationalExperiencesContent
-            enabledExperiences={capabilityPublicSet?.getEnabledExperiences() ?? []}
+            enabledExperiences={visibleExperiences}
             moduleSlug={moduleSlug}
             moduleName={modInfo.name}
           />
@@ -411,7 +526,7 @@ export default function DynamicModule() {
 
       {/* Tabs — built exclusively from Capability Public Set */}
       <div className="flex flex-wrap border-b border-gray-200 gap-2 sm:gap-8">
-        {tabs.map((tab) => {
+        {visibleTabs.map((tab) => {
           const TabIcon = resolveIcon(tab.icon);
           const isActive = activeTab === tab.key;
           return (

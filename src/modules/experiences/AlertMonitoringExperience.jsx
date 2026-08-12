@@ -98,6 +98,22 @@ const PRIORITY_LABELS = Object.freeze({ low: 'Baja', medium: 'Media', high: 'Alt
 const CHANNEL_LABELS = Object.freeze({ email: 'Email', 'in-app': 'Sistema', push: 'Push', bluetooth: 'Bluetooth', whatsapp: 'WhatsApp' });
 const MONTHS = Object.freeze(['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']);
 
+// Sprint 286 — F8. STATIC ICON COMPONENTS. The icon component is resolved ONCE
+// at module scope (referencing lucide via the certified resolveAlertIcon helper)
+// and indexed by status key at render. resolveAlertIcon is never invoked during
+// render, closing the pre-existing react-hooks/static-components warning from
+// Sprint 284 (AC-22). Pure presentation; identity/runtime/completion untouched.
+const CARD_ICON_COMPONENTS = Object.freeze({
+  overdue: resolveAlertIcon('AlertTriangle'),
+  today: resolveAlertIcon('Clock'),
+  upcoming: resolveAlertIcon('Calendar'),
+  active: resolveAlertIcon('CheckCircle2'),
+  completed: resolveAlertIcon('CheckCircle'),
+  disabled: resolveAlertIcon('Bell'),
+  cancelled: resolveAlertIcon('AlertOctagon'),
+  fallback: resolveAlertIcon('AlertOctagon'),
+});
+
 /**
  * Sprint 237 — OPERATIONAL TEMPORAL VIEWMODEL (read-only, never persisted,
  * never consumed by the Alert Engine). Builds, from the PERSISTED metadata of
@@ -316,7 +332,9 @@ function CardButton({ card, moduleSlug }) {
     else navigate(target.path, { state: target.state });
   };
 
-  const IconComponent = resolveAlertIcon(card.icon);
+  // Sprint 286 — F8. Icon indexed from the MODULE-SCOPE map (no resolveAlertIcon
+  // call during render → react-hooks/static-components closed).
+  const IconComponent = CARD_ICON_COMPONENTS[card.status] || CARD_ICON_COMPONENTS.fallback;
   const classes = alertVisualClasses(card.color);
 
   return (
