@@ -444,6 +444,15 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
     });
   }, [base, consumption, binding]);
 
+  // Sprint 289 — Single Alert Authority. The Dashboard KPI ("Alertas Activas")
+  // is a summary projection of the SAME certified occurrence state the monitor
+  // consumes. `occurrences` is produced by the certified projection and passed
+  // to AlertDashboardDataProvider (no parallel derivation, no local algebra).
+  const occurrences = useMemo(() => {
+    if (!existing) return null;
+    return projectCurrentOccurrences(existing, base.moduleId ?? base.module ?? base.moduleSlug);
+  }, [existing, base]);
+
   const workspace = useMemo(() => {
     if (!consumption) return null;
     const descriptor = consumption.configurationDescriptor;
@@ -460,8 +469,9 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
       ...base,
       configurationDescriptor: consumption.configurationDescriptor,
       evaluationEntries: consumption.evaluationEntries,
+      occurrences,
     });
-  }, [base, consumption]);
+  }, [base, consumption, occurrences]);
 
   // Sprint 210 — R5: Notification consumes the certified Consumption entries
   // + the persisted `notification` intent transported from the resolved
@@ -514,11 +524,6 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
       projectCurrentOccurrences(existing, base.moduleId ?? moduleSlug ?? module),
     );
     return () => unwire?.();
-  }, [existing, base, moduleId, module, moduleSlug]);
-
-  const occurrences = useMemo(() => {
-    if (!existing) return null;
-    return projectCurrentOccurrences(existing, base.moduleId ?? moduleSlug ?? module);
   }, [existing, base, moduleId, module, moduleSlug]);
 
   return {

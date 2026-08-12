@@ -9,9 +9,22 @@
  * layer. The provider NEVER derives state from descriptor rules and NEVER
  * recomputes risk/severity/expirations/priorities.
  *
+ * Sprint 289 — KPI consolidation. `activeAlerts` ("Alertas Activas") is
+ * derived EXCLUSIVELY from the certified occurrence projection
+ * (request.occurrences → OccurrenceProjection) classified by the certified
+ * OccurrenceLifecycle.classifyOccurrence — the SAME alert state the
+ * operational monitor consumes. A COMPLETED/CANCELLED occurrence is NEVER
+ * counted as active (Sprint 280 identity isolation; Sprint 284 canonical
+ * alert identity). The provider consumes the projected occurrence and the
+ * certified classifier; it NEVER rebuilds alertId/occurrenceId, NEVER
+ * recomputes windows, schedules or completion. criticalAlerts /
+ * expiringDocuments / pendingActions remain aggregated from the certified
+ * evaluation entries (never recomputed).
+ *
  * Provider ONLY. Never creates a dashboard.
  */
 
+import { classifyOccurrence } from '../occurrence/OccurrenceLifecycle.js';
 import { mapEvaluationsToDashboardMetrics } from '../evaluation/consumption/AlertConsumptionMapper.js';
 
 export const DASHBOARD_CONSUMER_KEY = 'dashboard';
@@ -30,6 +43,24 @@ function fallbackMetrics(request) {
     expiringDocuments: Number(request?.expiringDocuments ?? 0),
     pendingActions: Number(request?.pendingActions ?? 0),
   });
+}
+
+/**
+ * Sprint 289 — KPI consolidation. Active alerts = the count of CURRENTLY
+ * PROJECTED occurrences that are NOT completed and NOT cancelled, classified
+ * by the certified OccurrenceLifecycle classifier. Pure read over the
+ * projected occurrence state; never rebuilds identity or completion.
+ *
+ * @param {Array} occurrences Projected AlertOccurrence VOs (OccurrenceProjection).
+ * @returns {number} Count of active (open) occurrences.
+ */
+export function countActiveOccurrences(occurrences) {
+  if (!Array.isArray(occurrences)) return 0;
+  return occurrences.filter((o) => {
+    if (!o || typeof o !== 'object') return false;
+    const state = classifyOccurrence(o);
+    return state.key !== 'completed' && state.key !== 'cancelled';
+  }).length;
 }
 
 export function provideAlertDashboardData(request) {
@@ -76,9 +107,25 @@ export function provideAlertDashboardData(request) {
   }
 
   const entries = Array.isArray(request.evaluationEntries) ? request.evaluationEntries : [];
-  const metrics = entries.length > 0
+  const occurrences = Array.isArray(request.occurrences) ? request.occurrences : null;
+
+  // Sprint 289 — SINGLE ALERT AUTHORITY FOR "Alertas Activas". The KPI is a
+  // summary projection of the SAME certified operational alert state the
+  // monitor consumes: the projected occurrences decide the count. Without a
+  // projection (legacy/no-occurrence call sites) the provider falls back to
+  // the certified evaluation entries, never to local algebra.
+  const evalMetrics = entries.length > 0
     ? mapEvaluationsToDashboardMetrics(entries)
     : fallbackMetrics(request);
+  const activeAlerts = occurrences !== null
+    ? countActiveOccurrences(occurrences)
+    : evalMetrics.activeAlerts;
+  const metrics = Object.freeze({
+    activeAlerts,
+    criticalAlerts: evalMetrics.criticalAlerts,
+    expiringDocuments: evalMetrics.expiringDocuments,
+    pendingActions: evalMetrics.pendingActions,
+  });
 
   return Object.freeze({
     consumer: DASHBOARD_CONSUMER_KEY,
