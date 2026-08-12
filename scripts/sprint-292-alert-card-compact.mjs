@@ -81,13 +81,13 @@ check('TEST 03 — completed-only events → empty schedule', buildScheduleLines
 const moduleSrc = readFile('src/pages/DynamicModule.jsx');
 check('TEST 04 — format card does NOT render "Estado:"', !moduleSrc.includes('Estado:</span>') && !/Estado:\s*<span/.test(moduleSrc));
 check('TEST 04 — no statusLabel rendered in card', !/\{state\.statusLabel\}/.test(moduleSrc));
-check('TEST 04 — card keeps compact indicator title', moduleSrc.includes('Alerta operacional'));
+check('TEST 04 — card keeps compact indicator title', readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx').includes('Alerta operacional'));
 
 // ---------------------------------------------------------------------------
 // TEST 05 — NO OPEN-COUNT. No "N evento(s) abierto(s)" anywhere in the card.
 // ---------------------------------------------------------------------------
 check('TEST 05 — no open-count wording in card', !moduleSrc.includes('evento(s)') && !moduleSrc.includes('openCount'));
-check('TEST 05 — compact block uses schedule only', moduleSrc.includes('buildScheduleLines'));
+check('TEST 05 — compact block uses schedule only', readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx').includes('buildScheduleLines'));
 
 // ---------------------------------------------------------------------------
 // TEST 06 — PRIORITY HIDDEN ONLY. Priority still exists in the internal model
@@ -136,8 +136,9 @@ check('TEST 09 — facade/util never writes', !utilSrc.includes('localStorage') 
 // the added blocks + util module exports resolvable by the bundler).
 // ---------------------------------------------------------------------------
 check('TEST 10 — util exports resolvable by bundler', typeof buildScheduleLines === 'function' && typeof formatExecutionTime === 'function');
-check('TEST 10 — card has no textual overflow risk (inline-flex wrap + nowrap tokens)', moduleSrc.includes('flex-wrap') && moduleSrc.includes('whitespace-nowrap'));
-check('TEST 10 — reduced vertical spacing applied', moduleSrc.includes('mt-2 rounded-lg') && moduleSrc.includes('mb-2'));
+const compactBlockSrc = readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx');
+check('TEST 10 — card has no textual overflow risk (inline-flex wrap + nowrap tokens)', compactBlockSrc.includes('flex-wrap') && compactBlockSrc.includes('whitespace-nowrap'));
+check('TEST 10 — reduced vertical spacing applied', compactBlockSrc.includes('mt-2 rounded-lg') && compactBlockSrc.includes('pl-5'));
 
 // ---------------------------------------------------------------------------
 

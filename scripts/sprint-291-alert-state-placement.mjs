@@ -113,8 +113,8 @@ check('TEST 03 — ResourceAlertStatePanel symbol absent repo-wide', !readFile('
 // ---------------------------------------------------------------------------
 const viewerSrc = readFile('src/modules/documentViewer/ModuleDocumentViewer.jsx');
 check('TEST 04 — repository alerts projected PER repository (one per resource)', viewerSrc.includes('repositoryAlertStates') && viewerSrc.includes('byId.set'));
-check('TEST 04 — rich repository alert block present', viewerSrc.includes('RepositoryAlertStateBlock'));
-check('TEST 04 — repository shows Estado/Prioridad/Próximo', viewerSrc.includes('Estado:') && viewerSrc.includes('Prioridad') && viewerSrc.includes('Próximo vencimiento'));
+check('TEST 04 — repository alert block present (unified standard)', viewerSrc.includes('RepositoryAlertStateBlock') && viewerSrc.includes('UnifiedAlertResourcePresentation'));
+check('TEST 04 — repository block no longer renders rich metadata', !viewerSrc.includes('Estado:') && !viewerSrc.includes('Próximo vencimiento') && !viewerSrc.includes('evento(s)'));
 check('TEST 04 — repository keeps Activo chip', /Activo/.test(viewerSrc));
 check('TEST 04 — category inherits owner repository state', viewerSrc.includes('categoryOwnerState') && viewerSrc.includes('repository_id'));
 check('TEST 04 — repository resource projection still works', repoStates?.present === true && repoStates?.events?.[0]?.alertId === '77:alert:0');

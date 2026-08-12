@@ -86,6 +86,7 @@ const utilSrc = readFile('src/utils/alertResourceState.js');
 const projectionSrc = readFile('src/core/capabilities/alert/occurrence/OccurrenceProjection.js');
 const adapterSrc = readFile('src/modules/experiences/AlertConfigurationPersistenceAdapter.js');
 const lifecycleSrc = readFile('src/core/capabilities/alert/occurrence/OccurrenceLifecycle.js');
+const sharedPresentationSrc = readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx');
 
 // ---------------------------------------------------------------------------
 // TEST 01 — ENABLED → PRESENT. Occurences projected ⇒ present: true, and the
@@ -122,15 +123,16 @@ check('TEST 06 — mixed form: disabled occurrence dropped, enabled kept',
 // projected state is present (null → nothing).
 // ---------------------------------------------------------------------------
 check('TEST 07 — form card no-ops on missing state',
-  formModuleSrc.includes('function FormatAlertState({ state })') && formModuleSrc.includes("state?.present !== true"));
+  formModuleSrc.includes('function FormatAlertState({ state })') && sharedPresentationSrc.includes("state?.present !== true"));
 check('TEST 07 — form state registered only when projected',
   formModuleSrc.includes('if (state) map.set('));
 
 // ---------------------------------------------------------------------------
-// TEST 08 — REPOSITORY DISABLED → HIDDEN. Viewer block no-ops on null.
+// TEST 08 — REPOSITORY DISABLED → HIDDEN. The unified block no-ops on null.
 // ---------------------------------------------------------------------------
-check('TEST 08 — repository block no-ops on missing state',
-  viewerSrc.includes('function RepositoryAlertStateBlock({ state })') && viewerSrc.includes("state?.present !== true"));
+check('TEST 08 — unified block no-ops on missing state',
+  sharedPresentationSrc.includes('state?.present !== true') &&
+  viewerSrc.includes('function RepositoryAlertStateBlock({ state })'));
 
 // ---------------------------------------------------------------------------
 // TEST 09 — CATEGORY DISABLED → HIDDEN (own surface suppressed, block guard).
