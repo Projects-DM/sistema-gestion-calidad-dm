@@ -188,9 +188,50 @@ export function classifyDocument(doc, context = {}) {
 }
 
 /**
+ * Classifies a Document Repository CATEGORY.
+ *
+ * A category is valid ONLY when its owning repository is resolvable and
+ * active and the category itself is active. The repository/category active
+ * states come from the SAME `documentIndex` (keyed by `category_key`) used
+ * for document visibility — no new lookup, no new policy.
+ *
+ * @param {Object} category Real `sgc_document_repository_categories` row.
+ * @param {Object} context
+ * @param {string} [context.moduleSlug] Active module slug.
+ * @param {boolean} [context.moduleOperational]
+ * @param {Map} [context.documentIndex] Map(type → { moduleSlug, repositoryActive, categoryActive }).
+ * @returns {Object} { state, visible, reasons }
+ */
+export function classifyCategory(category, context = {}) {
+  if (!category || !category.id) {
+    return ok(RESOURCE_INTEGRITY_STATES.DELETED, ['category-not-found']);
+  }
+
+  const type = String(category.category_key ?? category.name ?? '');
+  const entry = type && context.documentIndex instanceof Map ? context.documentIndex.get(type) : undefined;
+  if (!entry || !sameId(entry.moduleSlug, context.moduleSlug)) {
+    return ok(RESOURCE_INTEGRITY_STATES.HIDDEN, ['repository-not-resolved']);
+  }
+
+  if (!entry.repositoryActive) {
+    return ok(RESOURCE_INTEGRITY_STATES.HIDDEN, ['repository-inactive']);
+  }
+
+  if (category.is_active === false || !entry.categoryActive) {
+    return ok(RESOURCE_INTEGRITY_STATES.INACTIVE, ['category-inactive']);
+  }
+
+  if (!context.moduleOperational) {
+    return ok(RESOURCE_INTEGRITY_STATES.DETACHED, ['module-not-operational']);
+  }
+
+  return ok(RESOURCE_INTEGRITY_STATES.VALID, []);
+}
+
+/**
  * Classifies a resource by source type.
  *
- * @param {string} source dynamicForms | dynamicRecords | documentRepository
+ * @param {string} source dynamicForms | dynamicRecords | documentRepository | documentCategory
  * @param {Object} resource Raw resource row.
  * @param {Object} context Policy context.
  * @returns {Object} { state, visible, reasons }
@@ -203,6 +244,8 @@ export function classifyResource(source, resource, context = {}) {
       return classifyRecord(resource, context);
     case 'documentRepository':
       return classifyDocument(resource, context);
+    case 'documentCategory':
+      return classifyCategory(resource, context);
     default:
       return ok(RESOURCE_INTEGRITY_STATES.UNKNOWN, ['unknown-source']);
   }

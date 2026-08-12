@@ -18,6 +18,7 @@ export const AlertConfigurationContract = Object.freeze({
     'dynamicForms',
     'dynamicRecords',
     'documentRepository',
+    'documentCategory',
   ]),
   executionEnabled: false,
 });

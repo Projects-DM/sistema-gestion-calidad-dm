@@ -34,7 +34,7 @@ const mapRepositoryRow = (row) => {
 
 const mapCategoryRow = (row) => {
   if (!row) return null;
-  return {
+  const mapped = {
     id: row.id,
     repository_id: row.repository_id,
     category_key: row.category_key,
@@ -46,6 +46,12 @@ const mapCategoryRow = (row) => {
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+  // Sprint 294 — Alert Configuration metadata support for CATEGORIES.
+  // The column may not exist yet; pass through only when present.
+  if (row.alert_config !== undefined || row.alertConfiguration !== undefined) {
+    mapped.alertConfiguration = row.alert_config ?? row.alertConfiguration ?? null;
+  }
+  return mapped;
 };
 
 export const documentRepositoriesService = {
@@ -210,6 +216,12 @@ export const documentRepositoriesService = {
       sort_order: payload.sort_order,
       is_active: payload.is_active,
     };
+
+    // Sprint 294 — Alert Configuration metadata passthrough for CATEGORIES.
+    // The column may not exist yet; write only when explicitly provided.
+    if (payload.alert_config !== undefined || payload.alertConfiguration !== undefined) {
+      updatePayload.alert_config = payload.alert_config ?? payload.alertConfiguration;
+    }
 
     const { data, error } = await sb
       .from('sgc_document_repository_categories')

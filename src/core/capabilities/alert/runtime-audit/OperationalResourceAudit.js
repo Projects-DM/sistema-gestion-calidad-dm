@@ -5,7 +5,7 @@
  *
  * Builds the Operational Resource Inventory of a module:
  *
- *   { forms: [], records: [], documents: [] }
+ *   { forms: [], records: [], documents: [], categories: [] }
  *
  * Every inventory entry is classified against the integrity policy and
  * flagged as visible (eligible for the Runtime) or rejected (orphan,
@@ -59,6 +59,7 @@ export function auditOperationalResources({
   const formList = Array.isArray(forms) ? forms : [];
   const recordList = Array.isArray(records) ? records : [];
   const documentList = Array.isArray(documents) ? documents : [];
+  const categoryList = Array.isArray(categories) ? categories : [];
 
   // 1. Forms are audited FIRST → they define the Operational Form Set.
   const context = buildResourcePolicyContext({
@@ -95,10 +96,17 @@ export function auditOperationalResources({
     ),
   );
 
+  const categoryInventory = Object.freeze(
+    categoryList.map((resource) =>
+      inventoryEntry('documentCategory', resource, classifyResource('documentCategory', resource, context)),
+    ),
+  );
+
   const inventory = Object.freeze({
     forms: formInventory,
     records: recordInventory,
     documents: documentInventory,
+    categories: categoryInventory,
   });
 
   // Inventory entries that are visible (eligibility decision).
@@ -106,6 +114,7 @@ export function auditOperationalResources({
     forms: Object.freeze(formInventory.filter((e) => e.visible)),
     records: Object.freeze(recordInventory.filter((e) => e.visible)),
     documents: Object.freeze(documentInventory.filter((e) => e.visible)),
+    categories: Object.freeze(categoryInventory.filter((e) => e.visible)),
   });
 
   // The RAW visible resources — the Operational Resource Set the Runtime
@@ -116,6 +125,7 @@ export function auditOperationalResources({
     forms: Object.freeze(formList.filter((f) => visibleFormIdsRaw.has(String(f.id)))),
     records: Object.freeze(recordList.filter((r) => recordInventory.find((e) => e.visible && String(e.resourceId) === String(r.id)))),
     documents: Object.freeze(documentList.filter((d) => documentInventory.find((e) => e.visible && String(e.resourceId) === String(d.id)))),
+    categories: Object.freeze(categoryList.filter((c) => categoryInventory.find((e) => e.visible && String(e.resourceId) === String(c.id)))),
   });
 
   return Object.freeze({
@@ -129,6 +139,7 @@ export function auditOperationalResources({
       forms: formInventory.length,
       records: recordInventory.length,
       documents: documentInventory.length,
+      categories: categoryInventory.length,
     }),
   });
 }
@@ -140,6 +151,7 @@ export const OPERATIONAL_RESOURCE_AUDIT = Object.freeze({
     forms: Object.freeze({ type: 'array', description: 'Existing Dynamic Forms inventory' }),
     records: Object.freeze({ type: 'array', description: 'Existing Dynamic Records inventory' }),
     documents: Object.freeze({ type: 'array', description: 'Existing Document Repository inventory' }),
+    categories: Object.freeze({ type: 'array', description: 'Existing Document Repository Categories inventory' }),
   }),
   never: Object.freeze([
     'queries the Runtime',

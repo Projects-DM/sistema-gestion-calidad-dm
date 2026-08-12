@@ -7,6 +7,7 @@
  *   - existing Dynamic Forms
  *   - existing Dynamic Records
  *   - existing Document Repository documents
+ *   - existing Document Repository categories
  *
  * It NEVER consults DEFAULT_ALERT_RULES, demo alerts, fake runtime,
  * examples or samples. Everything it returns is a real resource that
@@ -111,6 +112,21 @@ function normalizeDocument(doc) {
 }
 
 /**
+ * Normalizes a real repository category row into the existing-category
+ * binding shape.
+ *
+ * @param {Object} category Real `sgc_document_repository_categories` row.
+ * @returns {Object}
+ */
+function normalizeCategory(category) {
+  return Object.freeze({
+    id: category?.id ?? null,
+    categoryKey: category?.category_key ?? null,
+    name: category?.name ?? null,
+  });
+}
+
+/**
  * Collects the module's existing resources ONLY.
  *
  * @param {Object} input
@@ -118,24 +134,28 @@ function normalizeDocument(doc) {
  * @param {Array} [input.forms] Real existing forms.
  * @param {Array} [input.records] Real existing records.
  * @param {Array} [input.documents] Real existing documents.
+ * @param {Array} [input.categories] Real existing repository categories.
  * @returns {Object} Existing resources snapshot (frozen, never demo data).
  */
-export function collectExistingModuleRuntime({ module = null, forms = [], records = [], documents = [] } = {}) {
+export function collectExistingModuleRuntime({ module = null, forms = [], records = [], documents = [], categories = [] } = {}) {
   const existingForms = (Array.isArray(forms) ? forms : []).map(normalizeForm);
   const existingRecords = (Array.isArray(records) ? records : []).map(normalizeRecord);
   const existingDocuments = (Array.isArray(documents) ? documents : []).map(normalizeDocument);
+  const existingCategories = (Array.isArray(categories) ? categories : []).map(normalizeCategory);
 
   return Object.freeze({
     module: module || null,
     forms: Object.freeze(existingForms),
     records: Object.freeze(existingRecords),
     documents: Object.freeze(existingDocuments),
+    categories: Object.freeze(existingCategories),
     counts: Object.freeze({
       forms: existingForms.length,
       records: existingRecords.length,
       documents: existingDocuments.length,
+      categories: existingCategories.length,
     }),
-    empty: existingForms.length === 0 && existingRecords.length === 0 && existingDocuments.length === 0,
+    empty: existingForms.length === 0 && existingRecords.length === 0 && existingDocuments.length === 0 && existingCategories.length === 0,
   });
 }
 

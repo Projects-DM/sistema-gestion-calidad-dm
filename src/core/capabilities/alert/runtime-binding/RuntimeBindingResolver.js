@@ -43,6 +43,14 @@ function documentConditionFor(document) {
   });
 }
 
+function categoryConditionFor(category) {
+  return Object.freeze({
+    field: 'category',
+    operator: 'exists',
+    value: category.name ?? category.categoryKey ?? category.category_key ?? null,
+  });
+}
+
 /**
  * Builds the Runtime Context (bound alerts) ONLY from existing resources.
  *
@@ -94,6 +102,16 @@ export function buildBoundAlertContexts(existing) {
     }));
   }
 
+  for (const category of existing?.categories ?? []) {
+    contexts.push(Object.freeze({
+      source: 'documentCategory',
+      resource: category.name ?? category.categoryKey ?? category.category_key ?? 'category',
+      resourceId: category.id,
+      resourceType: 'documentCategory',
+      condition: categoryConditionFor(category),
+    }));
+  }
+
   return Object.freeze(contexts);
 }
 
@@ -136,6 +154,7 @@ export function resolveRuntimeBinding(request) {
     forms: rawExisting.forms,
     records: rawExisting.records,
     documents: rawExisting.documents,
+    categories: rawExisting.categories,
   });
 
   const sourceResolution = resolveExistingOperationalSources(existing);
