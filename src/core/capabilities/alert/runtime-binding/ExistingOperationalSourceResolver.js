@@ -15,7 +15,7 @@
 
 import { AlertConfigurationContract } from '../operational-configuration/AlertConfigurationContract.js';
 
-export const SOURCE_KEYS = Object.freeze(['dynamicForms', 'dynamicRecords', 'documentRepository']);
+export const SOURCE_KEYS = Object.freeze(['dynamicForms', 'dynamicRecords', 'documentRepository', 'documentCategory']);
 
 function sourceResourceType(source) {
   switch (source) {
@@ -25,6 +25,8 @@ function sourceResourceType(source) {
       return 'dynamicRecord';
     case 'documentRepository':
       return 'document';
+    case 'documentCategory':
+      return 'documentCategory';
     default:
       return null;
   }
@@ -38,6 +40,8 @@ function resourcesForSource(existing, source) {
       return existing?.records ?? [];
     case 'documentRepository':
       return existing?.documents ?? [];
+    case 'documentCategory':
+      return existing?.categories ?? [];
     default:
       return [];
   }
@@ -101,6 +105,7 @@ export function resolveExistingOperationalSources(existing) {
       dynamicForms: resolved.dynamicForms.count,
       dynamicRecords: resolved.dynamicRecords.count,
       documentRepository: resolved.documentRepository.count,
+      documentCategory: resolved.documentCategory.count,
     }),
   });
 }

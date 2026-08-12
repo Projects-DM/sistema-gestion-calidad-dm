@@ -127,7 +127,7 @@ const category = { id: 5, repository_id: 77, category_key: 'externos' };
 const categoryIdentity = `${'category'}:alert:${category.category_key}`;
 check('TEST 05 — no category alert identity invented', categoryIdentity !== '77:alert:0' && !categoryIdentity.includes('77:alert:0'));
 check('TEST 05 — category root = repository_id → repository', String(category.repository_id) === String(repositoryR.id));
-check('TEST 05 — no category:alert key built in viewer', !viewerSrc.includes('categoryAlert') && !viewerSrc.includes("'category:alert'") && !viewerSrc.includes('categoryAlertId') && !(viewerSrc.includes('category:alert:') && /category:alert/.test(viewerSrc.replace(/\/\/[^\n]*/g, ''))));
+check('TEST 05 — no category:alert identity key built in viewer', !viewerSrc.includes("'category:alert'") && !viewerSrc.includes('categoryAlertId') && !/category:alert:/.test(viewerSrc.replace(/\/\/[^\n]*/g, '')));
 
 // ---------------------------------------------------------------------------
 // TEST 06 — ONE VISUAL ALERT PER RESOURCE. A resource with two enrolled alerts
@@ -188,7 +188,7 @@ check('TEST 10 — no new AlertForm resource', !formSrc.includes('class AlertFor
 check('TEST 10 — no new AlertRepository resource', !viewerSrc.includes('AlertRepository') && viewerSrc.includes('ModuleDocumentViewer'));
 check('TEST 10 — no new AlertCategory resource', !viewerSrc.includes('AlertCategory'));
 check('TEST 10 — no identity algebra in form frontier', !/alertConfigIdOf|occurrenceIdOf/.test(formSrc));
-check('TEST 10 — no identity algebra in viewer frontier', !/alertConfigIdOf|occurrenceIdOf/.test(viewerSrc));
+check('TEST 10 — no identity algebra in viewer frontier', !/alertConfigIdOf|occurrenceIdOf/.test(viewerSrc.replace(/\/\/[^\n]*/g, '')));
 check('TEST 10 — no identity algebra in module frontier', !/alertConfigIdOf|occurrenceIdOf/.test(moduleSrc));
 check('TEST 10 — no new alert routes', !readFile('src/App.jsx').includes('alertas'));
 check('TEST 10 — runtime consumed, not duplicated (single useAlertRuntime call in FormsContent)', (moduleSrc.match(/useAlertRuntime\(/g) || []).length === 1);

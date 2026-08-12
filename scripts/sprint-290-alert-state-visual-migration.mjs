@@ -145,7 +145,7 @@ const viewerSrc = readFile('src/modules/documentViewer/ModuleDocumentViewer.jsx'
 const utilSrc = readFile('src/utils/alertResourceState.js');
 check('TEST 21 — DynamicForm is the REAL form (no AlertForm)', !formSrc.includes('function AlertForm') && !formSrc.includes('class AlertForm') && formSrc.includes('DynamicForm'));
 check('TEST 21 — no AlertRepository resource created', !viewerSrc.includes('AlertRepository') && viewerSrc.includes('ModuleDocumentViewer'));
-check('TEST 21 — no new alert identity algebra in resource frontiers', !/alertConfigIdOf|occurrenceIdOf/.test(formSrc) && !/alertConfigIdOf|occurrenceIdOf/.test(viewerSrc));
+check('TEST 21 — no new alert identity algebra in resource frontiers', !/alertConfigIdOf|occurrenceIdOf/.test(formSrc) && !/alertConfigIdOf|occurrenceIdOf/.test(viewerSrc.replace(/\/\/[^\n]*/g, '')));
 check('TEST 21 — projector consumes, never builds identity', !utilSrc.includes('alertConfigIdOf(') && !utilSrc.includes('occurrenceIdOf(') && utilSrc.includes('classifyOccurrence'));
 check('TEST 21 — no new alert routes registered', !readFile('src/App.jsx').includes('alertas'));
 

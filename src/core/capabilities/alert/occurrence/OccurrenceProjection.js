@@ -49,6 +49,7 @@ import {
 export const RESOURCE_KIND = Object.freeze({
   forms: 'dynamicForms',
   repositories: 'documentRepository',
+  categories: 'documentCategory',
 });
 
 /**
@@ -67,7 +68,7 @@ function isProjectableOccurrenceCandidate(candidate, anchorMs) {
 /**
  * Projects the current occurrence of each visible ENROLLED alert collection.
  *
- * @param {Object} resources Visible existing snapshot ({ forms, repositories }).
+ * @param {Object} resources Visible existing snapshot ({ forms, repositories, categories }).
  * @param {string|null} moduleId Optional module identity for `moduleId` binding.
  * @param {number} [nowMs] Moment for tests (ms).
  * @returns {Array<Object>} Derived AlertOccurrence Value Objects — ONLY valid
@@ -78,7 +79,7 @@ export function projectCurrentOccurrences(resources, moduleId, nowMs) {
   const out = [];
   if (!resources || typeof resources !== 'object') return out;
 
-  for (const s of ['forms', 'repositories']) {
+  for (const s of ['forms', 'repositories', 'categories']) {
     const list = Array.isArray(resources[s]) ? resources[s] : [];
     for (const resource of list) {
       const raw = extractResourceAlertCollection(resource);

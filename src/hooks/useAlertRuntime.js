@@ -173,6 +173,7 @@ async function collectExistingResources({ moduleId, module, moduleSlug }) {
  *   - dynamicForms        → the form
  *   - dynamicRecords      → the form the record belongs to
  *   - documentRepository  → the repository that hosts the document
+ *   - documentCategory    → the repository category row
  *
  * The Runtime NEVER reads the resource's alert configuration directly — it
  * only hands the resource to the AlertConfigurationResolver (the only owner).
@@ -202,6 +203,10 @@ function resolveResourceForAlert(alert, resources) {
       if (repo) return repo;
     }
     return doc || null;
+  }
+
+  if (alert.source === 'documentCategory') {
+    return (resources.categories || []).find((c) => String(c.id) === String(alert.resourceId)) || null;
   }
 
   return null;
@@ -311,6 +316,16 @@ export function deriveRulesFromBinding(binding, collected, runtimeResources) {
           });
         }
 
+        if (alert.source === 'documentCategory') {
+          const category = (snapshot?.categories || []).find((c) => String(c.id) === String(alert.resourceId)) || null;
+          return Object.freeze({
+            ...base,
+            source: 'documentCategory',
+            categoryId: alert.resourceId,
+            message: category?.name ? `Categoría ${category.name}` : `Categoría ${alert.resource}`,
+          });
+        }
+
         const doc = (snapshot?.documents || []).find((d) => String(d.id) === String(alert.resourceId)) || null;
         return Object.freeze({
           ...base,
@@ -402,6 +417,7 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
         forms: (audit.moduleAudits || []).flatMap((a) => a.operational.forms),
         records: (audit.moduleAudits || []).flatMap((a) => a.operational.records),
         documents: (audit.moduleAudits || []).flatMap((a) => a.operational.documents),
+        categories: (audit.moduleAudits || []).flatMap((a) => a.operational.categories),
       };
     }
     return audit.operational;
@@ -439,6 +455,9 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
           : null,
         documentRepository: boundSources.has('documentRepository')
           ? (consumption.engines?.documentRepository?.alertContext ?? null)
+          : null,
+        documentCategory: boundSources.has('documentCategory')
+          ? (consumption.engines?.documentCategory?.alertContext ?? null)
           : null,
       },
     });

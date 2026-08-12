@@ -99,6 +99,7 @@ export default function DocumentRepositoriesAdmin() {
   });
 
   const [alertConfigTarget, setAlertConfigTarget] = useState(null);
+  const [categoryAlertConfigTarget, setCategoryAlertConfigTarget] = useState(null);
 
   const repo = useMemo(() => repositories.find(r => r.id === activeRepositoryId) || null, [repositories, activeRepositoryId]);
 
@@ -507,6 +508,14 @@ export default function DocumentRepositoriesAdmin() {
                             </button>
                             <button
                               disabled={saving}
+                              className="p-2 bg-white border border-gray-200 rounded-xl text-amber-500 hover:text-amber-600"
+                              onClick={() => setCategoryAlertConfigTarget(c)}
+                              title="Configurar alertas de la categoría"
+                            >
+                              <Bell className="w-4 h-4" />
+                            </button>
+                            <button
+                              disabled={saving}
                               className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary"
                               onClick={() => openEditCategory(c)}
                               title="Editar"
@@ -779,6 +788,39 @@ export default function DocumentRepositoriesAdmin() {
                     if (fresh) {
                       setRepositories((prev) =>
                         prev.map((r) => (String(r.id) === String(fresh.id) ? fresh : r)),
+                      );
+                    }
+                  })
+                  .catch(() => {});
+              }}
+            />
+          )}
+        </div>
+      </ModalShell>
+
+      {/* Modal: Alert Configuration (Category) */}
+      <ModalShell
+        open={!!categoryAlertConfigTarget}
+        title={categoryAlertConfigTarget ? `Alertas: ${categoryAlertConfigTarget.name}` : 'Alertas'}
+        icon={Bell}
+        saving={saving}
+        onClose={() => setCategoryAlertConfigTarget(null)}
+      >
+        <div className="p-6">
+          {categoryAlertConfigTarget && (
+            <AlertConfigurationPanel
+              resourceKind="documentCategory"
+              resource={categoryAlertConfigTarget}
+              persistence={alertConfigurationPersistence}
+              onSaved={() => {
+                const catRow = { ...categoryAlertConfigTarget };
+                setCategoryAlertConfigTarget(null);
+                documentRepositoriesService
+                  .getCategoryById(catRow.id)
+                  .then((fresh) => {
+                    if (fresh) {
+                      setCategories((prev) =>
+                        prev.map((c) => (String(c.id) === String(fresh.id) ? fresh : c)),
                       );
                     }
                   })

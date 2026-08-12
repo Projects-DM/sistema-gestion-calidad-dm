@@ -39,6 +39,12 @@ const hasRepositorySignature = (ref) =>
   typeof ref === 'object' &&
   ref.module_slug !== undefined &&
   ref.module_id === undefined;
+const hasCategorySignature = (ref) =>
+  !!ref &&
+  typeof ref === 'object' &&
+  ref.repository_id !== undefined &&
+  ref.module_id === undefined &&
+  ref.module_slug === undefined;
 
 /**
  * Capability handler: knows how to recognize + write its own backend.
@@ -67,10 +73,17 @@ const REPOSITORY_HANDLER = makeHandler({
     documentRepositoriesService.updateRepository(id, { alert_config: configuration }),
 });
 
+const CATEGORY_HANDLER = makeHandler({
+  key: 'category',
+  canAccept: hasCategorySignature,
+  write: (id, configuration) =>
+    documentRepositoriesService.updateCategory(id, { alert_config: configuration }),
+});
+
 /**
  * Registry, first-match-wins. Open/Closed: new resources → new handler here.
  */
-const HANDLERS = Object.freeze([FORM_HANDLER, REPOSITORY_HANDLER]);
+const HANDLERS = Object.freeze([FORM_HANDLER, REPOSITORY_HANDLER, CATEGORY_HANDLER]);
 
 /**
  * Resolves the handler owning a resource reference. Only the Adapter may

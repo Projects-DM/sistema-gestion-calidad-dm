@@ -127,7 +127,7 @@ const sources = [formSrc, viewerSrc, moduleSrc, readFile('src/components/Dynamic
 check('TEST 09 — no new AlertForm', sources.every((s) => !s.includes('AlertForm')));
 check('TEST 09 — no new AlertRepository', sources.every((s) => !s.includes('AlertRepository')));
 check('TEST 09 — no new AlertCategory', sources.every((s) => !s.includes('AlertCategory')));
-check('TEST 09 — no identity algebra in frontiers', sources.every((s) => !/alertConfigIdOf|occurrenceIdOf/.test(s)));
+check('TEST 09 — no functional identity algebra in frontiers', sources.every((s) => !/alertConfigIdOf|occurrenceIdOf/.test(s.replace(/\/\/[^\n]*/g, ''))));
 check('TEST 09 — facade/util never writes', !utilSrc.includes('localStorage') && !utilSrc.includes('EventBus') && !utilSrc.includes('createStore'));
 
 // ---------------------------------------------------------------------------

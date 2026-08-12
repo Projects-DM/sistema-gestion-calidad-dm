@@ -62,6 +62,7 @@ export const AlertConfigurationMetadata = Object.freeze({
     'dynamicForms',
     'dynamicRecords',
     'documentRepository',
+    'documentCategory',
   ]),
   model: Object.freeze({
     enabled: Object.freeze({

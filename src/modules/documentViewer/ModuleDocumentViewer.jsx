@@ -116,6 +116,27 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
     return byId;
   }, [occurrences, existing, repositories]);
 
+  // Sprint 294 — CATEGORY OWN ALERT STATE (override). A category that carries
+  // its OWN alert_config projects its OWN visual state via the SAME certified
+  // pipeline (resourceKind='documentCategory', resourceId=category.id). The
+  // identity comes from the domain (alertConfigIdOf/occurrenceIdOf) — never
+  // rebuilt here. Categories without own configuration fall back to the
+  // repository inheritance below.
+  const categoryAlertStates = useMemo(() => {
+    const byId = new Map();
+    const cats = (existing?.categories || categories || []);
+    for (const cat of cats) {
+      const state = projectResourceAlertState({
+        occurrences,
+        resourceKind: 'documentCategory',
+        resourceId: cat.id,
+        resource: cat,
+      });
+      if (state) byId.set(String(cat.id ?? ''), state);
+    }
+    return byId;
+  }, [occurrences, existing, categories]);
+
   const uploadInputId = useMemo(() => `upload_${moduleSlug}_${Date.now()}`, [moduleSlug]);
 
   // Sprint 189 — Context Navigation Decoupling.
@@ -350,11 +371,15 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                 <div className="space-y-4">
 {categories.map((c) => {
                     const records = docsByCategory[c.category_key] || [];
-                    // Sprint 290/291 — CATEGORY ALERT STATE (evidence-backed:
-                    //   category.repository_id → repository). The category
-                    //   presents the alert state of its owning repository; the
+                    // Sprint 294 — CATEGORY ALERT STATE (override + fallback).
+                    //   Category WITH own configuration → projects own state
+                    //   (resourceKind='documentCategory', resourceId=category.id)
+                    //   — owns its alert; does NOT consume the repository alert.
+                    //   Category WITHOUT own configuration → inherits the state
+                    //   of its owning repository (repositoryAlertStates). The
                     //   identity NEVER moves to the category.
-                    const categoryOwnerState = repositoryAlertStates.get(String(c?.repository_id ?? '')) || null;
+                    const ownCategoryState = categoryAlertStates.get(String(c?.id ?? '')) || null;
+                    const categoryOwnerState = ownCategoryState || repositoryAlertStates.get(String(c?.repository_id ?? '')) || null;
                     return (
                       <div key={c.id} className="p-4 rounded-2xl border border-gray-200">
 <div className="flex items-start justify-between gap-4">
