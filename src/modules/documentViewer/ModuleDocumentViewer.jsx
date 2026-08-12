@@ -378,8 +378,26 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                     //   Category WITHOUT own configuration → inherits the state
                     //   of its owning repository (repositoryAlertStates). The
                     //   identity NEVER moves to the category.
+                    // Sprint 295 — DISABLED OWN-OVERRIDE. A category that carries
+                    //   its OWN configuration (even when the selector yields NO
+                    //   visual state — e.g. explicitly `enabled === false`)
+                    //   owns its alert surface: it MUST NOT fall back to the
+                    //   repository alert. Fallback applies ONLY to categories
+                    //   with NO configuration of their own.
+                    const catRaw = c?.alertConfiguration ?? c?.alert_config;
+                    const hasOwnCategoryConfig = !!(
+                      catRaw &&
+                      typeof catRaw === 'object' &&
+                      (Array.isArray(catRaw.alertConfigurations)
+                        ? catRaw.alertConfigurations.length > 0
+                        : true)
+                    );
                     const ownCategoryState = categoryAlertStates.get(String(c?.id ?? '')) || null;
-                    const categoryOwnerState = ownCategoryState || repositoryAlertStates.get(String(c?.repository_id ?? '')) || null;
+                    const categoryOwnerState = hasOwnCategoryConfig
+                      ? ownCategoryState
+                      : ownCategoryState ||
+                        repositoryAlertStates.get(String(c?.repository_id ?? '')) ||
+                        null;
                     return (
                       <div key={c.id} className="p-4 rounded-2xl border border-gray-200">
 <div className="flex items-start justify-between gap-4">

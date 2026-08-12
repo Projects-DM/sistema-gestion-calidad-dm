@@ -63,8 +63,8 @@ check('TEST 03 — onSaved refetches the category by id',
 // ---------------------------------------------------------------------------
 // TEST 04 — VIEWER. Category with OWN config projects its own state (override).
 // ---------------------------------------------------------------------------
-check('TEST 04 — category own state consumed before repository fallback',
-  viewerSrc.includes('ownCategoryState || repositoryAlertStates') && viewerSrc.includes('categoryAlertStates'),
+check('TEST 04 — category own state precedes the repository fallback',
+  viewerSrc.includes('ownCategoryState') && viewerSrc.includes('repositoryAlertStates.get(String(c?.repository_id'),
   'override/fallback chain missing');
 
 // ---------------------------------------------------------------------------
