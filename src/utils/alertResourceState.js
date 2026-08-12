@@ -14,6 +14,11 @@
  *     precedence, OCC-CERT-08) — same state the monitor consumes.
  *   - Presentation metadata (priority / enabled) is ENRICHED from the REAL
  *     resource via the Resolver SSOT envelope (DEC-263) — never re-derived.
+ *   - Sprint 295 — DISABLED VISUAL SUPPRESSION. An alert whose configuration
+ *     is explicitly `enabled === false` is NOT presented: the selector drops
+ *     its occurrences from presentation and returns null (present: false).
+ *     The configuration, persistence, domain, runtime and the occurrence
+ *     itself all REMAIN INTACT — only the visual representation is hidden.
  *   - An ALERT IS NOT A RESOURCE. This produces a summary of a resource's
  *     alert state; it never creates resources, records or identities.
  *
@@ -30,7 +35,6 @@ const STATUS_PRESENTATION = Object.freeze({
   active: Object.freeze({ label: 'Activa', color: 'green', icon: 'CheckCircle2' }),
   completed: Object.freeze({ label: 'Cumplida', color: 'emerald', icon: 'CheckCircle' }),
   cancelled: Object.freeze({ label: 'Cancelada', color: 'gray', icon: 'AlertOctagon' }),
-  disabled: Object.freeze({ label: 'Deshabilitada', color: 'gray', icon: 'Bell' }),
 });
 
 const PRIORITY_LABELS = Object.freeze({ low: 'Baja', medium: 'Media', high: 'Alta' });
@@ -41,9 +45,8 @@ const STATUS_ORDER = Object.freeze({
   today: 1,
   upcoming: 2,
   active: 3,
-  disabled: 4,
-  completed: 5,
-  cancelled: 6,
+  completed: 4,
+  cancelled: 5,
 });
 
 /**
@@ -118,24 +121,21 @@ export function formatExecutionTime(targetMs) {
 
 /**
  * Classifies a projected occurrence for PRESENTATION ONLY using the certified
- * domain classifier, then enriches the `disabled` bucket when the resource's
- * configuration is explicitly disabled (mirror of the certified monitor's
- * classifyConsumedOccurrence — never a lifecycle re-derivation).
+ * domain classifier (mirror of the certified monitor's
+ * classifyConsumedOccurrence — never a lifecycle re-derivation). Sprint 295:
+ * the `disabled` bucket is intentionally ABSENT here — occurrences of an
+ * explicitly disabled alert are filtered OUT by the selector before
+ * classification, so presentation never renders a disabled state.
  *
  * @param {Object} occurrence Projected AlertOccurrence VO.
- * @param {boolean} enabled Config `enabled` carried by the resource envelope.
  * @param {number} nowMs
  * @returns {{ key, label, color, icon, persistent }}
  */
-function classifyForPresentation(occurrence, enabled, nowMs) {
+function classifyForPresentation(occurrence, nowMs) {
   const domain = classifyOccurrence(occurrence, nowMs);
   if (domain.key === 'completed' || domain.key === 'cancelled') {
     const p = STATUS_PRESENTATION[domain.key];
     return { key: domain.key, ...p, persistent: true };
-  }
-  if (enabled === false) {
-    const p = STATUS_PRESENTATION.disabled;
-    return { key: 'disabled', ...p, persistent: false };
   }
   const p = STATUS_PRESENTATION[domain.key] || STATUS_PRESENTATION.active;
   return { key: domain.key, ...p, persistent: false };
@@ -181,8 +181,14 @@ export function projectResourceAlertState({ occurrences, resourceKind, resourceI
   const events = matches
     .map((o) => {
       const cfg = cfgByAlertId ? (cfgByAlertId.get(String(o?.alertId ?? '')) ?? null) : null;
-      const enabled = cfg?.enabled !== false;
-      const state = classifyForPresentation(o, enabled, nowMs);
+      // Sprint 295 — DISABLED VISUAL SUPPRESSION. An occurrence whose OWN alert
+      // is explicitly disabled is NOT presented (no state, no schedule, no
+      // priority, no status label, no events). The occurrence is NEVER deleted
+      // and the configuration/persistence/domain/runtime REMAIN INTACT — only
+      // its visual representation is dropped. When every occurrence of the
+      // resource is suppressed, the selector returns null (present: false).
+      if (cfg?.enabled === false) return null;
+      const state = classifyForPresentation(o, nowMs);
       const dueMs = o?.dueAt ?? o?.startsAt ?? null;
       const priority = cfg?.priority || 'medium';
       return Object.freeze({
@@ -202,11 +208,15 @@ export function projectResourceAlertState({ occurrences, resourceKind, resourceI
         sortKey: dueMs === null ? Number.MAX_SAFE_INTEGER : dueMs,
       });
     })
+    .filter((ev) => ev !== null)
     .sort((a, b) => {
       const byOrder = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
       if (byOrder !== 0) return byOrder;
       return a.sortKey - b.sortKey;
     });
+
+  // Sprint 295 — nothing presentable (e.g. every alert disabled) → no state.
+  if (events.length === 0) return null;
 
   const open = events.filter((e) => e.status !== 'completed' && e.status !== 'cancelled');
   const head = open.length > 0 ? open[0] : events[0];
