@@ -41,8 +41,8 @@ import { useCapabilityPublicSet } from '../core/capabilities/public/useCapabilit
 import { OperationalExperienceRegistry } from '../core/capabilities/experiences/OperationalExperienceRegistry';
 import { isNavigationState, extractNavigationState } from '../core/navigation/NavigationStateContract.js';
 import { useAlertRuntime } from '../hooks/useAlertRuntime';
-import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
-import { projectResourceAlertState, buildScheduleLines } from '../utils/alertResourceState';
+import { projectResourceAlertState } from '../utils/alertResourceState';
+import UnifiedAlertResourcePresentation from '../shared/components/alert/UnifiedAlertResourcePresentation';
 
 // Sprint 290 — HIDE/DETACH (no DELETE). The "Alertas" operational experience
 // leaves the PRIMARY module navigation surface. The domain, the registry, the
@@ -69,51 +69,14 @@ function resolveIcon(iconName) {
 // made entirely by the Capability Public Set, not here.
 // ---------------------------------------------------------------------------
 
-// Sprint 291 — Static icon map resolved once at module scope (same pattern as
-// the certified monitor, Sprint 286 F8): NO resolveAlertIcon call during render
-// → the format alert block never creates components while rendering.
-const FORMAT_STATE_ICON_COMPONENTS = Object.freeze({
-  overdue: resolveAlertIcon('AlertTriangle'),
-  today: resolveAlertIcon('Clock'),
-  upcoming: resolveAlertIcon('Calendar'),
-  active: resolveAlertIcon('CheckCircle2'),
-  completed: resolveAlertIcon('CheckCircle'),
-  cancelled: resolveAlertIcon('AlertOctagon'),
-  disabled: resolveAlertIcon('Bell'),
-  fallback: resolveAlertIcon('Bell'),
-});
-
 // Sprint 291/292 — FORMAT CARD ALERT INDICATOR. Presentational only: consumes
 // the projector output (projectResourceAlertState) already computed from the
-// certified runtime projection. Sprint 292 compacts it: NO "Estado:", NO
-// "Prioridad:", NO open-count, NO repeated day labels (AC-02..AC-06). The card
-// answers ONLY "¿tiene alerta y cuándo debo prestarle atención?".
+// certified runtime projection. Sprint 295 — UNIFIED STANDARD: the format card
+// delegates to the SAME UnifiedAlertResourcePresentation the repository and the
+// category consume (AC-01: compact presentation of Sprint 292 preserved). The
+// card answers ONLY "¿tiene alerta y cuándo debo prestarle atención?".
 function FormatAlertState({ state }) {
-  if (state?.present !== true) return null;
-  const classes = alertVisualClasses(state.color);
-  const IconComponent = FORMAT_STATE_ICON_COMPONENTS[state.status] || FORMAT_STATE_ICON_COMPONENTS.fallback;
-  const schedule = buildScheduleLines(state.events);
-  if (schedule.length === 0) return null;
-  return (
-    <div className={`mt-2 rounded-lg border px-2.5 py-1.5 ${classes.badge}`}>
-      <div className="flex items-center gap-1.5">
-        <IconComponent className="w-3.5 h-3.5 shrink-0" />
-        <span className="text-[11px] font-bold leading-tight">Alerta operacional</span>
-      </div>
-      <div className="mt-0.5 pl-5 space-y-0.5 text-[11px] leading-tight font-semibold">
-        {schedule.map((line) => (
-          <div key={line.day} className="flex flex-wrap items-center gap-x-1">
-            <span className="opacity-90">{line.day}</span>
-            {line.times.map((t, i) => (
-              <span key={`${line.day}:${i}`} className="whitespace-nowrap">
-                {i === 0 ? '' : '·'} {t}
-              </span>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <UnifiedAlertResourcePresentation state={state} />;
 }
 
 function FormsContent({ forms, moduleSlug, moduleId }) {

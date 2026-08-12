@@ -1,93 +1,103 @@
-# Sprint 295 — Disabled Alert Visual Suppression
+# Sprint 295 — Unified Alert Resource Presentation Standard
 
 Rama: `release/stable-sprint79`
-Modo: CONTROLLED PRESENTATIONAL CORRECTION · FORENSIC AUDIT + IMPLEMENTATION
-Dependencias: Sprint 284 · 290 · 291 · 292 · 293 · 294
+Modo: CONTROLLED UI STANDARDIZATION · PRESENTATIONAL ONLY
+Dependencias: Sprint 290 · 291 · 292 · 294
 
-## Objetivo
+## Fase A (incluida en este sprint) — Disabled Alert Visual Suppression
 
-Ocultar completamente del módulo cualquier estado visual correspondiente a una
-alerta `enabled === false`, en las tres superficies: **Formulario**,
-**Repositorio** y **Categoría**. La configuración, la persistencia, el dominio,
-el runtime y las ocurrencias de esa alerta **permanecen intactos** — solo se
-suprime su representación visual.
+Ver `scripts/sprint-295-disabled-alert-visual-suppression.mjs`. Una alerta
+`enabled === false` no se presenta en Formulario / Repositorio / Categoría (el
+selector `projectResourceAlertState` descarta sus ocurrencias y devuelve
+`null`); la configuración, persistencia, dominio, runtime y las ocurrencias
+permanecen intactas.
 
-## Auditoría (forense)
+## Fase B — Unified Alert Resource Presentation (este documento)
 
-Punto de inicio: `src/utils/alertResourceState.js` → `projectResourceAlertState()`
-(el selector de presentación puro establecido por Sprint 290).
+### Objetivo
 
-Hallazgo: `OccurrenceProjection.projectCurrentOccurrences` proyecta ocurrencias
-para TODOS los items con ventana válida (no filtra por `enabled`). El selector
-de presentación clasificaba cada una vía `classifyForPresentation`, que devolvía
-el cubo `disabled` cuando la configuración del item es `enabled === false`.
-Resultado: `present: true, status: 'disabled'` y la UI (RepositoryAlertStateBlock /
-FormatAlertState) lo mostraba como «Estado: Deshabilitada · Próximo vencimiento…».
+Un único estándar visual para las alertas operacionales, independientemente del
+recurso que la consume (Formato / Repositorio / Categoría). La alerta es el
+**estado del recurso**, nunca una segunda funcionalidad.
 
-El runtime (b)lacking de los `badges` NUNCA sufrió el bug: la vinculación usa
-`shouldProduceAlert` (Resolver), que rechaza `enabled === false`, por lo que las
-alerta deshabilitadas no entran al contexto de visibilidad.
+### Estado antes
 
-## Corrección (punto único)
+Dos estándares visuales del mismo dominio:
 
-`projectResourceAlertState()`:
+- **Formato**: bloque compacto `Alerta operacional` + horarios agrupados
+  (Sprint 292).
+- **Repositorio / Categoría**: bloque rico `Estado · Prioridad · Próximo
+  vencimiento · N evento(s) abierto(s)` + lista de eventos.
 
-1. Antes de clasificar, descarta las ocurrencias cuya propia alerta está
-   explícitamente deshabilitada (`cfg?.enabled === false`).
-2. Si no queda ninguna ocurrencia presentable → devuelve `null` (`present: false`
-   implícito). Ninguna superficie muestra nada.
-3. Se elimina el cubo `disabled` del selector (STATUS_PRESENTATION / STATUS_ORDER)
-   y la rama muerta en `classifyForPresentation` — la presentación ya no puede
-   producir un estado «Deshabilitada».
-
-El mapa `categoryAlertStates` del viewer (Sprint 294) recibe `null` para una
-categoría con configuración propia deshabilitada, y la regla de override del
-viewer garantiza que **no cae al fallback del repositorio**.
-
-## Regla única
+### Estándar único
 
 ```
-enabled === false → present = false → no panel, no card, no badge, no schedule,
-                    no «Deshabilitada», no priority, no events.
-alert_config/alertConfiguration → SIGUE PERSISTIENDO.
+┌──────────────────────────────────────┐
+│ ⚠ Alerta operacional                  │
+│   Hoy · 20:37 · 20:40 · 20:41        │
+│   Mañana · 05:11                     │
+└──────────────────────────────────────┘
 ```
 
-## Regla por superficie
+- Header consistente: icono + `Alerta operacional`.
+- Horarios agrupados por día (el día aparece UNA vez por grupo).
+- Sin `Estado:`, sin `Prioridad:`, sin `Próximo vencimiento:`, sin
+  `N evento(s) abierto(s)` (Regla D).
+- Eventos `completed`/`cancelled` NO aparecen como horarios pendientes
+  (Regla B).
+- Responsive: `flex-wrap` + `whitespace-nowrap` — nunca overflow horizontal.
 
-| Recurso | Configuración | Resultado visual |
-|---|---|---|
-| Formulario | `enabled=true` | Mostrar |
-| Formulario | `enabled=false` | Ocultar |
-| Repository | `enabled=true` | Mostrar |
-| Repository | `enabled=false` | Ocultar |
-| Category | `enabled=true` | Mostrar |
-| Category | `enabled=false` | Ocultar |
-| Category sin config + Repository enabled | — | Heredar |
-| Category sin config + Repository disabled | — | Ocultar |
-| Category propia disabled + Repository enabled | `disabled` | **Ocultar (no hereda)** |
+### Fuente única de presentación
 
-## No se toca
+Un componente presentacional puro end-to-end para las tres superficies
+(`Formato`, `Repositorio`, `Categoría`), que consume el estado ya proyectado:
 
-`AlertConfigurationPanel` · `AlertConfigurationPersistenceAdapter` ·
-`AlertConfigurationResolver` · `OccurrenceProjection` · `OccurrenceLifecycle` ·
-`Completion` · `OccurrenceLedger` · `CompletionBridge` · `Scheduler` ·
-`Configuration` · `Persistence` · `Schema` · `documentRepositoriesService` ·
-lógica de categoría/repositorio/formulario (dominio) · `Dashboard KPI` ·
-`AlertMonitoringExperience`.
+```
+    projectResourceAlertState(state)
+                     │
+                     ▼
+         buildScheduleLines(state.events)
+                     │
+                     ▼
+   UnifiedAlertResourcePresentation (presentational-only)
+                     │
+        ┌────────────┼────────────┐
+        ▼            ▼            ▼
+     FORMATO     REPOSITORIO   CATEGORÍA
+```
 
-No se eliminan ocurrencias de alertas deshabilitadas.
+### Archivos
 
-## STOP
-
-Detener si para ocultar se requiere: modificar `OccurrenceProjection` /
-`OccurrenceLifecycle` / `Completion` / persistencia / schema; eliminar
-occurrences; crear identidad/estado nuevo; o lógica específica
-RepositoryAlert/CategoryAlert/FormAlert.
-
-## Archivos
-
-- `src/utils/alertResourceState.js` — selector de presentación (corrección única).
-- `src/modules/documentViewer/ModuleDocumentViewer.jsx` — override de categoría
-  sin caída al repositorio cuando posee configuración propia.
+- `src/shared/components/alert/UnifiedAlertResourcePresentation.jsx` —
+  componente presentacional único (Fase B).
+- `src/pages/DynamicModule.jsx` — `FormatAlertState` delega al componente único
+  (AC-01: compacto de Sprint 292 preservado).
+- `src/modules/documentViewer/ModuleDocumentViewer.jsx` —
+  `RepositoryAlertStateBlock` (repositorio y categoría) delega al componente
+  único; se elimina el bloque rico.
 - `docs/Sprint-295.md` — este documento.
-- `scripts/sprint-295-disabled-alert-visual-suppression.mjs` — certificación.
+- `scripts/sprint-295-unified-alert-resource-presentation.mjs` — certificación.
+
+### Acceptance Criteria (resumen)
+
+AC-01..AC-14: estándar único en las tres superficies, horarios agrupados, sin
+metadata secundaria, una alerta por recurso, eventos completados/cancelados
+excluidos, categoría propia y fallback con el mismo diseño, responsive sin
+overflow. AC-15..AC-22: ni nueva lógica de alertas, ni runtime, ni persistencia,
+ni configuración, ni identidad, ni Completion, ni OccurrenceProjection, ni
+contratos certificados. AC-23 responsive, AC-24 Build PASS, AC-25 tests PASS.
+
+### No se toca
+
+`AlertConfiguration` · `AlertConfigurationPanel` ·
+`AlertConfigurationPersistenceAdapter` · `OccurrenceProjection` ·
+`OccurrenceLifecycle` · `OccurrenceLedger` · `Completion` · `Scheduler` ·
+`RuntimeBinding` · `Resolver` · `Persistence` · `Schema` · `Supabase` y las
+relaciones Repository→Category / Category→Alert / Form→Alert.
+
+### STOP
+
+Detener si se descubre que la unificación requiere modificar proyección,
+lifecycle, completion, persistencia o configuración; crear identidad nueva,
+`Alert*`, store o runtime nuevo; duplicar `useAlertRuntime`; o lógica específica
+de Repository/Category.

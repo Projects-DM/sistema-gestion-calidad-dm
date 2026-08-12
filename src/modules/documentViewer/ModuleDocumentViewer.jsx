@@ -9,7 +9,8 @@ import { usePdfViewerStore } from '../../shared/state/viewer/pdfViewer.store';
 import PdfViewerModal from '../../shared/components/viewers/PdfViewerModal';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
-import { projectResourceAlertState, formatExecutionTime } from '../../utils/alertResourceState';
+import { projectResourceAlertState } from '../../utils/alertResourceState';
+import UnifiedAlertResourcePresentation from '../../shared/components/alert/UnifiedAlertResourcePresentation';
 
 
 function safeFileType(type) {
@@ -17,54 +18,15 @@ function safeFileType(type) {
   return type;
 }
 
-// Sprint 290/291 — Static icon map resolved once (Sprint 286 F8 pattern).
-const REPOSITORY_STATE_ICON_COMPONENTS = Object.freeze({
-  overdue: resolveAlertIcon('AlertTriangle'),
-  today: resolveAlertIcon('Clock'),
-  upcoming: resolveAlertIcon('Calendar'),
-  active: resolveAlertIcon('CheckCircle2'),
-  completed: resolveAlertIcon('CheckCircle'),
-  cancelled: resolveAlertIcon('AlertOctagon'),
-  disabled: resolveAlertIcon('Bell'),
-  fallback: resolveAlertIcon('Bell'),
-});
-
-// Sprint 291 — RICH REPOSITORY/CATEGORY ALERT STATE BLOCK. Presents the alert
-// state projected over THIS repository (one visual alert per repository, the
-// internal occurrence windows as events). PURE PRESENTATION: consumes the
-// projector output, never rebuilds identity/schedules/completion (AC-05..AC-07).
+// Sprint 291 — REPOSITORY/CATEGORY ALERT STATE BLOCK. Sprint 295 — UNIFIED
+// STANDARD: the repository and category surfaces delegate to the SAME
+// UnifiedAlertResourcePresentation the format card consumes (AC-02..AC-14):
+// one header "Alerta operacional", schedule grouped by day via the certified
+// buildScheduleLines, NO Estado/Prioridad/Próximo/open-count. PURE
+// PRESENTATION: consumes the projector output, never rebuilds
+// identity/schedules/completion.
 function RepositoryAlertStateBlock({ state }) {
-  if (state?.present !== true) return null;
-  const classes = alertVisualClasses(state.color);
-  const IconComponent = REPOSITORY_STATE_ICON_COMPONENTS[state.status] || REPOSITORY_STATE_ICON_COMPONENTS.fallback;
-  return (
-    <div className={`mt-2 p-3 rounded-xl border ${classes.badge}`}>
-      <div className="flex items-start gap-2">
-        <IconComponent className="w-4 h-4 mt-0.5 shrink-0" />
-        <div className="text-[11px] leading-snug">
-          <div className="font-bold mb-1">Alerta operacional</div>
-          <div>
-            Estado: <span className="font-bold">{state.statusLabel}</span>
-            {state.priorityLabel ? <span> · Prioridad {state.priorityLabel}</span> : null}
-            {state.nextExecution ? <span> · Próximo vencimiento: {state.nextExecution}</span> : null}
-          </div>
-          {state.openCount > 0 && (
-            <div className="mt-1 font-semibold">{state.openCount} evento(s) abierto(s)</div>
-          )}
-        </div>
-      </div>
-      {state.events?.length > 0 && (
-        <ul className="mt-1.5 space-y-0.5 text-[11px] font-semibold">
-          {state.events.slice(0, 3).map((ev) => (
-            <li key={ev.occurrenceId ?? `${ev.alertId}:${ev.sequence}`}>
-              {ev.statusLabel}
-              {ev.dueMs ? ` · ${formatExecutionTime(ev.dueMs)}` : ''}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+  return <UnifiedAlertResourcePresentation state={state} />;
 }
 
 export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) {
