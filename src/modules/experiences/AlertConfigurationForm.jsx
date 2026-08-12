@@ -28,6 +28,10 @@ import {
  * ignored by the certified Mapper/Validation (extra keys never break the
  * canonical 9-field contract).
  *
+ * Sprint 298 — "Cada año" preset (unit 'years', UNIFIED recurrence calendar).
+ * The Mapper/Normalizer/Resolver already accept `years`; this ONLY exposes the
+ * preset (presentation). No parallel annual form is created.
+ *
  * The form only renders the editable draft, reports errors, calls
  * `onChange(field, value)` per edit and `onSubmit()`/`onReset()`. It never
  * imports Runtime/Engine and never computes severity, risk, due dates or status.
@@ -55,6 +59,7 @@ const SCHEME_OPTIONS = [
   { key: 'diario', label: 'Todos los días', desc: 'Repetir cada día desde el inicio' },
   { key: 'semanal', label: 'Cada semana', desc: 'Repetir semanalmente desde el inicio' },
   { key: 'mensual', label: 'Cada mes', desc: 'Repetir mensualmente desde el inicio' },
+  { key: 'anual', label: 'Cada año', desc: 'Repetir anualmente desde el inicio' },
   { key: 'personalizado', label: 'Personalizado', desc: 'Definir cantidad y unidad' },
 ];
 
@@ -209,7 +214,7 @@ export default function AlertConfigurationForm({ formState, errors = {}, onChang
     } else if (key === 'personalizado') {
       set('periodicityMode')('recurring'); set('expiration')('none'); set('repeatPolicy')('repeat'); setRepeatChoice('si');
     } else {
-      const presets = { diario: 'days', semanal: 'weeks', mensual: 'months' };
+      const presets = { diario: 'days', semanal: 'weeks', mensual: 'months', anual: 'years' };
       set('periodicityMode')('recurring');
       set('periodicityAmount')(1);
       set('periodicityUnit')(presets[key] || 'days');
@@ -340,6 +345,7 @@ function deriveScheme(f) {
       if (u === 'days') return 'diario';
       if (u === 'weeks') return 'semanal';
       if (u === 'months') return 'mensual';
+      if (u === 'years') return 'anual';
     }
     return 'personalizado';
   }

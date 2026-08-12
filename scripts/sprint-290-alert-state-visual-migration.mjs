@@ -86,12 +86,14 @@ check('TEST 16 — resource without alert has no alert state', orphan === null, 
 // TEST 17 — PRIORITY ENRICHMENT (Resolver envelope, DEC-263). The projector
 // consumes priority per alert from the real resource envelope; the UI shows the
 // priorities on each internal event. The head is the occurrence due SOONEST
-// (B 14:00 → vence hoy), so head priority is B's medium. Enrichment, not algebra.
+// (A 08:00 → due 10 ago 08:00, 'today'; B 14:00 is 'upcoming'). Sprint 298:
+// window-correct anchors (CAL383) put the FIRST window on the configured
+// startDate (§7). Enrichment, not algebra.
 const evByAlert = Object.fromEntries(stateA?.events?.map((e) => [e.alertId, e]) ?? []);
 check('TEST 17 — event A priority enriched (high)', evByAlert['12:alert:0']?.priority === 'high', evByAlert['12:alert:0']?.priority || 'none');
 check('TEST 17 — event B priority enriched (medium)', evByAlert['12:alert:1']?.priority === 'medium', evByAlert['12:alert:1']?.priority || 'none');
 check('TEST 17 — priority label present on events', evByAlert['12:alert:0']?.priorityLabel === 'Alta', evByAlert['12:alert:0']?.priorityLabel || 'none');
-check('TEST 17 — head is SOONEST due (B 14:00 vence hoy)', stateA?.events?.[0]?.alertId === '12:alert:1', `${stateA?.events?.[0]?.alertId}:${stateA?.nextExecution}`);
+check('TEST 17 — head is SOONEST due (A 08:00 vence hoy)', stateA?.events?.[0]?.alertId === '12:alert:0', `${stateA?.events?.[0]?.alertId}:${stateA?.nextExecution}`);
 
 // TEST 18 — COMPLETION CONSUMED (no re-derivation). Completing the A occurrence
 // (origin resource) marks it; the PROJECTOR reads the ledger via the projection

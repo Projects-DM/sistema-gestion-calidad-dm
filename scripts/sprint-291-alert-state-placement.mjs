@@ -140,12 +140,14 @@ check('TEST 06 — per-resource isolation (B does not leak to A)', stateA?.event
 // ---------------------------------------------------------------------------
 // TEST 07 — PRIORITY / NEXT EXECUTION ENRICHMENT (Resolver envelope DEC-263).
 // The card consumes priority per alert from the real resource envelope; head is
-// the occurrence due SOONEST. Enrichment, never algebra.
+// the occurrence due SOONEST (A 08:00 → due 10 ago 08:00, 'today'; B 14:00 is
+// 'upcoming'). Sprint 298: window-correct anchors (CAL383) put the FIRST window
+// on the configured startDate (§7). Enrichment, never algebra.
 // ---------------------------------------------------------------------------
 const evByAlert = Object.fromEntries(stateA?.events?.map((e) => [e.alertId, e]) ?? []);
 check('TEST 07 — event A priority enriched (high)', evByAlert['12:alert:0']?.priority === 'high');
 check('TEST 07 — event B priority enriched (medium)', evByAlert['12:alert:1']?.priority === 'medium');
-check('TEST 07 — head is soonest due (B 14:00)', stateA?.events?.[0]?.alertId === '12:alert:1', `${stateA?.events?.[0]?.alertId}:${stateA?.nextExecution}`);
+check('TEST 07 — head is soonest due (A 08:00)', stateA?.events?.[0]?.alertId === '12:alert:0', `${stateA?.events?.[0]?.alertId}:${stateA?.nextExecution}`);
 
 // ---------------------------------------------------------------------------
 // TEST 08 — COMPLETION CONSUMED, NOT RE-DERIVED. Completing the A occurrence

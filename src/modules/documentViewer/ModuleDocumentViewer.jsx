@@ -11,11 +11,30 @@ import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 import { projectResourceAlertState } from '../../utils/alertResourceState';
 import UnifiedAlertResourcePresentation from '../../shared/components/alert/UnifiedAlertResourcePresentation';
+import { COMPLETION_INTENT_EVENT } from '../../core/capabilities/alert/occurrence/CompletionBridge';
+import { OperationalEventBus } from '../../core/capabilities/experiences/OperationalEventBus';
 
 
 function safeFileType(type) {
   if (!type) return 'application/pdf';
   return type;
+}
+
+// Sprint 297 — RESOURCE OWNERSHIP GATE (category vs repository). The documents
+// engine has a single real fulfillment surface (PDF upload). A category that
+// carries its OWN alert configuration emits the completion for the CATEGORY
+// (resourceKind='documentCategory'); a category WITHOUT own configuration
+// belongs to its repository's alert scope and emits the completion for the
+// REPOSITORY (resourceKind='documentRepository'). NEVER both — this is what
+// keeps AC-15 (Category no afecta Repository) and AC-16 (Repository no afecta
+// Category) intact: each upload performs exactly ONE completion.
+function categoryOwnsAlertConfiguration(category) {
+  const raw = category?.alertConfiguration ?? category?.alert_config;
+  return !!(
+    raw &&
+    typeof raw === 'object' &&
+    (Array.isArray(raw.alertConfigurations) ? raw.alertConfigurations.length > 0 : true)
+  );
 }
 
 // Sprint 291 — REPOSITORY/CATEGORY ALERT STATE BLOCK. Sprint 295 — UNIFIED
@@ -212,6 +231,33 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
       setUploading(true);
       await documentsService.uploadRecord(moduleSlug, categoryKey, file, user.id);
 
+      // Sprint 297 — CONTROLLED completion AFTER confirmed persistence
+      // (AC-03/AC-17 "opportune + only on success"): the fact is recorded NOW,
+      // never optimistically. Resource attribution follows OWNERSHIP (see
+      // categoryOwnsAlertConfiguration): a category with own configuration
+      // completes the CATEGORY; a category without it completes the REPOSITORY.
+      // Exactly ONE intent per upload (AC-15/AC-16 isolation). `completedAt` is
+      // intentionally omitted: the bridge stamps Date.now() at publish time
+      // (same moment), keeping the emit pure.
+      const targetCategory = (categories || []).find(
+        (c) => c.category_key === categoryKey,
+      ) || null;
+      if (targetCategory && categoryOwnsAlertConfiguration(targetCategory)) {
+        OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
+          origin: 'resource',
+          resourceKind: 'documentCategory',
+          resourceId: targetCategory.id,
+          moduleId: moduleSlug,
+        });
+      } else if (activeRepositoryId) {
+        OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
+          origin: 'resource',
+          resourceKind: 'documentRepository',
+          resourceId: activeRepositoryId,
+          moduleId: moduleSlug,
+        });
+      }
+
       const records = await documentsService.getRecords(moduleSlug, categoryKey);
       setDocsByCategory((prev) => ({
         ...prev,
@@ -346,14 +392,7 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                     //   owns its alert surface: it MUST NOT fall back to the
                     //   repository alert. Fallback applies ONLY to categories
                     //   with NO configuration of their own.
-                    const catRaw = c?.alertConfiguration ?? c?.alert_config;
-                    const hasOwnCategoryConfig = !!(
-                      catRaw &&
-                      typeof catRaw === 'object' &&
-                      (Array.isArray(catRaw.alertConfigurations)
-                        ? catRaw.alertConfigurations.length > 0
-                        : true)
-                    );
+                    const hasOwnCategoryConfig = categoryOwnsAlertConfiguration(c);
                     const ownCategoryState = categoryAlertStates.get(String(c?.id ?? '')) || null;
                     const categoryOwnerState = hasOwnCategoryConfig
                       ? ownCategoryState

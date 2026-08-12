@@ -32,7 +32,6 @@
  */
 import {
   parseAnchor,
-  cadenceMs,
   occurrenceWindowAt,
 } from './OccurrenceSchedule.js';
 import { createAlertOccurrence, occurrenceIdOf, isAlertOccurrence } from './OccurrenceContract.js';
@@ -94,12 +93,16 @@ export function projectCurrentOccurrences(resources, moduleId, nowMs) {
       (resolution?.collection ?? []).forEach((cfg, idx) => {
         const rawItem = raw[idx];
         const anchorMs = parseAnchor(rawItem || cfg);
-        const cadence = cadenceMs(rawItem?.periodicity ?? cfg?.periodicity);
+        // Sprint 298 — the schedule receives the RICH PERIODICITY
+        // ({ amount, unit }) so months/years project with TRUE calendar
+        // arithmetic (POLICY CAL-001), while hours/days/weeks keep the
+        // certified ms-linear path. Single recurrence engine, ONE algorithm.
+        const periodicity = rawItem?.periodicity ?? cfg?.periodicity;
         // HF1 — BOUNDARY: a candidate with no resolvable anchor (startDate/
         // startTime empty by default, Sprint-254 audit) cannot be scheduled.
         // REJECT the candidate HERE, before ANY window dereference.
         if (!isProjectableOccurrenceCandidate(rawItem || cfg, anchorMs)) return;
-        const window = occurrenceWindowAt(anchorMs, cadence, now);
+        const window = occurrenceWindowAt(anchorMs, periodicity, now);
         // Defense-in-depth: the schedule is the SSOT and may still consolidate
         // to null for NaN anchors; a null window is NEVER dereferenced.
         if (!window) return;
