@@ -13,8 +13,16 @@ import { RuntimePersistenceProviderFactory } from "../factory/RuntimePersistence
  */
 import { RuntimeExecutionAuditRecorder, RuntimeExecutionAuditRegistry } from "../audit";
 
+import { ActivePersistenceProviderManager } from "../runtime/ActivePersistenceProviderManager";
 
+import {
+  RuntimeProviderAnalyticsRegistry,
+  RuntimeProviderAnalyticsEngine,
+} from "../analytics";
 
+import { RuntimeProviderDecisionRegistry } from "../decision";
+
+import { PersistenceExecutionRouter } from "../runtime/PersistenceExecutionRouter";
 
 export class RuntimePersistenceProviderCompositionRoot {
 
@@ -52,21 +60,14 @@ export class RuntimePersistenceProviderCompositionRoot {
     this.auditRecorder = new RuntimeExecutionAuditRecorder(this.auditRegistry);
 
     // Runtime control bindings (future-proof, no orchestration lifecycle)
-    const { ActivePersistenceProviderManager } = require("../runtime/ActivePersistenceProviderManager");
     this.activeProviderManager = new ActivePersistenceProviderManager(this.registry);
 
     // Analytics runtime wiring (Sprint 22.3A)
-    const { RuntimeProviderAnalyticsRegistry, RuntimeProviderAnalyticsEngine } = require("../analytics");
     const analyticsRegistry = new RuntimeProviderAnalyticsRegistry();
     const analyticsEngine = new RuntimeProviderAnalyticsEngine(this.auditRegistry, analyticsRegistry);
 
     // IMPORTANT: keep single router instance; inject only analyticsEngine for this sprint.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { RuntimeProviderDecisionRegistry } = require("../decision");
     const decisionRegistry = new RuntimeProviderDecisionRegistry();
-
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { PersistenceExecutionRouter } = require("../runtime/PersistenceExecutionRouter");
 
     this.executionRouter = new PersistenceExecutionRouter(
       this.activeProviderManager,
