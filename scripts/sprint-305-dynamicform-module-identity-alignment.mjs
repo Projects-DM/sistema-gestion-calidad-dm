@@ -335,17 +335,20 @@ function runLive({ world, providerModuleId, intent, kind, id, resource, nowMs = 
 }
 
 // ---------------------------------------------------------------------------
-// F10 — MODIFICATION GUARD: el ÚNICO src/ modificado en Sprint 305 es
-//       DynamicForm.jsx (Sprint 303 ya está commiteado en el HEAD).
+// F10 — MODIFICATION GUARD: en la ejecución de la CORRECCIÓN (árbol sucio) el
+//       único src/ modificado es DynamicForm.jsx; en ejecuciones POST-commit el
+//       árbol está limpio (el cambio ya vive en el HEAD). Ambas son legítimas.
 // ---------------------------------------------------------------------------
 {
   const { stdout } = await execP('git', ['status', '--short', 'src/'], { cwd: ROOT_DIR });
   const lines = String(stdout).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const tracked = lines.filter((l) => /^ ?M/.test(l));
   const modified = tracked.map((l) => l.replace(/^ ?M\s+/, ''));
-  check('F10 — [305] el único src/ modificado es DynamicForm.jsx (Sprint 305)',
-    modified.length === 1 && modified[0].endsWith('DynamicForm.jsx'),
-    modified.join(' | ') || '(sin cambios en src/)');
+  const clean = modified.length === 0;
+  const onlyForm = modified.length === 1 && modified[0].endsWith('DynamicForm.jsx');
+  check('F10 — [305] único src/ modificado es DynamicForm.jsx (o limpio post-commit)',
+    clean || onlyForm,
+    modified.join(' | ') || '(limpio: cambio ya en HEAD)');
 }
 
 // ---------------------------------------------------------------------------

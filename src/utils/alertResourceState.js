@@ -168,19 +168,32 @@ export function projectResourceAlertState({ occurrences, resourceKind, resourceI
 
   // Enrichment ONLY (Sprint 285 pattern): priority + enabled travel in the
   // resource's Resolver envelope; NEVER re-derived, NEVER new SSOT.
+  // Sprint 310 — CONTROLLED METADATA TRANSPORT. The SAME single Resolver call
+  // (Sprint 309 PIPELINE CERTIFIED) also carries name (item.metadata.name) and
+  // periodicity (item.configuration.periodicity). Both maps are keyed by the
+  // same alertId so the metadata stays isolated per alert (Sprint 267).
   let cfgByAlertId = null;
+  let metaByAlertId = null;
   if (resource) {
     try {
       const envelope = resolveResourceAlertEnvelope(resource);
-      cfgByAlertId = new Map((envelope?.items ?? []).map((it) => [String(it?.alertId ?? ''), it?.configuration ?? null]));
+      cfgByAlertId = new Map();
+      metaByAlertId = new Map();
+      for (const it of (envelope?.items ?? [])) {
+        const alertKey = String(it?.alertId ?? '');
+        cfgByAlertId.set(alertKey, it?.configuration ?? null);
+        metaByAlertId.set(alertKey, it?.metadata ?? null);
+      }
     } catch {
-      cfgByAlertId = null; // enrichment failure must not drop the projected state
+      cfgByAlertId = null;
+      metaByAlertId = null; // enrichment failure must not drop the projected state
     }
   }
 
   const events = matches
     .map((o) => {
       const cfg = cfgByAlertId ? (cfgByAlertId.get(String(o?.alertId ?? '')) ?? null) : null;
+      const meta = metaByAlertId ? (metaByAlertId.get(String(o?.alertId ?? '')) ?? null) : null;
       // Sprint 295 — DISABLED VISUAL SUPPRESSION. An occurrence whose OWN alert
       // is explicitly disabled is NOT presented (no state, no schedule, no
       // priority, no status label, no events). The occurrence is NEVER deleted
@@ -191,6 +204,13 @@ export function projectResourceAlertState({ occurrences, resourceKind, resourceI
       const state = classifyForPresentation(o, nowMs);
       const dueMs = o?.dueAt ?? o?.startsAt ?? null;
       const priority = cfg?.priority || 'medium';
+      // Sprint 310 — per-event metadata transport (same envelope item, same
+      // alertId): name comes ONLY from item.metadata (Sprint 309: name ∉
+      // AlertConfiguration); periodicity comes ONLY from item.configuration.
+      // Absent name → null (never invented); absent/erased periodicity → the
+      // normalized VO value (null only when invalid — no inference from dates).
+      const name = meta?.name || null;
+      const periodicity = cfg?.periodicity ?? null;
       return Object.freeze({
         occurrenceId: o?.occurrenceId ?? null,
         alertId: o?.alertId ?? null,
@@ -204,6 +224,8 @@ export function projectResourceAlertState({ occurrences, resourceKind, resourceI
         persistent: state.persistent === true,
         priority,
         priorityLabel: PRIORITY_LABELS[priority] || 'Media',
+        name,
+        periodicity,
         dueMs,
         sortKey: dueMs === null ? Number.MAX_SAFE_INTEGER : dueMs,
       });
@@ -231,6 +253,10 @@ export function projectResourceAlertState({ occurrences, resourceKind, resourceI
     icon: head.icon,
     priority: head.priority,
     priorityLabel: head.priorityLabel,
+    // Sprint 310 — state-level metadata transport (authoritative head of the
+    // visual state; same single resolver envelope, no second lookup).
+    name: head.name ?? null,
+    periodicity: head.periodicity ?? null,
     nextDue: head.dueMs,
     nextExecution: formatExecutionTime(head.dueMs),
     total: events.length,
