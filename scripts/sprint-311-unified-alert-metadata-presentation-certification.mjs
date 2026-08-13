@@ -17,7 +17,7 @@
  *
  * Ejecutar: node scripts/sprint-311-unified-alert-metadata-presentation-certification.mjs
  */
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -323,7 +323,7 @@ const guard = (src) => {
     308: 'sprint-308-alert-metadata-presentation-elegibility.mjs',
     310: 'sprint-310-alert-metadata-projection-controlled-correction.mjs',
   };
-  const GUARD_ONLY = /modificad|SIN modificaciones|único src\/|alertResourceState\.js|Command failed/;
+const GUARD_ONLY = /modificad|SIN modificaciones|único src\/|alertResourceState\.js|UnifiedAlertResourcePresentation\.jsx|Command failed/;
   const runFamily = async () => {
     const res = {};
     for (const id of FAMILY) {
@@ -344,13 +344,25 @@ const guard = (src) => {
       .filter((l) => !GUARD_ONLY.test(l))
       .map((l) => l.trim());
 
-  // baseline = Sprint 310 state (src de proyección + componente original de
-  // presentación restaurado desde HEAD).
-  await execP('git', ['stash', 'push', '--', 'src/shared/components/alert/UnifiedAlertResourcePresentation.jsx', 'src/utils/alertResourceState.js'], { cwd: ROOT_DIR });
+  // baseline: ambos archivos restaurados a HEAD vía backup plano (NO git stash,
+  // porque las suites de la familia gestionan su propia pila de stash).
+  const changed = ['src/shared/components/alert/UnifiedAlertResourcePresentation.jsx', 'src/utils/alertResourceState.js'];
+  const restoreToHead = async () => {
+    for (const rel of changed) {
+      const abs = join(ROOT_DIR, rel);
+      await execP('git', ['checkout', '--', rel], { cwd: ROOT_DIR });
+      void abs;
+    }
+  };
+  const backups = new Map();
+  const snapshot = () => { for (const rel of changed) backups.set(rel, readFileSync(join(ROOT_DIR, rel), 'utf8')); };
+  const writeBack = () => { for (const rel of changed) writeFileSync(join(ROOT_DIR, rel), backups.get(rel), 'utf8'); };
+
+  snapshot();
+  await restoreToHead();
   let baseline = {};
-  try { baseline = await runFamily(); } finally {
-    await execP('git', ['stash', 'pop'], { cwd: ROOT_DIR });
-  }
+  try { baseline = await runFamily(); } finally { writeBack(); }
+  // post: corrección aplicada
   const post = await runFamily();
 
   for (const id of FAMILY) {
