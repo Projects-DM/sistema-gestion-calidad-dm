@@ -210,7 +210,7 @@ export default function DynamicForm() {
             origin: 'alert',
             resourceKind: 'dynamicForms',
             resourceId: formDef.id,
-            moduleId: moduleSlug,
+            moduleId: formDef?.module_id ?? moduleSlug,
             alertId: alertContext.alertId,
             occurrenceId: alertContext.occurrenceId,
             completedAt,
@@ -220,7 +220,7 @@ export default function DynamicForm() {
             origin: 'resource',
             resourceKind: 'dynamicForms',
             resourceId: formDef.id,
-            moduleId: moduleSlug,
+            moduleId: formDef?.module_id ?? moduleSlug,
             completedAt,
           });
         }

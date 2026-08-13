@@ -161,7 +161,7 @@ console.log('========================================================');
   check('F01 — form guardrail: no alert configuration → NO publication', src.includes('hasAlerts') && src.includes('extractResourceAlertCollection(formDef).length > 0'));
   check('F01 — form emits origin=alert when arrived from alert card (explicit identity)', src.includes("origin: 'alert'") && src.includes('alertContext?.occurrenceId'));
   check('F01 — form emits origin=resource otherwise (bridge resolves)', src.includes("origin: 'resource'"));
-  check('F01 — form intent carries resourceKind/resourceId/moduleId', src.includes("resourceKind: 'dynamicForms'") && src.includes('resourceId: formDef.id') && src.includes('moduleId: moduleSlug'));
+  check('F01 — form intent carries resourceKind/resourceId/moduleId (identidad canónica)', src.includes("resourceKind: 'dynamicForms'") && src.includes('resourceId: formDef.id') && (src.includes('moduleId: formDef?.module_id ?? moduleSlug') || src.includes('moduleId: moduleSlug')));
 }
 
 // ---------------------------------------------------------------------------
