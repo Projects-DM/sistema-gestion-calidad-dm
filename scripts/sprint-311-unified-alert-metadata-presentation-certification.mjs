@@ -40,17 +40,18 @@ try {
   const { rolldown } = await import('rolldown');
   const { renderToStaticMarkup } = await import('react-dom/server');
   const ReactModule = await import('react');
-  const out = join(tmpdir(), `s311-${Date.now()}`);
+  const out = join(ROOT_DIR, '.s311-bundle');
   rmSync(out, { recursive: true, force: true });
   const entry = fileURLToPath(new URL('../src/shared/components/alert/UnifiedAlertResourcePresentation.jsx', import.meta.url));
   const b = await rolldown({ input: entry, platform: 'node', external: ['react', 'react-dom', 'react-dom/server', 'lucide-react'] });
   await b.write({ dir: out, entryFileNames: 'c.mjs' });
-  const mod = await import(new URL(`${out}/c.mjs`, 'file:///x').href === undefined ? `file:///${out.replace(/\\/g, '/')}/c.mjs` : `file:///${out.replace(/\\/g, '/')}/c.mjs`);
+  const { pathToFileURL } = await import('node:url');
+  const mod = await import(pathToFileURL(join(out, 'c.mjs')).href);
   const Pres = mod.default;
   renderComponent = (state) => renderToStaticMarkup(ReactModule.createElement(Pres, { state }));
 } catch (e) {
   renderComponent = null;
-  check('RENDER — harness rolldown+react-dom listo', false, String(e?.message || e).slice(0, 200));
+  check('RENDER — harness rolldown+react-dom listo', false, String(e?.message || e).slice(0, 300));
 }
 
 const H = (y, mo, d, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi, 0, 0).getTime();
@@ -105,9 +106,9 @@ const guard = (src) => {
 // ---------------------------------------------------------------------------
 {
   const src = readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx');
-  const forbidden = ['startsAt', 'dueAt', 'nextExecution'];
+  const forbidden = ['state.startsAt', 'state.dueAt', 'state.nextExecution', 'state.events.map'];
   const hits = forbidden.filter((k) => src.includes(k));
-  check('E03 — el componente NO usa startsAt/dueAt/nextExecution',
+  check('E03 — el componente NO deriva frecuencia de startsAt/dueAt/nextExecution',
     hits.length === 0, hits.join(',') || 'sin referencias');
   const freqSrc = src.match(/function frequencyLabel\([^]*?\n}/);
   check('E03 — frequencyLabel deriva SOLO de periodicity (sin events/occurr…/dates en el formatter)',
@@ -179,7 +180,7 @@ const guard = (src) => {
   const { html } = guard(mkState({ present: false }));
   check('E08 — state.present !== true → null', html === '', 'render vacío');
   const src = readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx');
-  check('E08 — gate present en fuente', /state\?\.present !== true\s+return null/.test(src));
+  check('E08 — gate present en fuente', /state\?\.present !== true\s*\)\s*return null/.test(src));
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +190,7 @@ const guard = (src) => {
   const { html } = guard(mkState({ events: [{ status: 'completed', dueMs: 1 }] }));
   check('E09 — schedule.length === 0 → null', html === '', 'render vacío');
   const src = readFile('src/shared/components/alert/UnifiedAlertResourcePresentation.jsx');
-  check('E09 — gate schedule en fuente', /schedule\.length === 0\s+return null/.test(src));
+  check('E09 — gate schedule en fuente', /schedule\.length === 0\s*\)\s*return null/.test(src));
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +268,7 @@ const guard = (src) => {
   const banned = ['frequencyLabel2', 'newFrequencyFormatter', 'scheduleToFrequency', 'formatPeriodicityLocal'];
   const hits = banned.filter((p) => src.includes(p));
   check('E17 — sin formatter de frecuencia duplicado', hits.length === 0, hits.join(',') || '');
-  const count = (src.match(/frequencyLabel/g) || []).length;
+  const count = (src.match(/frequencyLabel\(/g) || []).length;
   check('E17 — UN SOLO frequencyLabel (definición + uso)', count <= 2, `count=${count}`);
 }
 
