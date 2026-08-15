@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { dynamicService } from '../services/dynamicService';
 import { useAuth } from '../hooks/useAuth';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
@@ -6,6 +6,8 @@ import { exportService } from '../shared/services/exportService';
 import { buildExportFileName } from '../shared/utils/exportFileNameBuilder';
 import { useAlertRuntime } from '../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
+import { buildEvidenceReportModel } from '../shared/report/evidenceReportModel';
+import { renderEvidenceReport } from '../shared/report/evidenceReportRenderer';
 
 import { 
 
@@ -26,7 +28,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export default function DynamicRecordsView({ moduleId }) {
+export default function DynamicRecordsView({ moduleId, moduleName: moduleNameProp = '' }) {
   const { user, rol } = useAuth();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -187,8 +189,9 @@ export default function DynamicRecordsView({ moduleId }) {
   };
 
   const [filter, setFilter] = useState('todos'); // todos, pendientes, aprobados, rechazados, criticos, hoy
-  const [selectedIds, setSelectedIds] = useState([]);
-  
+  const [selectedIds, setSelectedIds] = useState([]);  
+  // Sprint 315 — secuencia del identificador documental del informe (por sesión)
+  const reportSequenceRef = useRef(0);
   // Selection logic
   const toggleSelection = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -307,6 +310,40 @@ export default function DynamicRecordsView({ moduleId }) {
             className="flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl hover:bg-primary/20 font-bold text-sm transition-colors flex-1 sm:flex-none"
           >
             <Download className="w-4 h-4" /> Exportar
+          </button>
+
+          {/* Sprint 315 — Evidence Report Professional Renderer.
+              Genera el INFORME DE EVIDENCIA DE REGISTROS con la MISMA
+              selección que la exportación XLSX (0 consultas nuevas). */}
+          <button
+            onClick={() => {
+              const selectedRecords = records.filter((r) => selectedIds.includes(r.id));
+              if (!selectedRecords.length) {
+                alert('Seleccione al menos un registro para generar el informe.');
+                return;
+              }
+
+              const resolvedModuleId = moduleId || selectedRecords?.[0]?.sgc_forms?.module_id || '';
+              reportSequenceRef.current += 1;
+              const model = buildEvidenceReportModel({
+                registros: selectedRecords,
+                moduleId: resolvedModuleId,
+                moduleName: moduleNameProp,
+                now: new Date(),
+                documentSequence: reportSequenceRef.current,
+              });
+
+              const doc = renderEvidenceReport({ model });
+              const nombreArchivo = buildExportFileName({
+                moduleId: resolvedModuleId,
+                moduleName: model.module.name || 'Informe',
+                formatos: 'pdf',
+              });
+              doc.save(nombreArchivo);
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-100 font-medium text-sm transition-colors flex-1 sm:flex-none"
+          >
+            <FileText className="w-4 h-4" /> Informe de Evidencia
           </button>
 
         </div>

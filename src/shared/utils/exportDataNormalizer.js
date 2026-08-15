@@ -10,7 +10,7 @@ const XLSX_REQUIRED_COLUMNS = [
   'Comentarios'
 ];
 
-function getDateParts(isoString) {
+export function getDateParts(isoString) {
   const d = isoString ? new Date(isoString) : null;
   if (!d || Number.isNaN(d.getTime())) {
     return { fecha: '', hora: '' };
@@ -21,7 +21,7 @@ function getDateParts(isoString) {
   return { fecha, hora };
 }
 
-function normalizeSignatureCell({ valueText, signatureIndex }) {
+export function normalizeSignatureCell({ valueText, signatureIndex }) {
   if (!valueText) {
     return '';
   }
@@ -32,7 +32,7 @@ function normalizeSignatureCell({ valueText, signatureIndex }) {
 }
 
 
-function normalizeEvidenceCell(evidences, evidenceIndexStart) {
+export function normalizeEvidenceCell(evidences, evidenceIndexStart) {
   if (!Array.isArray(evidences) || evidences.length === 0) return [];
 
   return evidences.map((ev, idx) => {
@@ -44,7 +44,7 @@ function normalizeEvidenceCell(evidences, evidenceIndexStart) {
   }).filter(x => x.href);
 }
 
-function normalizeValue({ field, value }) {
+export function normalizeValue({ field, value }) {
   if (!field) return '';
 
   const fieldType = field.field_type;

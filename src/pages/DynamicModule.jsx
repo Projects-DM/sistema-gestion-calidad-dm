@@ -161,8 +161,8 @@ function FormsContent({ forms, moduleSlug, moduleId }) {
   );
 }
 
-function RecordsContent({ moduleId }) {
-  return <DynamicRecordsView moduleId={moduleId} />;
+function RecordsContent({ moduleId, moduleName }) {
+  return <DynamicRecordsView moduleId={moduleId} moduleName={moduleName} />;
 }
 
 function RepositoryContent({ moduleSlug, navigationContext }) {
@@ -439,7 +439,7 @@ export default function DynamicModule() {
       case 'forms':
         return <FormsContent forms={filteredForms} moduleSlug={moduleSlug} moduleId={modInfo.id} />;
       case 'records':
-        return <RecordsContent moduleId={modInfo.id} />;
+        return <RecordsContent moduleId={modInfo.id} moduleName={modInfo.name} />;
       case 'repository':
         return <RepositoryContent moduleSlug={moduleSlug} navigationContext={navigationContext} />;
       case 'operational-experiences':
