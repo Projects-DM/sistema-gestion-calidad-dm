@@ -37,11 +37,14 @@ import { hasExplicitOccurrenceIdentity } from './CompletionSignal.js';
 
 export const RESOURCE_COMPLETED_EVENT = 'RESOURCE_COMPLETED';
 export const RECORDS_STATUS_UPDATED_EVENT = 'RECORDS_STATUS_UPDATED';
-export const RECORDS_APPROVED_EVENT = 'RECORDS_APPROVED';
-export const RECORDS_CLOSED_EVENT = 'RECORDS_CLOSED';
 export const COMPLETION_INTENT_EVENT = 'COMPLETION_INTENT';
 
-const FINAL_SINGLE_EVENTS = [RESOURCE_COMPLETED_EVENT, RECORDS_APPROVED_EVENT, RECORDS_CLOSED_EVENT];
+// Sprint 323 — ONE OPERATIONAL COMPLETION CONTRACT. El único terminal operacional
+// es 'completado'. RECORDS_APPROVED / RECORDS_CLOSED dejaron de publicarse
+// (Aprobar/Cerrar retirados) y ya NO son señales de finalización: el bridge se
+// alimenta únicamente de RESOURCE_COMPLETED (+ RECORDS_STATUS_UPDATED con
+// newStatus 'completado', que cubre la ruta bulk del Cambiar estado).
+const FINAL_SINGLE_EVENTS = [RESOURCE_COMPLETED_EVENT];
 
 /**
  * The Runtime hook registers the certified occurrence projection (reuse).

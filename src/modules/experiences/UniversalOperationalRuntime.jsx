@@ -7,7 +7,7 @@ import UniversalImportWorkflow from './UniversalImportWorkflow';
 import UniversalOperationalDashboard from './UniversalOperationalDashboard';
 import { OperationalExperienceRegistry } from '../../core/capabilities/experiences/OperationalExperienceRegistry.js';
 import { OperationalExperienceLifecycleOrchestrator } from '../../core/capabilities/experiences/OperationalExperienceLifecycleOrchestrator.js';
-import { computeCompletionScore, detectDuplicates, detectInconsistencies, getReadinessState, canApprove, canClose, canReopen } from '../../core/capabilities/experiences/OperationalDataCompletion.js';
+import { computeCompletionScore, detectDuplicates, detectInconsistencies, getReadinessState } from '../../core/capabilities/experiences/OperationalDataCompletion.js';
 import Pagination from '../../components/Pagination.jsx';
 // Sprint 319 — Informe de Evidencia de Registros (REUSE 315): mismo modelo y
 // renderer certificados, via DispatchEvidenceAdapter (0 consultas nuevas).
@@ -275,89 +275,23 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const handleBulkStatus = async (newStatus) => {
     if (selectedIds.size === 0) return;
     try {
-      const result = await orchestratorRef.current.bulkUpdateStatus(Array.from(selectedIds), newStatus, auditUser);
+      // Sprint 323 — SINGLE TERMINAL STATE: al apuntar a 'completado' se pasa el
+      // recordsMap para que el Orchestrator valide canComplete (readiness
+      // validated/ready). Sin readiness certificado → BLOCK con error visible.
+      const recordsMap = newStatus === 'completado'
+        ? Object.fromEntries(records.filter(r => selectedIds.has(r.id)).map(r => [r.id, r]))
+        : {};
+      const result = await orchestratorRef.current.bulkUpdateStatus(Array.from(selectedIds), newStatus, auditUser, recordsMap);
+      if (!result.success) {
+        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'No se pudo actualizar el estado.' });
+        return;
+      }
       const updatedIds = new Set(result.records.map(r => r.id));
       setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
       setSelectedIds(new Set());
       setBanner({ type: 'success', message: `${result.count} registro(s) actualizados a "${newStatus}".` });
     } catch (err) {
       setBanner({ type: 'error', message: 'Error al actualizar estado: ' + err.message });
-    }
-  };
-
-  const handleBulkApprove = async () => {
-    if (selectedIds.size === 0) return;
-    const selected = records.filter(r => selectedIds.has(r.id));
-    const invalid = selected.filter(r => !canApprove(r, contract));
-    if (invalid.length > 0) {
-      setBanner({ type: 'error', message: `${invalid.length} registro(s) no cumplen los requisitos para aprobación (score < 100% o inconsistencias).` });
-      return;
-    }
-    try {
-      // Sprint 132.1 — CERTIFIED: se pasa el recordsMap para que el Orchestrator valide canApprove internamente.
-      const recordsMap = Object.fromEntries(selected.map(r => [r.id, r]));
-      const result = await orchestratorRef.current.approveRecords(Array.from(selectedIds), auditUser, recordsMap);
-      if (!result.success) {
-        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'Error al aprobar.' });
-        return;
-      }
-      const updatedIds = new Set(result.records.map(r => r.id));
-      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
-      setSelectedIds(new Set());
-      setBanner({ type: 'success', message: `${result.count} registro(s) aprobados.` });
-    } catch (err) {
-      setBanner({ type: 'error', message: 'Error al aprobar: ' + err.message });
-    }
-  };
-
-  const handleBulkClose = async () => {
-    if (selectedIds.size === 0) return;
-    const selected = records.filter(r => selectedIds.has(r.id));
-    const invalid = selected.filter(r => !canClose(r, contract));
-    if (invalid.length > 0) {
-      setBanner({ type: 'error', message: `${invalid.length} registro(s) no están aprobados. Apruebe primero.` });
-      return;
-    }
-    try {
-      // Sprint 132.1 — CERTIFIED: se pasa el recordsMap para que el Orchestrator valide canClose internamente.
-      const recordsMap = Object.fromEntries(selected.map(r => [r.id, r]));
-      const result = await orchestratorRef.current.closeRecords(Array.from(selectedIds), auditUser, recordsMap);
-      if (!result.success) {
-        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'Error al cerrar.' });
-        return;
-      }
-      const updatedIds = new Set(result.records.map(r => r.id));
-      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
-      setSelectedIds(new Set());
-      setBanner({ type: 'success', message: `${result.count} registro(s) cerrados.` });
-    } catch (err) {
-      setBanner({ type: 'error', message: 'Error al cerrar: ' + err.message });
-    }
-  };
-
-  const handleBulkReopen = async () => {
-    if (selectedIds.size === 0) return;
-    const selected = records.filter(r => selectedIds.has(r.id));
-    const invalid = selected.filter(r => !canReopen(r, contract));
-    if (invalid.length > 0) {
-      setBanner({ type: 'error', message: `${invalid.length} registro(s) no pueden reabrirse. Solo registros aprobados o cerrados.` });
-      return;
-    }
-    try {
-      // Sprint 132.1 — CERTIFIED: se pasa el recordsMap para que el Orchestrator valide canReopen internamente.
-      // El destino es 'en_proceso' (nunca 'validated' — estado interno del Readiness Engine).
-      const recordsMap = Object.fromEntries(selected.map(r => [r.id, r]));
-      const result = await orchestratorRef.current.reopenRecords(Array.from(selectedIds), auditUser, recordsMap);
-      if (!result.success) {
-        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'Error al reabrir.' });
-        return;
-      }
-      const updatedIds = new Set(result.records.map(r => r.id));
-      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
-      setSelectedIds(new Set());
-      setBanner({ type: 'success', message: `${result.count} registro(s) reabiertos.` });
-    } catch (err) {
-      setBanner({ type: 'error', message: 'Error al reabrir: ' + err.message });
     }
   };
 
@@ -438,7 +372,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const viewFilters = useMemo(() => ({
     all: () => true,
     pending: r => r.estado === 'pendiente' || !r.estado,
-    completed: r => r.estado === 'completado',
+    completed: r => r.estado === 'completado' || r.estado === 'approved' || r.estado === 'cerrado',
     withObservations: r => String(r.observaciones ?? '').trim().length > 0,
     incomplete: r => isIncomplete(r),
     importedToday: r => isImportedToday(r),
@@ -448,8 +382,6 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     inconsistent: r => recordInconsistencies[r.id]?.length > 0,
     duplicates: r => duplicatedIds.has(r.id),
     readyToClose: r => readinessStates[r.id] === 'validated' || readinessStates[r.id] === 'ready',
-    approved: r => r.estado === 'approved',
-    closed: r => r.estado === 'cerrado',
   }), [records, completionScores, readinessStates, recordInconsistencies, duplicatedIds]);
 
   const views = [
@@ -462,8 +394,6 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     { key: 'inconsistent', label: 'Inconsistentes', icon: ShieldAlert },
     { key: 'duplicates', label: 'Duplicados', icon: Copy },
     { key: 'readyToClose', label: 'Listos', icon: CheckCheck },
-    { key: 'approved', label: 'Aprobados', icon: CheckCheck },
-    { key: 'closed', label: 'Cerrados', icon: CheckCircle },
     { key: 'withObservations', label: 'Con observaciones', icon: AlertTriangle },
     { key: 'importedToday', label: 'Importados hoy', icon: Download },
   ];
@@ -697,7 +627,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                 { label: `Total ${contract.metadata.name || 'registros'}`, view: 'all', count: records.length, color: 'text-gray-900', bg: 'bg-white' },
                 { label: 'Pendientes', view: 'pending', count: records.filter(r => r.estado === 'pendiente' || !r.estado).length, color: 'text-yellow-800', bg: 'bg-yellow-50' },
                 { label: 'En proceso', view: 'inProcess', count: records.filter(r => r.estado === 'en_proceso').length, color: 'text-blue-800', bg: 'bg-blue-50' },
-                { label: 'Completados', view: 'completed', count: records.filter(r => r.estado === 'completado' || r.estado === 'cerrado').length, color: 'text-green-800', bg: 'bg-green-50' },
+                { label: 'Completados', view: 'completed', count: records.filter(r => r.estado === 'completado').length, color: 'text-green-800', bg: 'bg-green-50' },
                 { label: 'Alertas', view: 'inconsistent', count: records.filter(r => recordInconsistencies[r.id]?.length > 0 || duplicatedIds.has(r.id)).length, color: 'text-red-800', bg: 'bg-red-50' },
               ].map(item => (
                 <button key={item.label} type="button" onClick={() => handleMetricView(item.view)} aria-pressed={activeView === item.view}
@@ -792,18 +722,6 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                   <option value="">Cambiar estado...</option>
                   {estadoOptions.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <button onClick={handleBulkApprove}
-                  className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100">
-                  Aprobar
-                </button>
-                <button onClick={handleBulkClose}
-                  className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100">
-                  Cerrar
-                </button>
-                <button onClick={handleBulkReopen}
-                  className="px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
-                  Reabrir
-                </button>
                 <button onClick={handleBulkDelete}
                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
                   Eliminar
@@ -878,14 +796,14 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                             {isEstado ? (
                               // Sprint 132.1 — CERTIFIED: badge solo para los 5 estados persistentes.
                               // 'rechazado' eliminado — estado huérfano que nunca se genera.
+                              // Sprint 323 — ONE TERMINAL STATE: los legacy approved/cerrado se
+                              // presentan como 'completado' (compatibilidad de presentación, sin UPDATE masivo).
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                                val === 'completado' ? 'bg-green-100 text-green-800' :
+                                val === 'completado' || val === 'approved' || val === 'cerrado' ? 'bg-green-100 text-green-800' :
                                 val === 'en_proceso' ? 'bg-blue-100 text-blue-800' :
                                 val === 'pendiente' || !val ? 'bg-yellow-100 text-yellow-800' :
-                                val === 'approved' ? 'bg-emerald-100 text-emerald-800' :
-                                val === 'cerrado' ? 'bg-gray-200 text-gray-700' :
                                 'bg-gray-100 text-gray-600'
-                              }`}>{val || 'pendiente'}</span>
+                              }`}>{val === 'approved' || val === 'cerrado' ? 'completado' : (val || 'pendiente')}</span>
                             ) : detectInputType(f, contract) === 'date' ? String(val ?? '').slice(0, 10) : String(val ?? '')}
                           </td>
                         );
