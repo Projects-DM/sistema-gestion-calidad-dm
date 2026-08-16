@@ -204,20 +204,6 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     }
   };
 
-  const handleExportPdf = async (recordsToExport) => {
-    const target = recordsToExport || records;
-    if (!target?.length) {
-      setBanner({ type: 'error', message: 'No hay registros para exportar.' });
-      return;
-    }
-    try {
-      await orchestratorRef.current.exportPdf(target, auditUser);
-      setBanner({ type: 'success', message: 'PDF generado.' });
-    } catch {
-      setBanner({ type: 'error', message: 'No se pudo generar el PDF.' });
-    }
-  };
-
   const handleExportCsv = async (recordsToExport) => {
     const target = recordsToExport || records;
     if (!target?.length) {
@@ -561,17 +547,17 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
             <>
               {contract.capabilities?.supportsExport && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
-                  <button onClick={() => handleExportPdf()} disabled={loading || saving}
+                  <button onClick={() => handleExportCsv()} disabled={loading || saving}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50 whitespace-nowrap">
-                    <FileText className="w-4 h-4" /> PDF
+                    <Download className="w-4 h-4" /> Exportar
                   </button>
                 </RoleGate>
               )}
               {contract.capabilities?.supportsExport && (
                 <RoleGate allowedRoles={['administrador', 'calidad']}>
-                  <button onClick={() => handleExportCsv()} disabled={loading || saving}
+                  <button onClick={handleEvidenceReport} disabled={loading || saving}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl font-medium border border-gray-200 text-sm disabled:opacity-50 whitespace-nowrap">
-                    <Download className="w-4 h-4" /> CSV
+                    <FileText className="w-4 h-4" /> Informe de Evidencia
                   </button>
                 </RoleGate>
               )}
@@ -807,14 +793,6 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                 <button onClick={handleBulkReopen}
                   className="px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100">
                   Reabrir
-                </button>
-                <button onClick={() => handleExportCsv(Array.from(selectedIds).map(id => records.find(r => r.id === id)).filter(Boolean))}
-                  className="px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
-                  Exportar
-                </button>
-                <button onClick={handleEvidenceReport}
-                  className="px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20">
-                  <FileText className="w-3.5 h-3.5 inline mr-1" /> Informe de Evidencia
                 </button>
                 <button onClick={handleBulkDelete}
                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
