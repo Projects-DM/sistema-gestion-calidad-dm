@@ -28,7 +28,11 @@ export const documentsService = {
 
   async uploadProgram(module, file, userId) {
     const supabase = getSupabaseClient();
-    const filePath = `programs/${module}_${Date.now()}.pdf`;
+    // Sprint 327 — extensión derivada del artefacto real (safeStorageName).
+    // PDF → programs/{module}_{ts}.pdf · Foto → programs/{module}_{ts}.jpg.
+    const safeName = safeStorageName(file.name);
+    const ext = safeName.includes('.') ? safeName.split('.').pop() : 'pdf';
+    const filePath = `programs/${module}_${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
