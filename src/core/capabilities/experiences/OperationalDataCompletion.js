@@ -127,16 +127,7 @@ export function getReadinessState(record, contract) {
   return 'validated';
 }
 
-export function canApprove(record, contract) {
+export function canComplete(record, contract) {
   const state = getReadinessState(record, contract);
-  return state === 'ready' || state === 'validated';
-}
-
-export function canClose(record, contract) {
-  const state = getReadinessState(record, contract);
-  return state === 'approved';
-}
-
-export function canReopen(record, contract) {
-  return record.estado === 'cerrado' || record.estado === 'approved';
+  return state === 'validated' || state === 'ready';
 }

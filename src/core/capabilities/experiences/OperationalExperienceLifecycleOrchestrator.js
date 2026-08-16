@@ -10,8 +10,9 @@ import {
 import { OperationalAuditService } from '../../../services/operationalAuditService.js';
 import { OperationalEventBus } from './OperationalEventBus.js';
 // Sprint 132.1 — CERTIFIED: el Orchestrator es la única autoridad del lifecycle.
-// Las validaciones canApprove/canClose/canReopen se ejecutan aquí, no en el UI Runtime.
-import { canApprove, canClose, canReopen } from './OperationalDataCompletion.js';
+// Sprint 323 — ONE OPERATIONAL LIFECYCLE: la validación de finalización
+// (canComplete) se ejecuta aquí, no en el UI Runtime.
+import { canComplete } from './OperationalDataCompletion.js';
 
 export class OperationalExperienceLifecycleOrchestrator {
   constructor(experienceKey) {
@@ -187,11 +188,23 @@ export class OperationalExperienceLifecycleOrchestrator {
     return OperationalAuditService.getRecordTimeline(this.experienceKey, recordId);
   }
 
-  async bulkUpdateStatus(ids, newStatus, user) {
+  async bulkUpdateStatus(ids, newStatus, user, recordsMap = {}) {
     if (!ids?.length) throw new Error('No hay registros seleccionados');
     const allowedStatuses = ['pendiente', 'en_proceso', 'completado'];
     if (!allowedStatuses.includes(newStatus)) {
       return { success: false, errors: [{ field: 'estado', message: `Estado '${newStatus}' no es un estado operacional válido. Solo se permiten: ${allowedStatuses.join(', ')}` }], action: 'validation_failed' };
+    }
+    // Sprint 323 — SINGLE TERMINAL STATE: 'completado' exige readiness certificado
+    // (validated/ready). Reutiliza getReadinessState vía canComplete — sin duplicar
+    // la lógica de score. Si un registro no puede certificarse → BLOCK (no completa).
+    if (newStatus === 'completado') {
+      const invalid = ids.filter(id => {
+        const record = recordsMap[id];
+        return !record || !canComplete(record, this.contract);
+      });
+      if (invalid.length > 0) {
+        return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no cumplen el requisito de finalización (readiness validated/ready requerido).` }], invalidIds: invalid, action: 'validation_failed' };
+      }
     }
     const updated = await this._service.updateBatch(ids, { estado: newStatus });
     OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'bulk_status_updated', newStatus, count: updated.length, ids }, user });
@@ -218,63 +231,6 @@ export class OperationalExperienceLifecycleOrchestrator {
     OperationalAuditService.auditBatchDelete({ experienceKey: this.experienceKey, recordId: null, eventData: { count: deleted.length, ids }, user });
     OperationalEventBus.publish('RECORDS_BULK_DELETED', { experienceKey: this.experienceKey, count: deleted.length, action: 'bulk_deleted' });
     return { success: true, count: deleted.length, action: 'bulk_deleted' };
-  }
-
-  async approveRecords(ids, user, recordsMap = {}) {
-    if (!ids?.length) throw new Error('No hay registros seleccionados');
-    const invalid = ids.filter(id => {
-      const record = recordsMap[id];
-      return record && !canApprove(record, this.contract);
-    });
-    if (invalid.length > 0) {
-      return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no cumplen los requisitos para aprobación (score < 100% o inconsistencias).` }], invalidIds: invalid, action: 'validation_failed' };
-    }
-    const validIds = ids.filter(id => {
-      const record = recordsMap[id];
-      return !record || canApprove(record, this.contract);
-    });
-    const updated = await this._service.updateBatch(validIds, { estado: 'approved' });
-    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'approved', count: updated.length, ids: validIds }, user });
-    OperationalEventBus.publish('RECORDS_APPROVED', { experienceKey: this.experienceKey, count: updated.length, recordIds: validIds, action: 'approved' });
-    return { success: true, count: updated.length, records: updated, action: 'approved' };
-  }
-
-  async closeRecords(ids, user, recordsMap = {}) {
-    if (!ids?.length) throw new Error('No hay registros seleccionados');
-    const invalid = ids.filter(id => {
-      const record = recordsMap[id];
-      return record && !canClose(record, this.contract);
-    });
-    if (invalid.length > 0) {
-      return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no están aprobados. Solo registros con estado 'approved' pueden cerrarse.` }], invalidIds: invalid, action: 'validation_failed' };
-    }
-    const validIds = ids.filter(id => {
-      const record = recordsMap[id];
-      return !record || canClose(record, this.contract);
-    });
-    const updated = await this._service.updateBatch(validIds, { estado: 'cerrado' });
-    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'closed', count: updated.length, ids: validIds }, user });
-    OperationalEventBus.publish('RECORDS_CLOSED', { experienceKey: this.experienceKey, count: updated.length, recordIds: validIds, action: 'closed' });
-    return { success: true, count: updated.length, records: updated, action: 'closed' };
-  }
-
-  async reopenRecords(ids, user, recordsMap = {}) {
-    if (!ids?.length) throw new Error('No hay registros seleccionados');
-    const invalid = ids.filter(id => {
-      const record = recordsMap[id];
-      return record && !canReopen(record, this.contract);
-    });
-    if (invalid.length > 0) {
-      return { success: false, errors: [{ field: 'estado', message: `${invalid.length} registro(s) no pueden reabrirse. Solo registros con estado 'approved' o 'cerrado' pueden reabrirse.` }], invalidIds: invalid, action: 'validation_failed' };
-    }
-    const validIds = ids.filter(id => {
-      const record = recordsMap[id];
-      return !record || canReopen(record, this.contract);
-    });
-    const updated = await this._service.updateBatch(validIds, { estado: 'en_proceso' });
-    OperationalAuditService.auditBatchUpdate({ experienceKey: this.experienceKey, recordId: null, eventData: { action: 'reopened', targetState: 'en_proceso', count: updated.length, ids: validIds }, user });
-    OperationalEventBus.publish('RECORDS_REOPENED', { experienceKey: this.experienceKey, count: updated.length, action: 'reopened' });
-    return { success: true, count: updated.length, records: updated, action: 'reopened' };
   }
 
   destroy() {
