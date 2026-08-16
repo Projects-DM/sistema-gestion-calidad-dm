@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { getSupabaseClient } from '../lib/supabase';
+import { processImage, MEDIA_ERROR } from '../shared/media/mediaProcessor';
 
 export default function EvidenceUploader({ onEvidencesChange }) {
   const [files, setFiles] = useState([]);
@@ -18,13 +19,24 @@ export default function EvidenceUploader({ onEvidencesChange }) {
 
     for (const file of selectedFiles) {
       try {
-        const fileExt = file.name.split('.').pop();
+        // Sprint 325 — Media Processing Core: procesar antes de subir.
+        // Imágenes se procesan (resize + compresión + normalización) y solo se
+        // sube el artefacto procesado. PDFs y demás se preservan sin cambios.
+        let uploadTarget = file;
+        let uploadType = file.type;
+        if (file.type.startsWith('image/')) {
+          const processed = await processImage(file);
+          uploadTarget = processed.file || processed.blob;
+          uploadType = processed.mimeType;
+        }
+
+        const fileExt = (uploadTarget.name || 'jpg').split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
         const filePath = `evidencias/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('documentos-sgc')
-          .upload(filePath, file);
+          .upload(filePath, uploadTarget);
 
         if (uploadError) throw uploadError;
 
@@ -33,10 +45,19 @@ export default function EvidenceUploader({ onEvidencesChange }) {
         newEvidences.push({
           file_url: data.publicUrl,
           storage_path: filePath,
-          file_type: file.type,
+          file_type: uploadType,
           name: file.name
         });
       } catch (error) {
+        // Errores controlados del procesador (diferentes de errores de storage).
+        if (error?.code === MEDIA_ERROR.INVALID_IMAGE) {
+          alert('El archivo no es una imagen válida y no se subió: ' + file.name);
+          continue;
+        }
+        if (error?.code === MEDIA_ERROR.MEDIA_PROCESSING_FAILED) {
+          alert('No se pudo procesar la imagen ' + file.name + ': ' + error.message);
+          continue;
+        }
         console.error('Error uploading evidence:', error);
         alert('Error subiendo ' + file.name + ': ' + error.message);
       }

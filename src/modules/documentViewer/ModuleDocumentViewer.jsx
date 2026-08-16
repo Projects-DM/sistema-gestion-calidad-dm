@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FileText, Folder, UploadCloud, Eye, RefreshCw, Trash2, Loader2 } from 'lucide-react';
+import { FileText, Folder, UploadCloud, Eye, RefreshCw, Trash2, Loader2, Camera } from 'lucide-react';
 
 import { documentRepositoriesService } from '../../services/documentRepositoriesService';
 import { documentsService } from '../../services/documentsService';
@@ -7,6 +7,8 @@ import { useAuth } from '../../hooks/useAuth';
 
 import { usePdfViewerStore } from '../../shared/state/viewer/pdfViewer.store';
 import PdfViewerModal from '../../shared/components/viewers/PdfViewerModal';
+import ImageViewerModal from '../../components/ImageViewerModal';
+import { processImage, MEDIA_ERROR } from '../../shared/media/mediaProcessor';
 import { useAlertRuntime } from '../../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../../utils/alertVisual';
 import { projectResourceAlertState } from '../../utils/alertResourceState';
@@ -18,6 +20,24 @@ import { OperationalEventBus } from '../../core/capabilities/experiences/Operati
 function safeFileType(type) {
   if (!type) return 'application/pdf';
   return type;
+}
+
+const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'];
+
+// Sprint 327 — MIME-AWARE PRESENTATION. El modelo documental no persiste
+// file_type; el tipo se resuelve del artefacto persistido (file_type cuando
+// existe, si no, la extensión de storage_path/file_url). Nunca se asume PDF
+// por el simple hecho de pertenecer al repositorio.
+function resolveDocumentKind(record) {
+  const t = record?.file_type;
+  if (t) {
+    if (t.startsWith('image/')) return 'image';
+    if (t === 'application/pdf') return 'pdf';
+  }
+  const ref = String(record?.storage_path || record?.file_url || record?.name || '');
+  const ext = ref.split('.').pop()?.toLowerCase() || '';
+  if (IMAGE_EXTS.includes(ext)) return 'image';
+  return 'pdf';
 }
 
 // Sprint 297 — RESOURCE OWNERSHIP GATE (category vs repository). The documents
@@ -65,6 +85,7 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
   const viewerDoc = usePdfViewerStore((state) => state.viewerDoc);
   const openViewer = usePdfViewerStore((state) => state.openViewer);
   const closeViewer = usePdfViewerStore((state) => state.closeViewer);
+  const [imageDoc, setImageDoc] = useState(null);
 
   // Sprint 184 — Operational UI Consumption.
   // Consumes ONLY the Runtime Visibility surface for the Document Repository engine.
@@ -219,6 +240,40 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
   }, [moduleSlug]);
 
 
+  const completeAndRefresh = async (categoryKey) => {
+    // Sprint 297 — CONTROLLED completion AFTER confirmed persistence
+    // (AC-03/AC-17 "opportune + only on success"): the fact is recorded NOW,
+    // never optimistically. Resource attribution follows OWNERSHIP (see
+    // categoryOwnsAlertConfiguration): a category with own configuration
+    // completes the CATEGORY; a category without it completes the REPOSITORY.
+    // Exactly ONE intent per upload (AC-15/AC-16 isolation). `completedAt` is
+    // intentionally omitted: the bridge stamps Date.now() at publish time
+    // (same moment), keeping the emit pure.
+    const targetCategory = (categories || []).find(
+      (c) => c.category_key === categoryKey,
+    ) || null;
+    if (targetCategory && categoryOwnsAlertConfiguration(targetCategory)) {
+      OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
+        origin: 'resource',
+        resourceKind: 'documentCategory',
+        resourceId: targetCategory.id,
+        moduleId: moduleSlug,
+      });
+    } else if (activeRepositoryId) {
+      OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
+        origin: 'resource',
+        resourceKind: 'documentRepository',
+        resourceId: activeRepositoryId,
+        moduleId: moduleSlug,
+      });
+    }
+    const records = await documentsService.getRecords(moduleSlug, categoryKey);
+    setDocsByCategory((prev) => ({
+      ...prev,
+      [categoryKey]: records || [],
+    }));
+  };
+
   const handleUpload = async (categoryKey, file) => {
     if (!file) return;
     if (file.type !== safeFileType('application/pdf')) {
@@ -230,39 +285,7 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
     try {
       setUploading(true);
       await documentsService.uploadRecord(moduleSlug, categoryKey, file, user.id);
-
-      // Sprint 297 — CONTROLLED completion AFTER confirmed persistence
-      // (AC-03/AC-17 "opportune + only on success"): the fact is recorded NOW,
-      // never optimistically. Resource attribution follows OWNERSHIP (see
-      // categoryOwnsAlertConfiguration): a category with own configuration
-      // completes the CATEGORY; a category without it completes the REPOSITORY.
-      // Exactly ONE intent per upload (AC-15/AC-16 isolation). `completedAt` is
-      // intentionally omitted: the bridge stamps Date.now() at publish time
-      // (same moment), keeping the emit pure.
-      const targetCategory = (categories || []).find(
-        (c) => c.category_key === categoryKey,
-      ) || null;
-      if (targetCategory && categoryOwnsAlertConfiguration(targetCategory)) {
-        OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
-          origin: 'resource',
-          resourceKind: 'documentCategory',
-          resourceId: targetCategory.id,
-          moduleId: moduleSlug,
-        });
-      } else if (activeRepositoryId) {
-        OperationalEventBus.publish(COMPLETION_INTENT_EVENT, {
-          origin: 'resource',
-          resourceKind: 'documentRepository',
-          resourceId: activeRepositoryId,
-          moduleId: moduleSlug,
-        });
-      }
-
-      const records = await documentsService.getRecords(moduleSlug, categoryKey);
-      setDocsByCategory((prev) => ({
-        ...prev,
-        [categoryKey]: records || [],
-      }));
+      await completeAndRefresh(categoryKey);
     } catch (e) {
       console.error(e);
       alert('Error al subir documento: ' + (e?.message || e));
@@ -271,18 +294,66 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
     }
   };
 
+  // Sprint 327 — TOMAR FOTO. File → processImage() → artefacto procesado →
+  // uploadRecord. Nunca se sube el original si el procesamiento tiene éxito.
+  // Fallback controlado: si el procesamiento falla NO se sube nada.
+  const handlePhotoUpload = async (categoryKey, file) => {
+    if (!file) return;
+    if (!activeRepositoryId) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten archivos de imagen.');
+      return;
+    }
+    try {
+      setUploading(true);
+      let target = file;
+      try {
+        const processed = await processImage(file);
+        target = processed.file || processed.blob;
+      } catch (pErr) {
+        if (pErr?.code === MEDIA_ERROR.INVALID_IMAGE || pErr?.code === MEDIA_ERROR.MEDIA_PROCESSING_FAILED) {
+          alert('No se pudo procesar la foto: ' + pErr.message);
+          return;
+        }
+        throw pErr;
+      }
+      await documentsService.uploadRecord(moduleSlug, categoryKey, target, user.id);
+      await completeAndRefresh(categoryKey);
+    } catch (e) {
+      console.error(e);
+      alert('Error al subir foto: ' + (e?.message || e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleReplace = async (record, file) => {
     // En el sistema actual se maneja como upload de nuevo.
     // Para “reemplazar”, eliminamos y subimos.
+    // Sprint 327 — reemplazo MIME-aware: imagen → processImage → upload;
+    // resto (PDF/etc.) → upload directo. Un único artefacto final.
     try {
       setSaving(true);
       await documentsService.deleteRecord(record.id, record.storage_path);
-      await handleUpload(record.type, file);
+      if (file?.type?.startsWith('image/')) {
+        await handlePhotoUpload(record.type, file);
+      } else {
+        await handleUpload(record.type, file);
+      }
     } catch (e) {
       console.error(e);
       alert('Error al reemplazar documento: ' + (e?.message || e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Sprint 327 — VISOR MIME-AWARE: image/* → ImageViewerModal · else → PdfViewerModal.
+  const handleOpenDocument = (record) => {
+    if (resolveDocumentKind(record) === 'image') {
+      setImageDoc(record);
+    } else {
+      openViewer(record);
     }
   };
 
@@ -416,7 +487,7 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                               </div>
                               <RepositoryAlertStateBlock state={categoryOwnerState} />
                             </div>
-                            <div className="text-xs text-gray-500 font-bold">{records.length} PDFs</div>
+                            <div className="text-xs text-gray-500 font-bold">{records.length} documentos</div>
                           </div>
                       </div>
                     );
@@ -449,13 +520,22 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                         <div className="flex items-center justify-between">
                           <div className="text-sm font-bold text-gray-900">{c.name}</div>
                           {canManage && (
-                            <label
-                              htmlFor={`${uploadInputId}_${c.id}`}
-                              className="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 text-primary rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-50"
-                            >
-                              <UploadCloud className="w-4 h-4" />
-                              Subir
-                            </label>
+                            <div className="flex items-center gap-2">
+                              <label
+                                htmlFor={`${uploadInputId}_${c.id}`}
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 text-primary rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-50"
+                              >
+                                <UploadCloud className="w-4 h-4" />
+                                Subir
+                              </label>
+                              <label
+                                htmlFor={`${uploadInputId}_${c.id}_photo`}
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-primary/10 hover:bg-primary/15 text-primary rounded-xl text-xs font-bold cursor-pointer transition-all disabled:opacity-50"
+                              >
+                                <Camera className="w-4 h-4" />
+                                Tomar foto
+                              </label>
+                            </div>
                           )}
                         </div>
 
@@ -470,6 +550,21 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                               const file = e.target.files?.[0];
                               if (!file) return;
                               handleUpload(c.category_key, file);
+                            }}
+                          />
+                        )}
+                        {canManage && (
+                          <input
+                            id={`${uploadInputId}_${c.id}_photo`}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            disabled={uploading || saving}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              handlePhotoUpload(c.category_key, file);
                             }}
                           />
                         )}
@@ -506,10 +601,10 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                                     <button
                                       type="button"
                                       disabled={uploading || saving}
-                                      onClick={() => openViewer(record)}
+                                      onClick={() => handleOpenDocument(record)}
 
                                       className="p-2 rounded-xl border border-gray-200 hover:border-primary/50 hover:text-primary text-gray-500"
-                                      title="Ver PDF"
+                                      title="Ver documento"
                                     >
                                       <Eye className="w-4 h-4" />
                                     </button>
@@ -520,7 +615,7 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                                         disabled={uploading || saving}
                                         onClick={() => handleDeleteRecord(record)}
                                         className="p-2 rounded-xl border border-gray-200 hover:border-red-200 hover:text-red-600 text-gray-500"
-                                        title="Eliminar PDF"
+                                        title="Eliminar documento"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </button>
@@ -559,7 +654,7 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
                                     <input
                                       id={`${uploadInputId}_${c.id}_${record.id}`}
                                       type="file"
-                                      accept=".pdf"
+                                      accept="image/*,application/pdf"
                                       className="hidden"
                                       disabled={uploading || saving}
                                       onChange={(e) => {
@@ -585,8 +680,9 @@ export default function ModuleDocumentViewer({ moduleSlug, navigationContext }) 
         </div>
       )}
 
-      {/* Visor PDF */}
+      {/* Visores MIME-aware */}
       {viewerDoc && <PdfViewerModal doc={viewerDoc} onClose={closeViewer} />}
+      {imageDoc && <ImageViewerModal doc={imageDoc} onClose={() => setImageDoc(null)} />}
     </div>
   );
 }
