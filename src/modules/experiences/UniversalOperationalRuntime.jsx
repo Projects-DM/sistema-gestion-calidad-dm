@@ -250,6 +250,15 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     }
   };
 
+  // Sprint 321 — indicadores superiores como controles de vista.
+  // Reutiliza exactamente la semantica del selector de Vista Operacional
+  // (misma limpieza de filtros/seleccion). No crea pipeline ni dataset nuevo.
+  const handleMetricView = (viewKey) => {
+    setActiveView(viewKey);
+    setFilters({});
+    setSelectedIds(new Set());
+  };
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!window.confirm(`¿Eliminar ${selectedIds.size} registro(s)?`)) return;
@@ -685,16 +694,17 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
           {!isFormOpen && records.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-px bg-gray-200">
               {[
-                { label: `Total ${contract.metadata.name || 'registros'}`, count: records.length, color: 'text-gray-900', bg: 'bg-white' },
-                { label: 'Pendientes', count: records.filter(r => r.estado === 'pendiente' || !r.estado).length, color: 'text-yellow-800', bg: 'bg-yellow-50' },
-                { label: 'En proceso', count: records.filter(r => r.estado === 'en_proceso').length, color: 'text-blue-800', bg: 'bg-blue-50' },
-                { label: 'Completados', count: records.filter(r => r.estado === 'completado' || r.estado === 'cerrado').length, color: 'text-green-800', bg: 'bg-green-50' },
-                { label: 'Alertas', count: filteredRecords.filter(r => recordInconsistencies[r.id]?.length > 0 || duplicatedIds.has(r.id)).length, color: 'text-red-800', bg: 'bg-red-50' },
+                { label: `Total ${contract.metadata.name || 'registros'}`, view: 'all', count: records.length, color: 'text-gray-900', bg: 'bg-white' },
+                { label: 'Pendientes', view: 'pending', count: records.filter(r => r.estado === 'pendiente' || !r.estado).length, color: 'text-yellow-800', bg: 'bg-yellow-50' },
+                { label: 'En proceso', view: 'inProcess', count: records.filter(r => r.estado === 'en_proceso').length, color: 'text-blue-800', bg: 'bg-blue-50' },
+                { label: 'Completados', view: 'completed', count: records.filter(r => r.estado === 'completado' || r.estado === 'cerrado').length, color: 'text-green-800', bg: 'bg-green-50' },
+                { label: 'Alertas', view: 'inconsistent', count: records.filter(r => recordInconsistencies[r.id]?.length > 0 || duplicatedIds.has(r.id)).length, color: 'text-red-800', bg: 'bg-red-50' },
               ].map(item => (
-                <div key={item.label} className={`${item.bg} px-5 py-4`}>
+                <button key={item.label} type="button" onClick={() => handleMetricView(item.view)} aria-pressed={activeView === item.view}
+                  className={`${item.bg} ${activeView === item.view ? 'ring-2 ring-inset ring-primary/50' : ''} px-5 py-4 text-left transition-colors hover:bg-primary/5 cursor-pointer`}>
                   <p className={`text-2xl font-bold ${item.color}`}>{item.count}</p>
                   <p className="text-xs font-medium text-gray-500 mt-0.5">{item.label}</p>
-                </div>
+                </button>
               ))}
             </div>
           )}
