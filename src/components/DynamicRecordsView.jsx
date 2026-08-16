@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { dynamicService } from '../services/dynamicService';
 import { useAuth } from '../hooks/useAuth';
 import { runtimeActivationLayer } from '../runtime/integration/RuntimeActivationLayer';
@@ -8,6 +8,8 @@ import { useAlertRuntime } from '../hooks/useAlertRuntime';
 import { alertVisualClasses, resolveAlertIcon } from '../utils/alertVisual';
 import { buildEvidenceReportModel } from '../shared/report/evidenceReportModel';
 import { renderEvidenceReport } from '../shared/report/evidenceReportRenderer';
+import { applyFilters, uniqueSorted } from '../shared/filters/filterCore';
+import { toFilterable, statusLabel, hallazgoLabel } from '../shared/filters/sgcFilterAdapter';
 
 import { 
 
@@ -192,6 +194,10 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
   const [selectedIds, setSelectedIds] = useState([]);  
   // Sprint 315 — secuencia del identificador documental del informe (por sesión)
   const reportSequenceRef = useRef(0);
+  // Sprint 317 — Advanced Filtering. Estado local del panel: 0 consultas nuevas.
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({}); // formulario | usuario | estado | verificacion | hallazgo | desde | hasta
   // Selection logic
   const toggleSelection = (id) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -205,20 +211,20 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
     }
   };
 
-  // Filtering Logic
-  const filteredRecords = records.filter(rec => {
-    if (filter === 'todos') return true;
-    if (filter === 'pendientes') return rec.status === 'pendiente_revision';
-    if (filter === 'aprobados') return rec.status === 'aprobado';
-    if (filter === 'rechazados') return rec.status === 'rechazado';
-    if (filter === 'criticos') return rec.computedStatus === 'critico';
-    if (filter === 'hoy') {
-      const today = new Date().setHours(0,0,0,0);
-      const recDate = new Date(rec.created_at).setHours(0,0,0,0);
-      return today === recDate;
-    }
-    return true;
-  });
+  // Sprint 317 — opciones derivadas del dataset cargado (metadata-driven, sin query).
+  const formularioOptions = useMemo(() => uniqueSorted(records.map(r => r.sgc_forms?.name)), [records]);
+  const usuarioOptions = useMemo(() => uniqueSorted(records.map(r => r.profiles?.nombre)), [records]);
+  const estadoOptions = useMemo(() => uniqueSorted(records.map(r => r.status)), [records]);
+  const hallazgoOptions = useMemo(() => uniqueSorted(records.map(r => r.computedStatus)), [records]);
+  const verificacionOptions = ['pendiente', 'verificado'];
+
+  // Sprint 317 — pipeline determinista y local: quick → search → advanced (0 queries).
+  // applyFilters usa Array.prototype.filter sobre el dataset ya cargado y ordenado
+  // (created_at DESC): conserva el orden de la fuente y devuelve los mismos objetos.
+  const filteredRecords = useMemo(() =>
+    applyFilters(records, toFilterable, { quick: filter, search: searchTerm, fields: filters }),
+    [records, filter, searchTerm, filters],
+  );
 
   if (loading) {
     return (
@@ -257,13 +263,22 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
           <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input 
             type="text" 
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por formulario, usuario o hallazgo..." 
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary text-sm"
           />
         </div>
         
         <div className="flex gap-2 w-full sm:w-auto">
-          <button className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-100 font-medium text-sm transition-colors flex-1 sm:flex-none">
+          <button
+            onClick={() => setShowFilters(prev => !prev)}
+            className={`flex items-center justify-center gap-2 px-4 py-2 border rounded-xl font-medium text-sm transition-colors flex-1 sm:flex-none ${
+              showFilters
+                ? 'bg-primary text-white border-primary'
+                : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'
+            }`}
+          >
             <Filter className="w-4 h-4" /> Filtros Avanzados
           </button>
           <button 
@@ -349,6 +364,125 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
         </div>
       </div>
 
+      {/* Sprint 317 — contador de resultados vs selección (§17) */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-gray-500">
+        <span><strong className="text-gray-700">{filteredRecords.length}</strong> registros encontrados</span>
+        {selectedIds.length > 0 && (
+          <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-bold">
+            {selectedIds.length} seleccionados
+          </span>
+        )}
+      </div>
+
+      {/* Sprint 317 — panel de filtros avanzados (patrón visual Despachos/UOR, 0 queries) */}
+      {showFilters && (
+        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <Filter className="w-4 h-4 text-primary" /> Filtros avanzados
+            </h3>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="p-1 text-gray-400 hover:text-gray-600"
+              title="Cerrar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Formulario</label>
+              <select
+                value={filters.formulario || ''}
+                onChange={e => setFilters(prev => ({ ...prev, formulario: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              >
+                <option value="">Todos</option>
+                {formularioOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Usuario</label>
+              <select
+                value={filters.usuario || ''}
+                onChange={e => setFilters(prev => ({ ...prev, usuario: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              >
+                <option value="">Todos</option>
+                {usuarioOptions.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Estado</label>
+              <select
+                value={filters.estado || ''}
+                onChange={e => setFilters(prev => ({ ...prev, estado: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              >
+                <option value="">Todos</option>
+                {estadoOptions.map(o => <option key={o} value={o}>{statusLabel(o)}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Verificación</label>
+              <select
+                value={filters.verificacion || ''}
+                onChange={e => setFilters(prev => ({ ...prev, verificacion: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              >
+                <option value="">Todas</option>
+                {verificacionOptions.map(o => (
+                  <option key={o} value={o}>{o === 'pendiente' ? 'Pendiente de verificación' : 'Verificado'}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Hallazgo</label>
+              <select
+                value={filters.hallazgo || ''}
+                onChange={e => setFilters(prev => ({ ...prev, hallazgo: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              >
+                <option value="">Todos</option>
+                {hallazgoOptions.map(o => <option key={o} value={o}>{hallazgoLabel(o)}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Desde</label>
+              <input
+                type="date"
+                value={filters.desde || ''}
+                onChange={e => setFilters(prev => ({ ...prev, desde: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-bold text-gray-500 uppercase">Hasta</label>
+              <input
+                type="date"
+                value={filters.hasta || ''}
+                onChange={e => setFilters(prev => ({ ...prev, hasta: e.target.value }))}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700"
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={() => setFilters({})}
+              className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg border border-red-200"
+            >
+              Limpiar filtros
+            </button>
+            <button
+              onClick={() => setShowFilters(false)}
+              className="px-3 py-2 text-xs font-bold text-white bg-primary rounded-lg"
+            >
+              Aplicar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Selection Info */}
       {isVerificador && selectedIds.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
@@ -384,19 +518,14 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredRecords.map((rec) => {
-                const isOwnRecord = rec.created_by === user.id;
-                const canVerifyRecord = isVerificador && !isOwnRecord;
-                
                 return (
                   <tr key={rec.id} className={`hover:bg-gray-50/80 transition-colors ${selectedIds.includes(rec.id) ? 'bg-blue-50/30' : ''}`}>
                     {isVerificador && (
                       <td className="px-4 py-4 text-center">
                         <input 
                           type="checkbox" 
-                          className={`rounded border-gray-300 text-primary focus:ring-primary ${!canVerifyRecord && rec.status === 'pendiente_revision' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
                           checked={selectedIds.includes(rec.id)}
-                          disabled={!canVerifyRecord && rec.status === 'pendiente_revision'}
-                          title={!canVerifyRecord && rec.status === 'pendiente_revision' ? "No puedes verificar tus propios registros" : ""}
                           onChange={() => toggleSelection(rec.id)}
                         />
                       </td>
