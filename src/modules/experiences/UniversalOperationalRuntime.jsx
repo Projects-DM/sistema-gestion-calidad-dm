@@ -9,6 +9,12 @@ import { OperationalExperienceRegistry } from '../../core/capabilities/experienc
 import { OperationalExperienceLifecycleOrchestrator } from '../../core/capabilities/experiences/OperationalExperienceLifecycleOrchestrator.js';
 import { computeCompletionScore, detectDuplicates, detectInconsistencies, getReadinessState, canApprove, canClose, canReopen } from '../../core/capabilities/experiences/OperationalDataCompletion.js';
 import Pagination from '../../components/Pagination.jsx';
+// Sprint 319 — Informe de Evidencia de Registros (REUSE 315): mismo modelo y
+// renderer certificados, via DispatchEvidenceAdapter (0 consultas nuevas).
+import { buildDispatchEvidenceRecords } from '../../shared/report/dispatchEvidenceAdapter';
+import { buildEvidenceReportModel } from '../../shared/report/evidenceReportModel';
+import { renderEvidenceReport } from '../../shared/report/evidenceReportRenderer';
+import { buildExportFileName } from '../../shared/utils/exportFileNameBuilder';
 
 function getFieldLabel(field, contract) {
   return contract.ui?.fieldDisplay?.[field]?.label
@@ -81,6 +87,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const [timeline, setTimeline] = useState([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const formTouchedRef = useRef(false);
+  // Sprint 319 — secuencia documental del Informe de Evidencia (por sesión).
+  const reportSequenceRef = useRef(0);
 
   const { user: authUser, profile } = useAuth();
   const auditUser = { id: authUser?.id, nombre: profile?.nombre, email: authUser?.email };
@@ -221,6 +229,38 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       setBanner({ type: 'success', message: 'CSV exportado.' });
     } catch {
       setBanner({ type: 'error', message: 'No se pudo exportar.' });
+    }
+  };
+
+  // Sprint 319 — Informe de Evidencia de Registros (salida documental).
+  // Operación SOLO sobre la selección existente (filteredRecords ∩ selectedIds),
+  // reutilizando el modelo y renderer certificados en Sprint 315 (0 queries,
+  // 0 SSOT, 0 persistencia). El PDF antiguo del orchestrator NO se repara ni se usa.
+  const handleEvidenceReport = () => {
+    const selectedRecords = filteredRecords.filter((record) => selectedIds.has(record.id));
+    if (selectedRecords.length === 0) {
+      setBanner({ type: 'error', message: 'Seleccione al menos un registro para generar el Informe de Evidencia.' });
+      return;
+    }
+    try {
+      reportSequenceRef.current += 1;
+      const model = buildEvidenceReportModel({
+        registros: buildDispatchEvidenceRecords(selectedRecords),
+        moduleId: contract.persistence?.tableName || experienceKey,
+        moduleName: contract.metadata?.name || moduleName,
+        now: new Date(),
+        documentSequence: reportSequenceRef.current,
+      });
+      const doc = renderEvidenceReport({ model });
+      const nombreArchivo = buildExportFileName({
+        moduleId: contract.persistence?.tableName || experienceKey,
+        moduleName: contract.metadata?.name || 'Despachos',
+        formatos: 'pdf',
+      });
+      doc.save(nombreArchivo);
+      setBanner({ type: 'success', message: 'Informe de Evidencia generado.' });
+    } catch {
+      setBanner({ type: 'error', message: 'No se pudo generar el Informe de Evidencia.' });
     }
   };
 
@@ -771,6 +811,10 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
                 <button onClick={() => handleExportCsv(Array.from(selectedIds).map(id => records.find(r => r.id === id)).filter(Boolean))}
                   className="px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                   Exportar
+                </button>
+                <button onClick={handleEvidenceReport}
+                  className="px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 border border-primary/20 rounded-lg hover:bg-primary/20">
+                  <FileText className="w-3.5 h-3.5 inline mr-1" /> Informe de Evidencia
                 </button>
                 <button onClick={handleBulkDelete}
                   className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
