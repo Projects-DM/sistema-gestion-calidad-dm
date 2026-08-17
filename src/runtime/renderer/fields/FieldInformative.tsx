@@ -9,8 +9,8 @@ import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 
 const FieldInformative: React.FC<FieldRenderProps> = ({ fieldDef }) => {
   return (
-    <div className="runtime-field runtime-field-informative">
-      <div className="runtime-field-informative-heading">
+    <div className="runtime-field runtime-field-informative min-w-0">
+      <div className="runtime-field-informative-heading break-words overflow-hidden">
         {fieldDef.label}
       </div>
     </div>
