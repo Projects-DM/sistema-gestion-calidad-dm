@@ -52,7 +52,7 @@ export function createEvidenceReportId(now = new Date(), sequence = 1) {
   return `EVID-${y}-${m}-${d}-${pad(sequence)}`;
 }
 
-function buildRecord(rec) {
+function buildRecord(rec, formFields) {
   const dateParts = getDateParts(rec?.created_at);
   const verifiedParts = rec?.verified_at ? getDateParts(rec.verified_at) : null;
 
@@ -60,6 +60,11 @@ function buildRecord(rec) {
   const signatures = [];
   let signatureCount = 0;
 
+  // Pase de respuesta: firmas se tratan en su propio canal; el resto se
+  // indexa por field_id (la identidad SIEMPRE proyectada en la respuesta)
+  // para el merge con la metadata del formulario (Sprint 333 — corrección
+  // del defecto detectado en Sprint 332: el join sgc_form_fields NO trae id).
+  const valueByField = new Map();
   for (const val of rec?.sgc_response_values || []) {
     const field = val?.sgc_form_fields;
     if (!field) continue;
@@ -81,6 +86,12 @@ function buildRecord(rec) {
       continue;
     }
 
+    // Sprint 333 — INVARIANTE 01: field_id ↔ field.id. Cada respuesta conserva
+    // su identidad (N respuestas → N asociaciones), jamás colapsa bajo undefined.
+    valueByField.set(val.field_id, { val, field });
+  }
+
+  const valueRow = ({ field, val }) => {
     const raw =
       field.field_type === 'boolean' && field?.options?.choices?.length > 0
         ? val?.value_json
@@ -90,10 +101,44 @@ function buildRecord(rec) {
             ? val?.value_number
             : val?.value_text;
 
-    fields.push({
+    return {
       label: field.label,
       value: normalizeValue({ field, value: raw }),
-    });
+      presentation: false,
+      order: 0,
+    };
+  };
+
+  const hasSkeleton = Array.isArray(formFields) && formFields.length > 0;
+  if (hasSkeleton) {
+    // Metadata-driven (Sprint 331): la estructura y el orden provienen de
+    // `sgc_form_fields` (order_index); los campos informativos se convierten
+    // en filas de presentación (sin valor) y las respuestas se intercalan en
+    // su posición canónica. NUNCA se emite "label: —" para un informativo.
+    for (const field of formFields) {
+      const order = typeof field.order_index === 'number' ? field.order_index : 0;
+
+      if (field.field_type === 'informative') {
+        fields.push({ label: field.label, value: '', presentation: true, order });
+        continue;
+      }
+      if (field.field_type === 'signature') continue;
+
+      const entry = valueByField.get(field.id);
+      if (!entry) continue;
+
+      // Sprint 333 — label y opciones provienen del skeleton (metadata
+      // canónica de sgc_form_fields); el valor, de la respuesta resuelta.
+      const row = valueRow({ field, val: entry.val });
+      row.order = order;
+      fields.push(row);
+    }
+    fields.sort((a, b) => a.order - b.order);
+  } else {
+    // Fallback: comportamiento previo (solo valores de respuesta).
+    for (const { field, val } of valueByField.values()) {
+      fields.push(valueRow({ field, val }));
+    }
   }
 
   const evidenceLinks = normalizeEvidenceCell(rec?.sgc_evidences || [], 0);
@@ -150,6 +195,7 @@ export function buildEvidenceReportModel({
   moduleName = '',
   now = new Date(),
   documentSequence = 1,
+  formFieldsByForm = {},
 }) {
   const list = Array.isArray(registros) ? registros : [];
 
@@ -167,7 +213,9 @@ export function buildEvidenceReportModel({
       byForm.set(name, form);
       forms.push(form);
     }
-    byForm.get(name).records.push(buildRecord(rec));
+    byForm.get(name).records.push(
+      buildRecord(rec, formFieldsByForm?.[rec?.sgc_forms?.id]),
+    );
   }
 
   const resolvedModuleId = moduleId || list[0]?.sgc_forms?.module_id || '';

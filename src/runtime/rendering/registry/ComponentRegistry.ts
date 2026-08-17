@@ -18,6 +18,7 @@ import FieldSignature from "../../renderer/fields/FieldSignature";
 import FieldCalculated from "../../renderer/fields/FieldCalculated";
 import FieldWorkflowStatus from "../../renderer/fields/FieldWorkflowStatus";
 import FieldTable from "../../renderer/fields/FieldTable";
+import FieldInformative from "../../renderer/fields/FieldInformative";
 
 /**
  * Component type for a given field type.
@@ -75,6 +76,7 @@ register("signature", FieldSignature as unknown as FieldComponent);
 register("calculated", FieldCalculated as unknown as FieldComponent);
 register("workflow_status", FieldWorkflowStatus as unknown as FieldComponent);
 register("table", FieldTable as unknown as FieldComponent);
+register("informative", FieldInformative as unknown as FieldComponent);
 
 
 

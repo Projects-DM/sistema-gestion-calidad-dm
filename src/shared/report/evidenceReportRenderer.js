@@ -227,24 +227,67 @@ function drawRecord(doc, record, startY) {
   );
   y += 8;
 
+  const informativeFields = record.fields.filter((f) => f.presentation);
+  const responseFields = record.fields.filter((f) => !f.presentation);
+
+  // INFORMACIÓN DEL FORMULARIO — informative como DISPLAY BLOCK: presentación
+  // estructural del formulario, independiente de las respuestas. NO genera
+  // filas en Campo | Valor. Wrapping + altura dinámica + paginación segura.
+  if (informativeFields.length > 0) {
+    y = ensureSpace(doc, y, 24);
+    sectionTitle(doc, y, 'INFORMACIÓN DEL FORMULARIO');
+    y += 26;
+    for (const f of informativeFields) {
+      const lines = doc.splitTextToSize(f.label, CONTENT_W - 16);
+      const bandLineHeight = 12;
+      const bandPadding = 8;
+      const bandHeight = lines.length * bandLineHeight + bandPadding;
+      y = ensureSpace(doc, y, bandHeight + 4);
+      doc.setFillColor(238, 242, 246);
+      doc.rect(MARGIN_X, y, CONTENT_W, bandHeight, 'F');
+      doc.setTextColor(...PRIMARY);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text(lines, MARGIN_X + 8, y + bandPadding + bandLineHeight);
+      y += bandHeight + 4;
+    }
+    y += 4;
+  }
+
+  // DATOS DEL REGISTRO — SOLO campos respondibles (Campo | Valor).
+  // El informative nunca aparece aquí ni como Campo ni como Valor.
   y = ensureSpace(doc, y, 24);
   sectionTitle(doc, y, 'DATOS DEL REGISTRO');
   y += 6;
 
-  const fieldRows = record.fields.length
-    ? record.fields.map((f) => [f.label, f.value])
-    : [['Sin datos registrados', '—']];
-  autoTable(doc, {
-    startY: y,
-    margin: { left: MARGIN_X, right: MARGIN_X },
-    head: [['Campo', 'Valor']],
-    body: fieldRows,
-    styles: { font: 'helvetica', fontSize: 9, cellPadding: 6, overflow: 'linebreak', textColor: INK },
-    headStyles: { fillColor: PRIMARY, textColor: [255, 255, 255], fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: LIGHT_FILL },
-    columnStyles: { 0: { cellWidth: 170, fontStyle: 'bold' } },
-  });
-  y = doc.lastAutoTable.finalY + 10;
+  const tableStyles = {
+    font: 'helvetica',
+    fontSize: 9,
+    cellPadding: 6,
+    overflow: 'linebreak',
+    textColor: INK,
+  };
+  const tableHead = [['Campo', 'Valor']];
+
+  const renderTable = (body) => {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: MARGIN_X, right: MARGIN_X },
+      head: tableHead,
+      body,
+      styles: tableStyles,
+      headStyles: { fillColor: PRIMARY, textColor: [255, 255, 255], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: LIGHT_FILL },
+      columnStyles: { 0: { cellWidth: 170, fontStyle: 'bold' } },
+    });
+    y = doc.lastAutoTable.finalY + 10;
+  };
+
+  if (responseFields.length === 0) {
+    renderTable([['Sin datos registrados', '—']]);
+  } else {
+    renderTable(responseFields.map((f) => [f.label, f.value]));
+  }
 
   y = ensureSpace(doc, y, 24);
   sectionTitle(doc, y, 'FIRMAS Y EVIDENCIAS');

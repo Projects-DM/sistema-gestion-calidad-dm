@@ -113,6 +113,8 @@ export default function BaseGeneric({ fields, values, onChange, comments, onComm
             label="Firme en el cuadro inferior"
           />
         );
+      case 'informative':
+        return null;
       default:
         return (
           <input 
@@ -129,12 +131,20 @@ export default function BaseGeneric({ fields, values, onChange, comments, onComm
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {fields.map(field => (
-        <div key={field.id} className="space-y-2">
-          <label className="block text-sm font-bold text-gray-700">
-            {field.label} {field.required && <span className="text-red-500">*</span>}
-          </label>
-          {renderField(field)}
-        </div>
+        field.field_type === 'informative' ? (
+          <div key={field.id} className="md:col-span-2 pt-2">
+            <div className="text-base font-bold text-gray-900 border-b-2 border-primary/30 pb-1">
+              {field.label}
+            </div>
+          </div>
+        ) : (
+          <div key={field.id} className="space-y-2">
+            <label className="block text-sm font-bold text-gray-700">
+              {field.label} {field.required && <span className="text-red-500">*</span>}
+            </label>
+            {renderField(field)}
+          </div>
+        )
       ))}
     </div>
   );
