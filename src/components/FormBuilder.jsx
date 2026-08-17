@@ -1,8 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Plus, Trash2, Save, GripVertical, Settings, MoveUp, MoveDown, Download, Loader2 } from 'lucide-react';
 import { dynamicService } from '../services/dynamicService';
-import { moveUp as motorMoveUp, moveDown as motorMoveDown, toOrderedIds } from '../order-motor/UniversalOrderMotor';
+import { moveFieldToOrder, normalizeFieldOrder, toOrderedIds } from '../order-motor/UniversalOrderMotor';
 import { reorderFormFieldsOrder } from '../order-motor/adapters/FormBuilderOrderAdapter';
+
+// Sprint 328 — Explicit Field Ordering · CONTROLLED METADATA EXTENSION.
+// El campo conserva su identidad (id) y obtiene una propiedad independiente
+// `order` (posición canónica 1..N). FIELD IDENTITY ≠ FIELD POSITION.
+//
+// ONE REORDER ENGINE: flechas ↑/↓ y "Orden explícito" convergen en
+// moveFieldToOrder(). La persistencia del orden usa el contrato existente
+// (order_index en sgc_form_fields vía FormBuilderOrderAdapter).
+//
+// Orden válido:
+//   Crear: entero 1..N+1 (fuera de rango → clamp: 999 → N+1)
+//   Editar: entero 1..N (fuera de rango → clamp: 999 → N)
+//   Inválido (0, -1, 1.5, abc): rechazado con alerta.
+
+// Entiero estricto positivo: acepta "12" / 12; rechaza 0, -1, 1.5, "abc", "".
+function parseStrictPositiveInt(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).trim();
+  if (!/^\d+$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+// Orden canónico actual de un campo (helper de presentación).
+function currentOrderFor(fieldId, fields) {
+  return fields.find((f) => f && f.id === fieldId)?.order;
+}
 
 export default function FormBuilder({ formDef, importMode, importFormDef, onImportComplete }) {
   const [fields, setFields] = useState([]);
@@ -15,7 +42,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
     label: '',
     field_type: 'text',
     required: true,
-    options: {}
+    options: {},
+    order: ''
   });
 
   const [optUnit, setOptUnit] = useState('');
@@ -52,10 +80,11 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
           id: `_local_${Date.now()}_${i}`,
           order_index: f.order_index || i + 1,
         }));
-        setFields(withIds);
+        setFields(normalizeFieldOrder(withIds));
       } else {
         const data = await dynamicService.getFormFields(formDef.id);
-        setFields(data);
+        // Sprint 328 — normalización canónica: order_index (legacy) → order 1..N.
+        setFields(normalizeFieldOrder(data));
       }
     } catch (error) {
       console.error('Error loading fields:', error);
@@ -89,22 +118,40 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
         optionsJson.commentPrompt = optCommentPrompt || 'Explique la no conformidad';
       }
 
+      // Sprint 328 — orden explícito. Validación: entero 1..N+1; fuera de rango → clamp;
+      // inválido (0, -1, 1.5, abc) → rechazo controlado.
+      const maxCreate = fields.length + 1;
+      const rawOrder = newField.order;
+      const hasOrder = rawOrder !== null && rawOrder !== undefined && String(rawOrder).trim() !== '';
+      let requestedOrder = null;
+      if (hasOrder) {
+        const parsed = parseStrictPositiveInt(rawOrder);
+        if (parsed === null) {
+          alert('Orden inválido. Debe ser un número entero entre 1 y ' + maxCreate + '.');
+          return;
+        }
+        requestedOrder = Math.min(parsed, maxCreate);
+      }
+
       if (importMode) {
-        const orderIndex = fields.length > 0 ? Math.max(...fields.map(f => f.order_index)) + 1 : 1;
-        const newFieldEntry = {
+        const entry = {
           id: genId(),
           name: slugName,
           label: newField.label,
           field_type: newField.field_type,
           required: newField.required,
           options: optionsJson,
-          order_index: orderIndex,
+          order: requestedOrder ?? maxCreate,
         };
-        setFields(prev => [...prev, newFieldEntry]);
+        let nextFields = normalizeFieldOrder([...fields, entry]);
+        if (requestedOrder !== null && requestedOrder < nextFields.length) {
+          nextFields = moveFieldToOrder(nextFields, entry.id, requestedOrder);
+        }
+        setFields(nextFields);
       } else {
         const supabase = (await import('../lib/supabase')).getSupabaseClient();
-        const order_index = fields.length > 0 ? Math.max(...fields.map(f => f.order_index)) + 1 : 1;
-        const { error } = await supabase.from('sgc_form_fields').insert({
+        const order_index = requestedOrder ?? maxCreate;
+        const { data: inserted, error } = await supabase.from('sgc_form_fields').insert({
           form_id: formDef.id,
           name: slugName,
           label: newField.label,
@@ -112,13 +159,26 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
           required: newField.required,
           options: optionsJson,
           order_index: order_index
-        });
+        }).select().single();
         if (error) throw error;
-        await loadFields();
+
+        // Inserción en posición intermedia: misma operación canónica (moveFieldToOrder)
+        // + persistencia existente (FormBuilderOrderAdapter → order_index).
+        let nextFields = normalizeFieldOrder([...fields, inserted]);
+        if (requestedOrder !== null && requestedOrder < nextFields.length) {
+          nextFields = moveFieldToOrder(nextFields, inserted.id, requestedOrder);
+          const res = await reorderFormFieldsOrder({
+            formId: formDef.id,
+            orderedIds: toOrderedIds(nextFields),
+          });
+          if (res?.ok) nextFields = normalizeFieldOrder(res.refreshedFields || []);
+          else throw new Error(res?.errorMessage || 'Error reordenando campos');
+        }
+        setFields(nextFields);
       }
 
       setIsAdding(false);
-      setNewField({ name: '', label: '', field_type: 'text', required: true, options: {} });
+      setNewField({ name: '', label: '', field_type: 'text', required: true, options: {}, order: '' });
       setOptUnit('');
       setOptChoices('');
       setOptComplianceEnabled(false);
@@ -152,7 +212,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
       label: field.label,
       field_type: field.field_type,
       required: field.required,
-      options: field.options || {}
+      options: field.options || {},
+      order: String(field.order ?? '')
     });
     setEditOptUnit(field.options?.unit || '');
     setEditOptChoices(field.options?.choices ? field.options.choices.join(', ') : '');
@@ -186,12 +247,31 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
         optionsJson.commentPrompt = editOptCommentPrompt || 'Explique la no conformidad';
       }
 
+      // Sprint 328 — cambio de orden explícito: entero 1..N; fuera de rango → clamp.
+      const maxEdit = fields.length;
+      const rawOrder = editField.order;
+      const hasOrder = rawOrder !== null && rawOrder !== undefined && String(rawOrder).trim() !== '';
+      const currentOrder = fields.find(f => f.id === editingFieldId)?.order;
+      let requestedOrder = null;
+      if (hasOrder) {
+        const parsed = parseStrictPositiveInt(rawOrder);
+        if (parsed === null) {
+          alert('Orden inválido. Debe ser un número entero entre 1 y ' + maxEdit + '.');
+          return;
+        }
+        requestedOrder = Math.min(parsed, maxEdit);
+      }
+
       if (importMode) {
-        setFields(prev => prev.map(f =>
+        let nextFields = fields.map(f =>
           f.id === editingFieldId
             ? { ...f, label: editField.label, field_type: editField.field_type, required: editField.required, options: optionsJson }
             : f
-        ));
+        );
+        if (requestedOrder !== null && requestedOrder !== currentOrder) {
+          nextFields = moveFieldToOrder(nextFields, editingFieldId, requestedOrder);
+        }
+        setFields(nextFields);
       } else {
         await dynamicService.updateField(editingFieldId, {
           label: editField.label,
@@ -199,7 +279,17 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
           required: editField.required,
           options: optionsJson
         });
-        await loadFields();
+        if (requestedOrder !== null && requestedOrder !== currentOrder) {
+          const nextFields = moveFieldToOrder(fields, editingFieldId, requestedOrder);
+          const res = await reorderFormFieldsOrder({
+            formId: formDef.id,
+            orderedIds: toOrderedIds(nextFields),
+          });
+          if (!res?.ok) throw new Error(res?.errorMessage || 'Error reordenando campos');
+          setFields(normalizeFieldOrder(res.refreshedFields || []));
+        } else {
+          await loadFields();
+        }
       }
 
       handleCancelEdit();
@@ -210,25 +300,25 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
     }
   };
 
-  const handleMoveField = (index, direction) => {
-    if ((direction === 'up' && index === 0) || (direction === 'down' && index === fields.length - 1)) return;
-    const newFields = [...fields];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    [newFields[index], newFields[targetIndex]] = [newFields[targetIndex], newFields[index]];
-    setFields(newFields.map((f, i) => ({ ...f, order_index: i + 1 })));
-  };
+  // Sprint 328 — ARROW CONVERGENCE. Las flechas ↑/↓ y el "Orden explícito"
+// comparten la MISMA operación canónica moveFieldToOrder (ONE REORDER ENGINE).
+const handleMoveField = async (field, direction) => {
+    const current = field.order;
+    const nextOrder = direction === 'up' ? current - 1 : current + 1;
+    if (nextOrder < 1 || nextOrder > fields.length) return;
+    const nextFields = moveFieldToOrder(fields, field.id, nextOrder);
 
-  const handleMoveToDb = async (field, index, direction) => {
-    const sequenceOrdered = fields;
-    const targetId = field.id;
-    const nextSequence = direction === 'up' ? motorMoveUp(sequenceOrdered, targetId) : motorMoveDown(sequenceOrdered, targetId);
-    const nextOrderedIds = toOrderedIds(nextSequence);
+    if (importMode) {
+      setFields(nextFields);
+      return;
+    }
+
     const res = await reorderFormFieldsOrder({
       formId: formDef.id,
-      orderedIds: nextOrderedIds,
+      orderedIds: toOrderedIds(nextFields),
     });
     if (res?.ok) {
-      setFields(res.refreshedFields || []);
+      setFields(normalizeFieldOrder(res.refreshedFields || []));
     } else {
       alert(res?.errorMessage || 'Error reordenando');
     }
@@ -262,7 +352,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
         field_type: f.field_type,
         required: f.required,
         options: f.options || {},
-        order_index: i + 1,
+        order_index: f.order ?? i + 1,
       }));
 
       const { error: fieldsError } = await supabase.from('sgc_form_fields').insert(fieldsToInsert);
@@ -277,6 +367,11 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
   };
 
   const displayName = importMode ? (importFormDef?.name || 'Nuevo Formulario Importado') : formDef?.name;
+
+  // Sprint 328 — orden visual: normalizeFieldOrder + sort by order.
+  // El índice de React puede existir internamente, pero el orden de negocio
+  // pertenece a field.order.
+  const orderedFields = useMemo(() => normalizeFieldOrder(fields), [fields]);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -295,13 +390,13 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
         {loading && !isAdding && <div className="text-gray-500">Cargando campos...</div>}
 
         <div className="space-y-3">
-          {fields.map((field, index) => (
+          {orderedFields.map((field) => (
             <div key={field.id} className="flex items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
               <div className="text-gray-300 cursor-move shrink-0">
                 <GripVertical className="w-5 h-5" />
               </div>
               <div className="w-8 h-8 rounded bg-gray-100 items-center justify-center font-bold text-gray-500 text-sm shrink-0 hidden sm:flex">
-                {index + 1}
+                {field.order}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -314,14 +409,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  disabled={index === 0 || loading}
-                  onClick={() => {
-                    if (importMode) {
-                      handleMoveField(index, 'up');
-                    } else {
-                      handleMoveToDb(field, index, 'up');
-                    }
-                  }}
+                  disabled={field.order === 1 || loading}
+                  onClick={() => handleMoveField(field, 'up')}
                   className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Subir"
                 >
@@ -330,14 +419,8 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
 
                 <button
                   type="button"
-                  disabled={index === fields.length - 1 || loading}
-                  onClick={() => {
-                    if (importMode) {
-                      handleMoveField(index, 'down');
-                    } else {
-                      handleMoveToDb(field, index, 'down');
-                    }
-                  }}
+                  disabled={field.order === orderedFields.length || loading}
+                  onClick={() => handleMoveField(field, 'down')}
                   className="p-2 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Bajar"
                 >
@@ -473,6 +556,19 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
               </label>
             </div>
 
+            <div className="pt-3 border-t border-gray-200">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
+                Orden dentro del formulario (1 - {fields.length})
+              </label>
+              <input
+                type="number" min={1} max={fields.length} step={1}
+                value={editField.order}
+                onChange={e => setEditField({...editField, order: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                placeholder={String(currentOrderFor(editingFieldId, fields) ?? fields.length)}
+              />
+            </div>
+
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
               <button
                 type="button" onClick={handleCancelEdit}
@@ -593,6 +689,19 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
               <label htmlFor="req" className="text-sm font-bold text-gray-700 cursor-pointer">
                 Este campo es obligatorio
               </label>
+            </div>
+
+            <div className="pt-3 border-t border-gray-200">
+              <label className="block text-sm font-bold text-gray-700 mb-1">
+                Orden dentro del formulario (1 - {fields.length + 1})
+              </label>
+              <input
+                type="number" min={1} max={fields.length + 1} step={1}
+                value={newField.order}
+                onChange={e => setNewField({...newField, order: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary"
+                placeholder={String(fields.length + 1)}
+              />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
