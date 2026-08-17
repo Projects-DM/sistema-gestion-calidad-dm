@@ -111,8 +111,8 @@ export default function BaseChecklist({ fields, values, onChange, comments, onCo
       <div className="space-y-4">
         {fields.map(field => (
           field.field_type === 'informative' ? (
-            <div key={field.id} className="p-2">
-              <div className="text-base font-bold text-gray-900 border-b-2 border-blue-300 pb-1">
+            <div key={field.id} className="p-2 min-w-0">
+              <div className="text-base font-bold text-gray-900 border-b-2 border-blue-300 pb-1 break-words overflow-hidden">
                 {field.label}
               </div>
             </div>
