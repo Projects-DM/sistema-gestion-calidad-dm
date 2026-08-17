@@ -122,6 +122,8 @@ export function exportDataNormalizer({ registros }) {
       const field = val?.sgc_form_fields;
       if (!field) return;
 
+      if (field.field_type === 'informative') return;
+
       if (field.field_type === 'signature') {
         sheetColumns.add('Ver Firma');
         return;
@@ -142,6 +144,8 @@ export function exportDataNormalizer({ registros }) {
     responseValues.forEach((val) => {
       const field = val?.sgc_form_fields;
       if (!field) return;
+
+      if (field.field_type === 'informative') return;
 
       if (field.field_type === 'signature') {
         if (!seen.has('Ver Firma')) {
@@ -172,6 +176,8 @@ export function exportDataNormalizer({ registros }) {
     responseValues.forEach((val) => {
       const field = val?.sgc_form_fields;
       if (!field) return;
+
+      if (field.field_type === 'informative') return;
 
       if (field.field_type === 'signature') {
         signatureCount += 1;

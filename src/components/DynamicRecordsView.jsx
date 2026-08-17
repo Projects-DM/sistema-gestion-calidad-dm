@@ -331,12 +331,28 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
               Genera el INFORME DE EVIDENCIA DE REGISTROS con la MISMA
               selección que la exportación XLSX (0 consultas nuevas). */}
           <button
-            onClick={() => {
+            onClick={async () => {
               const selectedRecords = records.filter((r) => selectedIds.includes(r.id));
               if (!selectedRecords.length) {
                 alert('Seleccione al menos un registro para generar el informe.');
                 return;
               }
+
+              // Sprint 331 — el modelo necesita la metadata de campos (informativos
+              // + orden canónico por order_index). Una consulta por formulario de
+              // la selección; fallo → estructura vacía (fallback sin informativos).
+              const formIds = [...new Set(
+                selectedRecords.map((r) => r?.sgc_forms?.id).filter(Boolean),
+              )];
+              const entries = await Promise.all(formIds.map(async (id) => {
+                try {
+                  const fields = await dynamicService.getFormFields(id);
+                  return [id, fields];
+                } catch {
+                  return [id, []];
+                }
+              }));
+              const formFieldsByForm = Object.fromEntries(entries);
 
               const resolvedModuleId = moduleId || selectedRecords?.[0]?.sgc_forms?.module_id || '';
               reportSequenceRef.current += 1;
@@ -346,6 +362,7 @@ export default function DynamicRecordsView({ moduleId, moduleName: moduleNamePro
                 moduleName: moduleNameProp,
                 now: new Date(),
                 documentSequence: reportSequenceRef.current,
+                formFieldsByForm,
               });
 
               const doc = renderEvidenceReport({ model });

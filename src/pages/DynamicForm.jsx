@@ -83,6 +83,7 @@ export default function DynamicForm() {
 
           const initial = {};
           formFields.forEach(f => {
+             if (f.field_type === 'informative') return;
              if (f.field_type === 'boolean' && f.options?.choices?.length > 0) initial[f.id] = '';
              else if (f.field_type === 'boolean') initial[f.id] = false;
              else initial[f.id] = '';
@@ -147,7 +148,7 @@ export default function DynamicForm() {
 
     // Validar manualmente campos requeridos (especialmente componentes custom como firmas)
     for (const field of fields) {
-      if (field.required) {
+      if (field.required && field.field_type !== 'informative') {
         const val = values[field.id];
         if (val === undefined || val === null || val === '') {
           alert(`El campo "${field.label}" es obligatorio. Por favor complételo antes de guardar.`);
@@ -176,6 +177,7 @@ export default function DynamicForm() {
       const processedValues = {};
       Object.keys(values).forEach(key => {
         const fieldDef = fields.find(f => f.id === key);
+        if (fieldDef?.field_type === 'informative') return;
         let val = values[key];
         if (fieldDef?.field_type === 'number' && val !== '' && val !== null) {
           val = parseFloat(val);

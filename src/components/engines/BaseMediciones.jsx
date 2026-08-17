@@ -28,7 +28,18 @@ export default function BaseMediciones({ fields, values, onChange, comments, onC
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {fields.map(field => {
           const val = values[field.id];
-          
+
+          // Special case for informative display fields (Sprint 331)
+          if (field.field_type === 'informative') {
+            return (
+              <div key={field.id} className="md:col-span-2 mt-2">
+                <div className="text-base font-bold text-gray-900 border-b-2 border-cyan-300 pb-1">
+                  {field.label}
+                </div>
+              </div>
+            );
+          }
+
           // Special case for signature
           if (field.field_type === 'signature') {
             return (

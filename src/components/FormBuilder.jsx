@@ -139,7 +139,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
           name: slugName,
           label: newField.label,
           field_type: newField.field_type,
-          required: newField.required,
+          required: newField.field_type === 'informative' ? false : newField.required,
           options: optionsJson,
           order: requestedOrder ?? maxCreate,
         };
@@ -156,7 +156,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
           name: slugName,
           label: newField.label,
           field_type: newField.field_type,
-          required: newField.required,
+          required: newField.field_type === 'informative' ? false : newField.required,
           options: optionsJson,
           order_index: order_index
         }).select().single();
@@ -211,7 +211,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
     setEditField({
       label: field.label,
       field_type: field.field_type,
-      required: field.required,
+      required: field.field_type === 'informative' ? false : field.required,
       options: field.options || {},
       order: String(field.order ?? '')
     });
@@ -265,7 +265,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
       if (importMode) {
         let nextFields = fields.map(f =>
           f.id === editingFieldId
-            ? { ...f, label: editField.label, field_type: editField.field_type, required: editField.required, options: optionsJson }
+            ? { ...f, label: editField.label, field_type: editField.field_type, required: editField.field_type === 'informative' ? false : editField.required, options: optionsJson }
             : f
         );
         if (requestedOrder !== null && requestedOrder !== currentOrder) {
@@ -276,7 +276,7 @@ export default function FormBuilder({ formDef, importMode, importFormDef, onImpo
         await dynamicService.updateField(editingFieldId, {
           label: editField.label,
           field_type: editField.field_type,
-          required: editField.required,
+          required: editField.field_type === 'informative' ? false : editField.required,
           options: optionsJson
         });
         if (requestedOrder !== null && requestedOrder !== currentOrder) {
@@ -488,6 +488,7 @@ const handleMoveField = async (field, direction) => {
                   <option value="boolean">Checklist (Cumple/No Cumple)</option>
                   <option value="select">Lista desplegable</option>
                   <option value="signature">Firma digital</option>
+                  <option value="informative">Texto informativo</option>
                 </select>
               </div>
             </div>
@@ -547,7 +548,8 @@ const handleMoveField = async (field, direction) => {
             <div className="flex items-center gap-2 pt-2">
               <input
                 type="checkbox" id="edit-req"
-                checked={editField.required}
+                checked={editField.required && editField.field_type !== 'informative'}
+                disabled={editField.field_type === 'informative'}
                 onChange={e => setEditField({...editField, required: e.target.checked})}
                 className="w-4 h-4 text-primary focus:ring-primary rounded"
               />
@@ -623,6 +625,7 @@ const handleMoveField = async (field, direction) => {
                   <option value="boolean">Checklist (Cumple/No Cumple)</option>
                   <option value="select">Lista desplegable</option>
                   <option value="signature">Firma digital</option>
+                  <option value="informative">Texto informativo</option>
                 </select>
               </div>
             </div>
@@ -682,7 +685,8 @@ const handleMoveField = async (field, direction) => {
             <div className="flex items-center gap-2 pt-2">
               <input
                 type="checkbox" id="req"
-                checked={newField.required}
+                checked={newField.required && newField.field_type !== 'informative'}
+                disabled={newField.field_type === 'informative'}
                 onChange={e => setNewField({...newField, required: e.target.checked})}
                 className="w-4 h-4 text-primary focus:ring-primary rounded"
               />

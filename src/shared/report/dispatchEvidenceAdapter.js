@@ -45,6 +45,10 @@ export function buildDispatchEvidenceRecord(record) {
   const sgc_response_values = DISPATCH_FIELD_DEFS.map(({ field, label, type }) => {
     const raw = record?.[field];
     return {
+      // Sprint 333 — preservar la identidad field_id: el adapter NO resuelve
+      // valores (responsabilidad del EvidenceReportModel); solo garantiza el
+      // contrato field_id ↔ sgc_form_fields.id para la proyección correcta.
+      field_id: field,
       value_text: raw === null || raw === undefined ? '' : String(raw),
       value_number: type === 'number' ? (Number(raw) || null) : null,
       value_boolean: null,

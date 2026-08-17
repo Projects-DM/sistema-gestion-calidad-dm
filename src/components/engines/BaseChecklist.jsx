@@ -3,6 +3,8 @@ import SignaturePad from '../SignaturePad';
 
 export default function BaseChecklist({ fields, values, onChange, comments, onCommentChange }) {
   const renderFieldInput = (field) => {
+    if (field.field_type === 'informative') return null;
+
     if (field.field_type === 'boolean') {
       const isCompliance = field.options?.choices?.length > 0;
       if (isCompliance) {
@@ -108,14 +110,22 @@ export default function BaseChecklist({ fields, values, onChange, comments, onCo
       
       <div className="space-y-4">
         {fields.map(field => (
-          <div key={field.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl border ${values[field.id] === false || values[field.id] === 'No cumple' ? 'border-red-300 bg-red-50/50' : 'border-gray-100'} gap-4 transition-colors`}>
-            <label className="text-sm font-semibold text-gray-700 flex-1">
-              {field.label} {field.required && <span className="text-red-500">*</span>}
-            </label>
-            <div className={`w-full ${field.field_type === 'boolean' ? 'sm:w-auto flex sm:justify-end' : 'flex-1 max-w-md'}`}>
-              {renderFieldInput(field)}
+          field.field_type === 'informative' ? (
+            <div key={field.id} className="p-2">
+              <div className="text-base font-bold text-gray-900 border-b-2 border-blue-300 pb-1">
+                {field.label}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div key={field.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl border ${values[field.id] === false || values[field.id] === 'No cumple' ? 'border-red-300 bg-red-50/50' : 'border-gray-100'} gap-4 transition-colors`}>
+              <label className="text-sm font-semibold text-gray-700 flex-1">
+                {field.label} {field.required && <span className="text-red-500">*</span>}
+              </label>
+              <div className={`w-full ${field.field_type === 'boolean' ? 'sm:w-auto flex sm:justify-end' : 'flex-1 max-w-md'}`}>
+                {renderFieldInput(field)}
+              </div>
+            </div>
+          )
         ))}
       </div>
     </div>
