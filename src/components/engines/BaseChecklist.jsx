@@ -90,6 +90,22 @@ export default function BaseChecklist({ fields, values, onChange, comments, onCo
       );
     }
 
+    if (field.field_type === 'select') {
+      return (
+        <select
+          required={field.required}
+          value={values[field.id] || ''}
+          onChange={(e) => onChange(field.id, e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+        >
+          <option value="">Seleccione una opción</option>
+          {(field.options?.choices || []).map((opt, i) => (
+            <option key={i} value={opt}>{opt}</option>
+          ))}
+        </select>
+      );
+    }
+
     // fallback for text fields like 'observaciones'
     return (
       <textarea 
