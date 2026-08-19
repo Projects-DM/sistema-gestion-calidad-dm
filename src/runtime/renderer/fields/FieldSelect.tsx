@@ -15,8 +15,10 @@ const FieldSelect: React.FC<FieldRenderProps> = ({ fieldDef, value, onChange, di
   const strVal = value == null ? "" : String(value);
 
   const placeholder = (fieldDef.options?.placeholder as string | undefined) ?? "";
-  const optionsAny = fieldDef.options?.options as unknown;
-  const options = Array.isArray(optionsAny) ? (optionsAny as SelectOption[]) : [];
+  const rawChoices = fieldDef.options?.choices;
+  const choices = Array.isArray(rawChoices) ? (rawChoices as Array<string | SelectOption>) : [];
+  const optLabel = (c: string | SelectOption) => (typeof c === "string" ? c : (c.label ?? ""));
+  const optValue = (c: string | SelectOption) => (typeof c === "string" ? c : (c.value ?? optLabel(c)));
 
   return (
     <div className="runtime-field">
@@ -36,9 +38,9 @@ const FieldSelect: React.FC<FieldRenderProps> = ({ fieldDef, value, onChange, di
         aria-describedby={error ? `${fieldDef.id}-error` : undefined}
       >
         {placeholder ? <option value="">{placeholder}</option> : null}
-        {options.map((opt) => (
-          <option key={String(opt.value)} value={String(opt.value)}>
-            {opt.label}
+        {choices.map((c, i) => (
+          <option key={i} value={optValue(c)}>
+            {optLabel(c)}
           </option>
         ))}
       </select>
