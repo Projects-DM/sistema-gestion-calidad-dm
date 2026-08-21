@@ -9,6 +9,9 @@ import {
 } from './rules/UniversalOperationalRulesEngine.js';
 import { OperationalAuditService } from '../../../services/operationalAuditService.js';
 import { OperationalEventBus } from './OperationalEventBus.js';
+// Sprint 343 — BULK LOT ASSIGNMENT (controlled correction). Única fuente de
+// validación del campo canónico `lote` (VAL-01 obligatorio / VAL-02 trim).
+import { validateLot } from './OperationalLotRules.js';
 // Sprint 132.1 — CERTIFIED: el Orchestrator es la única autoridad del lifecycle.
 // Sprint 323 — ONE OPERATIONAL LIFECYCLE: la validación de finalización
 // (canComplete) se ejecuta aquí, no en el UI Runtime.
@@ -223,6 +226,30 @@ export class OperationalExperienceLifecycleOrchestrator {
       });
     }
     return { success: true, count: updated.length, records: updated, action: 'bulk_status_updated' };
+  }
+
+  // Sprint 343 — BULK LOT ASSIGNMENT (controlled correction).
+  // Semánticamente independiente de bulkUpdateStatus/bulkDelete. NO mezcla
+  // estado + lote. Solo actualiza `lote`; estado y metadata restante intactos.
+  // Sin try/catch: el error original (Supabase/Postgres/RLS/constraint)
+  // se propaga tal cual — la presentación puede envolver el mensaje, nunca
+  // reemplazar la causa.
+  async bulkAssignLot(ids, lote, user) {
+    if (!ids?.length) throw new Error('No hay registros seleccionados');
+    const validation = validateLot(lote);
+    if (!validation.valid) {
+      return { success: false, errors: [{ field: 'lote', code: validation.code, message: validation.message }], action: 'validation_failed' };
+    }
+    // REUSE: updateBatch (chunking 200, applyFieldMapping solo-claves-presentes).
+    // Payload exclusivo { lote } → preserva id/estado/metadata no modificada.
+    const updated = await this._service.updateBatch(ids, { lote: validation.value });
+    OperationalAuditService.auditBatchUpdate({
+      experienceKey: this.experienceKey,
+      recordId: null,
+      eventData: { action: 'bulk_lot_assigned', lote: validation.value, count: updated.length, requested: ids.length, ids },
+      user,
+    });
+    return { success: true, count: updated.length, requested: ids.length, records: updated, action: 'bulk_lot_assigned' };
   }
 
   async bulkDelete(ids, user) {

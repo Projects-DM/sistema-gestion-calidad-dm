@@ -81,6 +81,10 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [filters, setFilters] = useState({});
   const [selectedIds, setSelectedIds] = useState(new Set());
+  // Sprint 343 — BULK LOT ASSIGNMENT: estado del panel "Asignar lote"
+  // (reutiliza selectedIds; NO crea sistema de selección paralelo).
+  const [bulkLotOpen, setBulkLotOpen] = useState(false);
+  const [bulkLotInput, setBulkLotInput] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [timelineRecord, setTimelineRecord] = useState(null);
@@ -257,6 +261,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
     setActiveView(viewKey);
     setFilters({});
     setSelectedIds(new Set());
+    setBulkLotOpen(false);
+    setBulkLotInput('');
   };
 
   const handleBulkDelete = async () => {
@@ -266,6 +272,8 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       await orchestratorRef.current.bulkDelete(Array.from(selectedIds), auditUser);
       setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
       setSelectedIds(new Set());
+      setBulkLotOpen(false);
+      setBulkLotInput('');
       setBanner({ type: 'success', message: `${selectedIds.size} registro(s) eliminados.` });
     } catch (err) {
       setBanner({ type: 'error', message: 'Error al eliminar: ' + err.message });
@@ -289,9 +297,40 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
       const updatedIds = new Set(result.records.map(r => r.id));
       setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
       setSelectedIds(new Set());
+      setBulkLotOpen(false);
+      setBulkLotInput('');
       setBanner({ type: 'success', message: `${result.count} registro(s) actualizados a "${newStatus}".` });
     } catch (err) {
       setBanner({ type: 'error', message: 'Error al actualizar estado: ' + err.message });
+    }
+  };
+
+  // Sprint 343 — BULK LOT ASSIGNMENT (controlled correction).
+  // Operación SOLO sobre Array.from(selectedIds) — nunca filteredRecords.
+  // La validación (VAL-01 obligatorio / VAL-02 trim) vive en el Orchestrator
+  // (OperationalLotRules); aquí solo feedback. Error original preservado.
+  const handleBulkAssignLot = async () => {
+    if (selectedIds.size === 0) return;
+    const lot = bulkLotInput.trim();
+    if (!lot) {
+      setBanner({ type: 'error', message: 'El lote es obligatorio (INVALID_LOT). 0 modificaciones.' });
+      return;
+    }
+    try {
+      const result = await orchestratorRef.current.bulkAssignLot(Array.from(selectedIds), lot, auditUser);
+      if (!result.success) {
+        setBanner({ type: 'error', message: result.errors?.[0]?.message || 'No se pudo asignar el lote.' });
+        return;
+      }
+      const updatedIds = new Set(result.records.map(r => r.id));
+      setRecords(prev => prev.map(r => updatedIds.has(r.id) ? (result.records.find(ur => ur.id === r.id) || r) : r));
+      const missing = (result.requested || result.count) - result.count;
+      setBanner({ type: 'success', message: `${result.count} registro(s) actualizados${missing > 0 ? ` · ${missing} no encontrado(s)` : ''} a lote "${lot}".` });
+      setSelectedIds(new Set());
+      setBulkLotOpen(false);
+      setBulkLotInput('');
+    } catch (err) {
+      setBanner({ type: 'error', message: 'Error al asignar lote: ' + err.message });
     }
   };
 
@@ -643,7 +682,7 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
           <div className="px-4 pt-4 pb-3 border-b border-gray-200 bg-gray-50/30">
             <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-1.5">Vista operacional</label>
             <div className="relative">
-              <select value={activeView} onChange={e => { setActiveView(e.target.value); setFilters({}); setSelectedIds(new Set()); }}
+              <select value={activeView} onChange={e => { setActiveView(e.target.value); setFilters({}); setSelectedIds(new Set()); setBulkLotOpen(false); setBulkLotInput(''); }}
                 className="w-full sm:w-72 appearance-none bg-white border border-gray-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-bold text-gray-900 shadow-sm cursor-pointer">
                 {views.map(v => {
                   const count = viewCounts[v.key];
@@ -714,19 +753,49 @@ export default function UniversalOperationalRuntime({ experienceKey, moduleSlug,
 
           {/* Bulk actions bar */}
           {selectedIds.size > 0 && (
-            <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/10 flex items-center justify-between">
-              <span className="text-xs font-bold text-primary"><strong>{selectedIds.size}</strong> registro(s) seleccionados</span>
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                <select onChange={e => { const v = e.target.value; if (v) { handleBulkStatus(v); e.target.value = ''; } }}
-                  className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700">
-                  <option value="">Cambiar estado...</option>
-                  {estadoOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <button onClick={handleBulkDelete}
-                  className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
-                  Eliminar
-                </button>
+            <div className="px-4 py-2.5 bg-primary/5 border-b border-primary/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-primary"><strong>{selectedIds.size}</strong> registro(s) seleccionados</span>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <select onChange={e => { const v = e.target.value; if (v) { handleBulkStatus(v); e.target.value = ''; } }}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700">
+                    <option value="">Cambiar estado...</option>
+                    {estadoOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  {/* Sprint 343 — Asignar lote. Misma autorización que editar lote
+                      individualmente (RoleGate administrador/calidad/operativo). */}
+                  <RoleGate allowedRoles={['administrador', 'calidad', 'operativo']}>
+                    <button type="button" onClick={() => setBulkLotOpen(v => !v)}
+                      className="px-3 py-1.5 text-xs font-bold text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-primary/5">
+                      Asignar lote
+                    </button>
+                  </RoleGate>
+                  <button onClick={handleBulkDelete}
+                    className="px-3 py-1.5 text-xs font-bold text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50">
+                    Eliminar
+                  </button>
+                </div>
               </div>
+              {bulkLotOpen && (
+                <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    value={bulkLotInput}
+                    onChange={e => setBulkLotInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleBulkAssignLot(); }}
+                    placeholder="Lote (ej. LOT-20260820-001)"
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 min-w-[220px]"
+                  />
+                  <button type="button" onClick={handleBulkAssignLot}
+                    className="px-3 py-1.5 text-xs font-bold text-white bg-primary rounded-lg hover:bg-primary-light">
+                    Aplicar
+                  </button>
+                  <button type="button" onClick={() => { setBulkLotOpen(false); setBulkLotInput(''); }}
+                    className="px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-lg">
+                    Cancelar
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
