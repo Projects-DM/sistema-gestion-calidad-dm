@@ -16,7 +16,10 @@ function applyFieldMapping(record, mapping) {
   if (!mapping) return record;
   const result = { ...record };
   for (const [canonical, dbField] of Object.entries(mapping)) {
-    if (canonical !== dbField) {
+    // Sprint 343 — mapear SOLO claves presentes: evita inyectar null para
+    // campos ausentes en actualizaciones parciales (bulkUpdateStatus,
+    // bulkAssignLot). Preserva la metadata no modificada por el caller.
+    if (canonical !== dbField && Object.prototype.hasOwnProperty.call(record, canonical)) {
       const val = record[canonical];
       if (typeof val === 'string' && val === '') {
         result[dbField] = null;
