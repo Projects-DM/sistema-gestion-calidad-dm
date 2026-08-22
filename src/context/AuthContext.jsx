@@ -3,6 +3,17 @@ import { getSupabaseClient } from '../lib/supabase';
 
 export const AuthContext = createContext({});
 
+/**
+ * Sprint 346 — TENANT ID DERIVATION
+ * Derives tenant identity from user email domain.
+ * Returns null if no user/profile is available.
+ */
+function deriveTenantIdFromEmail(email) {
+  if (!email || typeof email !== 'string') return null;
+  const parts = email.split('@');
+  return parts.length === 2 ? parts[1].toLowerCase() : null;
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -104,6 +115,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const currentRol = profile?.rol || 'consulta';
+  const tenantId = useMemo(() => deriveTenantIdFromEmail(user?.email), [user?.email]);
 
   const value = useMemo(() => ({
     user,
@@ -112,12 +124,13 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     rol: currentRol,
+    tenantId,
     isAdmin: currentRol === 'administrador',
     isCalidad: currentRol === 'calidad',
     isOperativo: currentRol === 'operativo',
     isConsulta: currentRol === 'consulta',
     isConductor: currentRol === 'conductor',
-  }), [user, profile, loading, currentRol]);
+  }), [user, profile, loading, currentRol, tenantId]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

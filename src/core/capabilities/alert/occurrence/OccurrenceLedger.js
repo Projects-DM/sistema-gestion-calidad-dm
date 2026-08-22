@@ -52,19 +52,26 @@ const signals = new Map(); // specific/legacy key -> controlled signal
 let persistencePort = null;
 
 /**
- * The ledger storage key derivation — the ONE authority for the key used by
- * the durable adapter (same identity-derived key `recordCompletion` uses).
- * Exported so the adapter stores AND dedupes by the same key (AC-07).
+ * Sprint 346 — TENANT-SCOPED PERSISTENCE (Controlled Correction).
+ * The storage key now includes tenantId for multi-tenant isolation.
+ * Tenant resolution is the responsibility of the signal producer (CompletionBridge).
  */
+export function getTenantIdFromSignal(signal) {
+  if (!signal || typeof signal !== 'object') return null;
+  return signal.tenantId ?? null;
+}
+
 export function occurrenceCompletionStorageKey(signal) {
   if (!signal || typeof signal !== 'object') return null;
+  const tenantId = getTenantIdFromSignal(signal);
+  const prefix = tenantId ? `tenant::${tenantId}::` : '';
   return hasOccurrenceIdentity(signal)
-    ? specificKeyFor(signal)
-    : resourceKeyFor(signal);
+    ? `${prefix}occurrence::${String(signal?.alertId ?? '')}::${String(signal?.occurrenceId ?? '')}`
+    : `${prefix}resource::${String(signal?.resourceKind ?? '')}::${String(signal?.resourceId ?? '')}::${String(signal?.moduleId ?? '')}`;
 }
 
 function resourceKeyFor({ resourceKind, resourceId, moduleId }) {
-  return `${String(resourceKind ?? '')}::${String(resourceId ?? '')}::${String(moduleId ?? '')}`;
+  return `resource::${String(resourceKind ?? '')}::${String(resourceId ?? '')}::${String(moduleId ?? '')}`;
 }
 
 function specificKeyFor(signal) {
