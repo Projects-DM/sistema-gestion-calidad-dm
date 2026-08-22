@@ -39,6 +39,20 @@ export const RESOURCE_COMPLETED_EVENT = 'RESOURCE_COMPLETED';
 export const RECORDS_STATUS_UPDATED_EVENT = 'RECORDS_STATUS_UPDATED';
 export const COMPLETION_INTENT_EVENT = 'COMPLETION_INTENT';
 
+// Sprint 346 — TENANT-SCOPED PERSISTENCE (Controlled Correction).
+// Tenant identity provider for multi-tenant persistence isolation.
+// The provider returns a tenantId string (e.g., 'dmdistribuciones.com') or null.
+let tenantIdProvider = null;
+
+export function registerTenantIdProvider(provider) {
+  tenantIdProvider = typeof provider === 'function' ? provider : null;
+  return tenantIdProvider !== null;
+}
+
+function getCurrentTenantId() {
+  return typeof tenantIdProvider === 'function' ? tenantIdProvider() : null;
+}
+
 // Sprint 323 — ONE OPERATIONAL COMPLETION CONTRACT. El único terminal operacional
 // es 'completado'. RECORDS_APPROVED / RECORDS_CLOSED dejaron de publicarse
 // (Aprobar/Cerrar retirados) y ya NO son señales de finalización: el bridge se
@@ -87,6 +101,7 @@ function inferSingleSignal(payload) {
     resourceKind: payload?.resourceKind ?? 'dynamicRecords',
     resourceId,
     moduleId: payload?.moduleId ?? payload?.experienceKey ?? null,
+    tenantId: getCurrentTenantId(),
     completedAt: Number.isFinite(payload?.completedAt) ? payload.completedAt : Date.now(),
   };
 }
@@ -96,6 +111,7 @@ function recordBulk(payload) {
   const base = {
     resourceKind: payload?.resourceKind ?? 'dynamicRecords',
     moduleId: payload?.moduleId ?? payload?.experienceKey ?? null,
+    tenantId: getCurrentTenantId(),
     completedAt: Number.isFinite(payload?.completedAt) ? payload.completedAt : Date.now(),
   };
   for (const recordId of payload.recordIds) {
@@ -114,6 +130,8 @@ export function handleCompletionIntent(intent) {
   if (!intent || typeof intent !== 'object') return null;
   if (!intent.resourceKind || !intent.resourceId) return null;
 
+  const tenantId = getCurrentTenantId();
+
   if (intent.origin === 'alert') {
     // Explicit identity is REQUIRED and is NEVER guessed (Sprint 279 §4).
     if (!hasExplicitOccurrenceIdentity(intent)) return null;
@@ -121,6 +139,7 @@ export function handleCompletionIntent(intent) {
       resourceKind: intent.resourceKind,
       resourceId: intent.resourceId,
       moduleId: intent.moduleId ?? null,
+      tenantId,
       origin: 'alert',
       alertId: intent.alertId,
       occurrenceId: intent.occurrenceId,
@@ -146,6 +165,7 @@ export function handleCompletionIntent(intent) {
       resourceKind: intent.resourceKind,
       resourceId: intent.resourceId,
       moduleId: intent.moduleId ?? resolved.moduleId ?? null,
+      tenantId,
       origin: 'resource',
       alertId: resolved.alertId,
       occurrenceId: resolved.occurrenceId,

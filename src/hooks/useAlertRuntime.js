@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
 import AlertCapability from '../core/capabilities/alert/index.js';
 import { provideAlertDashboardData } from '../core/capabilities/alert/runtime-consumption/AlertDashboardDataProvider.js';
 import { provideNotificationRequests } from '../core/capabilities/alert/notification-activation/NotificationActivationProvider.js';
@@ -16,6 +17,7 @@ import projectCurrentOccurrences from '../core/capabilities/alert/occurrence/Occ
 import {
   wireCompletionBridge,
   registerCompletionOccurrenceProvider,
+  registerTenantIdProvider,
   COMPLETION_INTENT_EVENT,
 } from '../core/capabilities/alert/occurrence/CompletionBridge.js';
 import { OperationalEventBus } from '../core/capabilities/experiences/OperationalEventBus.js';
@@ -363,6 +365,7 @@ function alertsFromDescriptor(descriptor, module) {
 }
 
 export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
+  const { tenantId } = useAuth();
   const [existing, setExisting] = useState(null);
   // Sprint 297 — COMPLETION REACTIVITY (presentation-only). After a completed
   // action the projected occurrences must reflect the fresh ledger fact in the
@@ -552,6 +555,7 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
   // occurrence deterministically (DeterministicCompletionResolver) without the
   // bridge fetching or re-evaluating anything.
   useEffect(() => {
+    registerTenantIdProvider(() => tenantId);
     const unwire = wireCompletionBridge();
     registerCompletionOccurrenceProvider(() =>
       projectCurrentOccurrences(existing, base.moduleId ?? moduleSlug ?? module),
@@ -567,7 +571,7 @@ export function useAlertRuntime({ moduleId, module, moduleSlug } = {}) {
       unwire?.();
       unsubscribeTick?.();
     };
-  }, [existing, base, moduleId, module, moduleSlug]);
+  }, [existing, base, moduleId, module, moduleSlug, tenantId]);
 
   return {
     consumption,
