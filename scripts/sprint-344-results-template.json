@@ -1,0 +1,16 @@
+{
+  "Q01_bucket": null,
+  "Q02_all_policies": null,
+  "Q03_insert_policies": null,
+  "Q04_bucket_in_policies": null,
+  "Q05_profiles": null,
+  "Q06_foldername_test": null,
+  "Q07_foldername_firmas": null,
+  "Q08_foldername_evidencias": null,
+  "Q09_current_profile": null,
+  "Q10_distinct_folders": null,
+  "Q11_permissive_restrictive": null,
+  "Q12_policy_overlap": null,
+  "Q13_authenticated_role": null,
+  "Q14_path_conditions": null
+}
