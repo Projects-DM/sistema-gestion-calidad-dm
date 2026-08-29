@@ -21,6 +21,7 @@ export const AuthProvider = ({ children }) => {
   const supabase = getSupabaseClient();
 
   const fetchAndSetProfile = useCallback(async (userId) => {
+    if (!supabase) return;
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }) => {
 
       if (data && data.activo === false) {
         console.warn('Usuario inactivo, cerrando sesión');
-        await supabase.auth.signOut();
+        if (supabase) await supabase.auth.signOut();
         setProfile(null);
         setUser(null);
         return;
@@ -103,13 +104,18 @@ export const AuthProvider = ({ children }) => {
   }, [supabase, fetchAndSetProfile]);
 
   const signIn = async (email, password) => {
+    if (!supabase) {
+      throw new Error('Supabase no está configurado o el cliente no está inicializado.');
+    }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setProfile(null);
   };
