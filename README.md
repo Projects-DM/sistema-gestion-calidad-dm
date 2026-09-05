@@ -1,112 +1,382 @@
-# 🛡️ Sistema de Gestión de Calidad (SGC) - DM Distribuciones
+# 🛡️ Sistema de Gestión de Calidad (SGC) — DM Distribuciones
 
-¡Bienvenido al **Sistema de Gestión de Calidad (SGC)** de **DM Distribuciones**! Esta es una plataforma web enterprise de nivel industrial diseñada para digitalizar, automatizar, verificar y auditar en tiempo real todos los procesos de calidad, trazabilidad logística, mantenimiento y gestión documental de una organización.
-
-La plataforma destaca por su **arquitectura dinámica basada en datos (Data-Driven)** que permite a los administradores diseñar, activar y configurar nuevos formularios de inspección en minutos desde la interfaz gráfica, eliminando por completo la necesidad de alterar el código fuente o realizar complejas migraciones en la base de datos.
-
----
-
-## 🚀 Tecnologías Clave
-
-El sistema está construido sobre un stack moderno de alto rendimiento, optimizado para ser ágil, responsivo y sumamente interactivo:
-
-*   **Core**: React 19 (SPA) + Vite 8
-*   **Estilos**: Tailwind CSS 4 + PostCSS (Aesthetics Premium con micro-animaciones interactivas)
-*   **Base de Datos y Backend (BaaS)**: Supabase (PostgreSQL 15 + Autenticación JWT + Row Level Security)
-*   **Gestión Documental & Reportes**:
-    *   `jspdf` y `jspdf-autotable` para la exportación de certificados de calidad y hojas de control en formato PDF.
-    *   `xlsx` para la importación por lotes de registros históricos y despachos desde planillas Excel.
-    *   `date-fns` para manipulación de fechas en auditorías.
-    *   `lucide-react` para iconografía dinámica.
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20%2B%20Auth%20%2B%20Storage-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![TypeScript](https://img.shields.io/badge/JavaScript-ES2024-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## 📋 Requisitos Previos
+## 📋 Project Overview
 
-Antes de levantar el proyecto localmente, asegúrate de tener instalado lo siguiente en tu entorno de desarrollo:
+### What is this?
 
-*   **Node.js**: Versión `v18.0.0` o superior (Se recomienda **`v20.x` LTS** para máxima estabilidad).
-*   **Gestor de paquetes**: `npm` (v9 o superior) que se incluye por defecto con Node.js.
-*   **Cuenta de Supabase**: Para la creación de la base de datos PostgreSQL, autenticación y almacenamiento de evidencias (Bucket de Storage).
+**Sistema de Gestión de Calidad (SGC)** — **DM Distribuciones** is an **enterprise-grade web application** designed to **digitize, automate, and audit quality management processes** for industrial distribution operations. The platform replaces manual, paper-based quality control processes with a centralized, traceable, and auditable digital platform.
+
+### Problem
+
+Industrial quality management traditionally relies on:
+
+* **Paper-based forms** and Excel spreadsheets scattered across locations
+* **Manual data entry** leading to transcription errors and data loss
+* **Disconnected evidence** (photos, signatures) stored separately from records
+* **No real-time visibility** into quality metrics across sites
+* **Manual audit trails** that are incomplete or reconstructed post-facto
+* **Difficult cross-site compliance reporting** requiring manual consolidation
+
+### Solution
+
+A **metadata-driven, runtime-executed web application** that provides:
+
+* **Centralized quality operations** — One platform for all quality processes
+* **Dynamic forms engine** — Configure 100+ form types without code changes
+* **Real-time traceability** — End-to-end traceability from creation to completion
+* **Tenant-scoped persistence** — Multi-tenant isolation with shared cross-browser state
+* **Evidence-driven workflows** — Photo evidence, digital signatures, digital certificates
+* **Temporal recurrence engine** — Calendar-aware scheduling with anchor immutability
+* **Full audit trail** — Immutable audit logs for regulatory compliance (INVIMA, ISO)
 
 ---
 
-## 🔧 Inicialización e Instalación
+## 🏗️ Architecture Overview
 
-Sigue estos sencillos pasos para levantar el entorno de desarrollo local en pocos minutos:
+### Architectural Principles
 
-### 1. Clonar o Descargar el Proyecto
-Asegúrate de estar en el directorio raíz del proyecto:
-```bash
-cd sistema-gestion-calidad-dm-v1
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          ARCHITECTURAL PRINCIPLES                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Metadata-Driven      │ Forms defined in DB, not hardcoded             │
+│  Runtime-Driven       │ Engine interprets metadata at runtime          │
+│  Capability-Driven    │ Fine-grained authorization via capabilities    │
+│  Tenant-Scoped        │ Multi-tenant isolation via email domain        │
+│  Contract-Based       │ Explicit invariants enforced by contracts      │
+│  Temporal Logic       │ Calendar-aware recurrence with anchor immutability│
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Instalar Dependencias
-Instala los módulos de Node especificados en el `package.json`:
+### High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           FRONTEND (React 19 + Vite 8)                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐  │
+│  │ Router   │→ │ Modules  │→ │ DynamicForm  │→ │ Runtime Engine     │  │
+│  └──────────┘  └──────────┘  └──────────────┘  └────────────────────┘  │
+│                              │                    │                     │
+│                              ▼                    ▼                     │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                    RUNTIME ENGINE                               │   │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────┐  │   │
+│  │  │ Schema      │→ │ Normalizer   │→ │ RuntimeFormFactory   │  │   │
+│  │  │ Parser      │  │ (normalizer) │  │ (formContract, etc)  │  │   │
+│  │  └─────────────┘  └──────────────┘  └──────────────────────┘  │   │
+│  │                              │                    │            │   │
+│  │                              ▼                    ▼            │   │
+│  │  ┌─────────────────────────────────────────────────────────┐  │   │
+│  │  │              RENDERING LAYER                            │  │   │
+│  │  │  LayoutEngine → DynamicFieldRenderer → ComponentRegistry │  │   │
+│  │  └─────────────────────────────────────────────────────────┘  │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                              │                                        │
+│                              ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                  SERVICES LAYER (Supabase)                      │   │
+│  │  Auth  │  Database (PostgreSQL + RLS)  │  Storage (S3)         │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🔑 Key Features by Domain
+
+### 📦 Operations & Traceability
+* **Dispatch Management** — Batch/lot assignment, vehicle tracking, driver logs
+* **Quality Inspections** — Dynamic checklists, measurements, evidence capture
+* **Document Management** — Version-controlled documents with digital signatures
+* **Traceability Matrix** — End-to-end lot/batch tracking from source to destination
+
+### 🔬 Quality Control
+* **Dynamic Forms Engine** — 100+ configurable form types (checklists, measurements, audits, CAPA)
+* **Evidence Capture** — Camera integration, image compression, digital signatures (Canvas)
+* **Real-time Validation** — Conditional logic, range validation, critical value alerts
+* **Temporal Recurrence** — Calendar-aware scheduling (daily/weekly/monthly/yearly/custom)
+
+### 🏢 Multi-Tenant Architecture
+* **Tenant Isolation** — Email-domain derived tenant IDs (`user@domain.com` → `domain.com`)
+* **Shared State** — Cross-browser/cross-device sync via Supabase
+* **Offline Resilience** — LocalStorage fallback with hybrid persistence
+* **RLS Enforcement** — Row-Level Security policies at database level
+
+### 🔐 Security & Authorization
+* **Capability-Driven Authorization** — Fine-grained permissions (`form:submit`, `form:verify`, `module:configure`)
+* **Role-Based Access** — `administrador`, `calidad`, `operativo`, `consulta`, `conductor`
+* **Tenant Isolation** — Row-Level Security (RLS) at PostgreSQL level
+* **Storage Security** — Signed URLs, tenant-scoped paths, signed URLs with expiration
+
+### 📊 Observability & Audit
+* **Immutable Audit Logs** — Every action logged with actor, timestamp, before/after state
+* **Evidence Integrity** — Signed URLs with expiration, hash verification
+- **Temporal Engine** — Calendar-aware recurrence with immutable anchor
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Version | Purpose |
+|-------|------------|---------|---------|
+| **Frontend** | React | 19.2.5 | UI Library |
+| | Vite | 8.0.10 | Build Tool / Dev Server |
+| | React Router | 7.14.2 | Client-side Routing |
+| | Tailwind CSS | 4.2.4 | Utility-first Styling |
+| **State** | Zustand | 5.0.14 | Global State |
+| | React Context | 19.2.5 | Auth/Tenant/Context |
+| **Backend (BaaS)** | Supabase | 2.105.1 | PostgreSQL + Auth + Storage + Realtime |
+| **Database** | PostgreSQL | 15+ | Relational + RLS |
+| **Auth** | GoTrue (Supabase) | 2.x | JWT + Sessions |
+| **Storage** | Supabase Storage | S3-compatible | Evidence/Signatures/Docs |
+| **PDF/Reports** | jsPDF + autotable | 4.2.1 / 5.0.7 | PDF Generation |
+| **Excel** | xlsx | 0.18.5 | Import/Export |
+| **Date/Time** | date-fns | 4.1.0 | Date Manipulation |
+| **Icons** | Lucide React | 1.14.0 | Icon System |
+| **Build** | Vite | 8.0.10 | Bundler |
+| **Lint** | ESLint | 10.2.1 | Code Quality |
+
+---
+
+## 🏃 Getting Started
+
+### Prerequisites
+
+| Requirement | Version |
+|-------------|---------|
+| Node.js | ≥ 18.0.0 (recommended 20.x LTS) |
+| npm | ≥ 9.0.0 |
+| Supabase Account | Required |
+
+### Quick Start
+
 ```bash
+# 1. Clone repository
+git clone https://github.com/Projects-DM/sistema-gestion-calidad-dm.git
+cd sistema-gestion-calidad-dm
+
+# 2. Install dependencies
 npm install
-```
 
-### 3. Configurar Variables de Entorno
-Crea un archivo llamado `.env` en la raíz de tu proyecto basándote en el archivo de ejemplo existente (`.env.example`):
-```bash
+# 3. Configure environment
 cp .env.example .env
-```
-O simplemente crea un nuevo archivo `.env` y agrega tus credenciales de Supabase:
-```env
-VITE_SUPABASE_URL=tu-url-de-supabase
-VITE_SUPABASE_ANON_KEY=tu-api-key-anonima
-```
+# Edit .env with your Supabase credentials
+# VITE_SUPABASE_URL=https://your-project.supabase.co
+# VITE_SUPABASE_ANON_KEY=your-anon-key
 
-> [!IMPORTANT]
-> Nunca expongas tu clave de servicio de Supabase (`service_role_key`) en este archivo frontend. Utiliza siempre la clave anónima (`anon_key`), la cual es segura de exponer gracias a las políticas de seguridad RLS en la base de datos.
-
-### 4. Ejecutar Servidor de Desarrollo
-Inicia el servidor local interactivo de Vite:
-```bash
+# 4. Start development server
 npm run dev
 ```
-Una vez ejecutado, abre en tu navegador la URL provista por la consola (generalmente `http://localhost:5173`).
 
-### 5. Compilar para Producción
-Si necesitas validar que el bundle se compile correctamente o deseas realizar el despliegue a producción:
+### Production Build
+
 ```bash
 npm run build
+# Output: ./dist/ (ready for GitHub Pages deployment)
 ```
 
 ---
 
-## 🗂️ Estructura del Proyecto
+## 📚 Documentation Index
 
-El código fuente está organizado siguiendo las mejores prácticas de modularidad y escalabilidad para React:
-
-```
-sistema-gestion-calidad-dm/
-├── docs/                 # Documentación técnica extendida (arquitectura, base de datos)
-├── sql_*.sql             # Scripts unificados de migración y siembra de base de datos
-├── src/
-│   ├── assets/           # Imágenes y logos corporativos
-│   ├── components/       # Componentes React reutilizables
-│   │   └── engines/      # Motores de renderizado dinámico (Checklist, Mediciones, Genérico)
-│   ├── config/           # Parámetros y configuraciones por defecto
-│   ├── context/          # Contexto global (Autenticación, Sesión, Supabase Connection)
-│   ├── hooks/            # Hooks personalizados reutilizables (useAuth)
-│   ├── layouts/          # Envolturas del diseño visual de la plataforma (DashboardLayout)
-│   ├── lib/              # Inicializadores de librerías externas (cliente Supabase)
-│   ├── pages/            # Páginas/vistas principales correspondientes al Router
-│   ├── services/         # Capa de API y peticiones a base de datos (Supabase queries)
-│   └── utils/            # Generadores de PDF, procesadores de Excel y helpers de fechas
-├── tailwind.config.js    # Configuración de diseño visual Tailwind
-└── vite.config.js        # Configuración de bundling del compilador Vite
-```
+| Document | Description |
+|----------|-------------|
+| [`docs/architecture/01-general.md`](docs/architecture/01-general.md) | System Architecture Overview |
+| [`docs/architecture/adr/ADR-001`](docs/architecture/adr/ADR-001-metadata-driven-architecture.md) | Metadata-Driven Architecture |
+| [`docs/architecture/adr/ADR-002`](docs/architecture/adr/ADR-002-runtime-driven-execution-model.md) | Runtime-Driven Execution Model |
+| [`docs/architecture/adr/ADR-003`](docs/architecture/adr/ADR-003-capability-driven-authorization.md) | Capability-Driven Authorization |
+| [`docs/architecture/adr/ADR-004`](docs/architecture/adr/ADR-004-supabase-remote-persistence-backend.md) | Supabase as Backend |
+| [`docs/architecture/adr/ADR-005`](docs/architecture/adr/ADR-005-github-actions-github-pages-deployment.md) | GitHub Actions + Pages Deployment |
+| [`docs/architecture/adr/ADR-006`](docs/architecture/adr/ADR-006-tenant-scoped-persistence.md) | Tenant-Scoped Persistence |
+| [`docs/architecture/adr/ADR-007`](docs/architecture/adr/ADR-007-authentication-client-initialization-contract.md) | Auth Client Initialization Contract |
+| [`docs/architecture/adr/ADR-008`](docs/architecture/adr/ADR-008-temporal-recurrence-window-model.md) | Temporal Recurrence Window Model |
+| [`docs/architecture/adr/ADR-009`](docs/architecture/adr/ADR-009-document-storage-rls-security-model.md) | Document Storage & RLS Security |
+| [`docs/architecture/adr/ADR-010`](docs/architecture/adr/ADR-010-historical-sprint-preservation-policy.md) | Historical Sprint Preservation Policy |
 
 ---
 
-## 📖 Documentación Extendida
+## 🔐 Security Model
 
-Para profundizar en los detalles técnicos de esta plataforma, consulta la documentación disponible en la carpeta `/docs`:
+### Authentication Flow
+```
+User Login → Supabase Auth (GoTrue) → JWT Session → AuthContext
+    ↓
+Tenant Resolution (email domain) → tenantId
+    ↓
+AuthContext → Supabase Client (singleton, null-guarded)
+```
 
-1.  **Guía de Base de Datos y Despliegue**: [docs/database_setup.md](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1/docs/database_setup.md) — Explica la secuencia de ejecución de los scripts SQL, el modelo EAV relacional (con diagramas en Mermaid) y la configuración del Storage de Supabase.
-2.  **Arquitectura General del Sistema**: [docs/arquitectura/01-arquitectura-general.md](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1/docs/arquitectura/01-arquitectura-general.md) — Visión enterprise, niveles de madurez, mapa de dependencias y flujo de renderizado dinámico.
-3.  **Motores de Renderizado Dinámico**: [docs/arquitectura/02-motores-dinamicos.md](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1/docs/arquitectura/02-motores-dinamicos.md) — Especificación técnica de cómo funcionan `BaseChecklist` y `BaseMediciones`.
-4.  **Modelo EAV Avanzado**: [docs/arquitectura/03-tablas-y-modelo-eav.md](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1/docs/arquitectura/03-tablas-y-modelo-eav.md) — Diccionario detallado de cada tabla dinámica de base de datos.
+### Authorization Model
+```
+User → Role → Capability Set → Module Permission → Operation
+```
+
+| Role | Capabilities |
+|------|--------------|
+| `administrador` | All capabilities across tenant |
+| `calidad` | `form:verify`, `form:export`, `module:configure`, `audit:read` |
+| `operativo` | `form:submit`, `form:read`, `evidence:upload` |
+| `consulta` | `form:read`, `dashboard:read` |
+| `conductor` | `form:submit` (assigned modules only) |
+
+### Data Isolation
+| Layer | Mechanism |
+|-------|-----------|
+| **Application** | `tenantId` derived from email domain (`user@domain.com` → `domain.com`) |
+| **Database** | RLS policies on all `sgc_*` tables with `tenant_id` column |
+| **Storage** | Folder structure `bucket/{tenantId}/...` + RLS on `storage.objects` |
+| **Runtime** | Hybrid adapter: LocalStorage (immediate) + Supabase (shared) |
+
+---
+
+## 🚀 Deployment
+
+### Current Production Pipeline
+
+```
+Developer
+    ↓
+git push release/stable-sprint79
+    ↓
+GitHub Actions (workflow: deploy-pages.yml)
+    ↓
+npm ci → npm run build
+    ↓
+Vite Build (with VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY from GitHub Environment Secrets)
+    ↓
+actions/upload-pages-artifact@v3
+    ↓
+actions/deploy-pages@v4
+    ↓
+GitHub Pages (projects-dm.github.io/sistema-gestion-calidad-dm/)
+```
+
+### Environment Configuration
+
+| Environment | Supabase URL | Supabase Anon Key |
+|-------------|--------------|-------------------|
+| **Local** | `.env` / `.env.production` | `.env` / `.env.production` |
+| **CI/CD** | GitHub Environment `github-pages` | GitHub Environment `github-pages` |
+| **Production** | GitHub Environment `github-pages` | GitHub Environment `github-pages` |
+
+### Legacy Deployment (Deprecated)
+
+| Mechanism | Status | Notes |
+|-----------|--------|-------|
+| `npm run deploy` (`gh-pages -d dist`) | **LEGACY** | Kept for rollback reference |
+| `gh-pages` branch | **LEGACY** | Last updated 2026-07-15, stale |
+
+---
+
+## 📊 Project Status
+
+| Aspect | Status |
+|--------|--------|
+| **Application** | ✅ Operational (Sprint 369 certified) |
+| **Authentication** | ✅ Hardened (Sprint 363) |
+| **Persistence** | ✅ Hybrid (Supabase + LocalStorage) |
+| **Tenant Isolation** | ✅ Implemented + RLS |
+| **Temporal Engine** | ✅ Certified (Sprint 341) |
+| **Document Storage** | ✅ Supabase Storage + RLS |
+| **CI/CD** | ✅ GitHub Actions → GitHub Pages |
+| **Automated Testing** | ⚠️ In Progress (Sprint 383+) |
+| **Branch Protection** | ⚠️ Pending (Sprint 383+) |
+| **Staging Environment** | ⚠️ Planned (Sprint 383+) |
+
+### Current Baseline
+| Property | Value |
+|----------|-------|
+| **Baseline Commit** | `c7d954707dc28ac22aece47d32c9e639d5974105` |
+| **Current HEAD** | `eceaf47501b637b19bce027d17bb47ec0589e84f` |
+| **Branch** | `release/stable-sprint79` |
+| **Production URL** | `https://projects-dm.github.io/sistema-gestion-calidad-dm/` |
+
+---
+
+## 🗺️ Roadmap
+
+### Immediate (Sprint 383-386)
+| Sprint | Focus |
+|--------|-------|
+| 383 | Professional Presentation & Portfolio Readiness |
+| 384 | Branch Protection & CI Gates |
+| 385 | Automated Testing Infrastructure (Vitest + Playwright) |
+| 386 | Staging Environment + Preview Deployments |
+
+### Medium Term (Sprint 387-390)
+| Sprint | Focus |
+|--------|-------|
+| 387 | Cross-Tenant Negative Testing |
+| 388 | Cross-Browser Persistence Validation |
+| 389 | Automated Artifact Validation in CI |
+| 390 | Production Health Checks / SLOs |
+
+### Long Term (Sprint 391+)
+| Area | Focus |
+|------|-------|
+| Scalability | Multi-tenant hardening, caching, CDN |
+| Observability | Sentry, structured logging, metrics |
+| Multi-Tenant | SaaS isolation, billing, onboarding |
+| AI Integration | Evidence classification, anomaly detection |
+
+---
+
+## 👨‍💻 Developer Competencies Demonstrated
+
+This project demonstrates proficiency in:
+
+| Domain | Evidence |
+|--------|----------|
+| **Frontend Architecture** | React 19, dynamic rendering, lazy loading, context/state |
+| **Runtime Architecture** | Schema normalization, dynamic rendering, lazy loading |
+| **Authentication & AuthZ** | JWT, RBAC, Capability-based, tenant isolation |
+| **Database Design** | EAV model, RLS policies, multi-tenant isolation |
+| **CI/CD** | GitHub Actions, GitHub Pages, environment secrets |
+| **Forensic Debugging** | Sprints 355-371: root cause analysis, regression chains |
+| **Forensic Architecture** | ADR-001 through ADR-010 |
+| **Contract-Based Design** | 8 system contracts with invariants |
+| **Git Hygiene** | Baseline preservation, controlled changes |
+| **Documentation** | ADRs, Contracts, Sprints, Architecture docs |
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+## 🤝 Contributing
+
+This project follows a **controlled evolution** model:
+
+1. **Audit First** — Forensic analysis before any change
+2. **Classify** — ADR / Contract / Sprint / Architecture
+3. **Plan** — Dedicated Sprint with defined scope
+4. **Implement** — Controlled change with evidence
+5. **Test** — Regression suite + manual verification
+6. **Audit** — Forensic verification
+6. **Certify** — Sprint certification
+
+---
+
+## 📞 Contact
+
+**Project:** Sistema de Gestión de Calidad — DM Distribuciones  
+**Organization:** Projects-DM  
+**Repository:** [github.com/Projects-DM/sistema-gestion-calidad-dm](https://github.com/Projects-DM/sistema-gestion-calidad-dm)  
+**Production:** https://projects-dm.github.io/sistema-gestion-calidad-dm/
+
+---
+
+> **Built with forensic rigor, documented with architectural honesty, deployed with controlled evolution.**
