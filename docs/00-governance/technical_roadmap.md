@@ -3,7 +3,7 @@
 **Documento:** Plan Estratégico de Desarrollo Arquitectónico  
 **Versión:** 2.0  
 **Clasificación:** Documentación Técnica Estratégica  
-**Sistema:** Sistema de Gestión de Calidad (SGC) DM Distribuciones
+**Sistema:** Sistema de Gestión de Calidad (SGC) Empresa Demo
 
 ---
 

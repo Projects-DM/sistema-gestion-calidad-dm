@@ -522,7 +522,7 @@ La robustez de la base de datos se mantiene dividiendo de manera estricta el **C
 
 ## 7. COMPATIBILIDAD CON INTELIGENCIA ARTIFICIAL (IA READY)
 
-El diseño de este esquema de campos está concebido de forma nativa para interactuar con motores de **Machine Learning e IA Generativa**, permitiendo análisis predictivos avanzados sobre la calidad operacional de DM Distribuciones.
+El diseño de este esquema de campos está concebido de forma nativa para interactuar con motores de **Machine Learning e IA Generativa**, permitiendo análisis predictivos avanzados sobre la calidad operacional de Empresa Demo.
 
 ### 7.1 Taxonomía de IA (`ia_tags`) en el Esquema de Campos
 
@@ -614,3 +614,4 @@ Este manual de contratos garantiza un desarrollo predecible, seguro y de clase m
 **Documento redactado y validado por:** Arquitectura Técnica de Software SGC-DM  
 **Última Modificación:** Mayo 2026  
 **Estatus:** **VIGENTE - CONTRATO CENTRAL**
+

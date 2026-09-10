@@ -387,7 +387,7 @@ CREATE UNIQUE INDEX ON public.mv_analytics_monthly_compliance (module_id, form_i
 
 ## 9. SEGURIDAD Y GOBERNANZA DE DATOS (SEGURIDAD EN ANALYTICS)
 
-Los datos de analítica representan información comercialmente sensible y estratégicamente confidencial de DM Distribuciones. Por ende, la seguridad sigue directrices normativas muy estrictas.
+Los datos de analítica representan información comercialmente sensible y estratégicamente confidencial de Empresa Demo. Por ende, la seguridad sigue directrices normativas muy estrictas.
 
 ### 9.1 Seguridad por Fila de Datos (RLS) en Analytics
 Cada tabla de analítica implementa políticas RLS basadas en el rol de seguridad asignado en la tabla `profiles`.
@@ -448,3 +448,4 @@ Este esquema de arquitectura de analítica establece las directrices de desarrol
 ---
 **Diseño de Arquitectura por:** Arquitectura e Ingeniería de Datos SGC-DM  
 **Estatus:** **VIGENTE - ARQUITECTURA DE ANALÍTICA OFICIAL**
+

@@ -3,7 +3,7 @@
 **Documento:** Especificación Técnica del Modelo de Datos  
 **Versión:** 1.0  
 **Clasificación:** Documentación Técnica Estratégica  
-**Sistema:** Sistema de Gestión de Calidad (SGC) DM Distribuciones
+**Sistema:** Sistema de Gestión de Calidad (SGC) Empresa Demo
 
 ---
 

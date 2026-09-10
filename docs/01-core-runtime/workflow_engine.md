@@ -362,7 +362,7 @@ El motor de workflow se estructura de forma semántica y desacoplada para facili
 
 ## 12. ESCALABILIDAD Y REUTILIZACIÓN DE FLUJOS (WORKFLOW SCALABILITY)
 
-Para mitigar los costos de redespliegue de software ante la adición de nuevos formatos en DM Distribuciones, la máquina de estados opera 100% dirigida por metadatos.
+Para mitigar los costos de redespliegue de software ante la adición de nuevos formatos en Empresa Demo, la máquina de estados opera 100% dirigida por metadatos.
 
 * **Reutilización por Templates:** El Workflow Engine no codifica flujos específicos por cada formulario de planta. Lee una estructura declarativa de transiciones parametrizada en la tabla `sgc_forms.workflow` que actúa como plantilla reutilizable:
   ```json
@@ -400,3 +400,4 @@ Para implementar y consolidar la máquina de estados en el ecosistema operativo 
 **Documento Mantenido y Aprobado por:** Dirección General de Arquitectura de Software e Integridad Operativa SGC-DM.  
 **Última Actualización:** 22 de Mayo de 2026.  
 **Próxima Revisión Planificada:** 15 de Agosto de 2026.  
+

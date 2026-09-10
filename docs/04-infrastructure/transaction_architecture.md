@@ -427,7 +427,7 @@ El diligenciamiento de una inspección crítica de calidad en planta tiene impli
 
 ## 10. PREPARACIÓN PARA ARQUITECTURA ORIENTADA A EVENTOS FUTURA (EDA)
 
-Para escalar el SGC-DM de DM Distribuciones a un ecosistema industrial masivo (SaaS multi-tenant con miles de lecturas IoT, alertas masivas automatizadas y análisis predictivos por IA), la persistencia transaccional se prepara conceptualmente para adoptar una **Arquitectura Dirigida por Eventos (EDA - Event-Driven Architecture)**.
+Para escalar el SGC-DM de Empresa Demo a un ecosistema industrial masivo (SaaS multi-tenant con miles de lecturas IoT, alertas masivas automatizadas y análisis predictivos por IA), la persistencia transaccional se prepara conceptualmente para adoptar una **Arquitectura Dirigida por Eventos (EDA - Event-Driven Architecture)**.
 
 ```
                                 [ MOTOR TRANSACCIONAL ]
@@ -493,3 +493,4 @@ Para desplegar esta arquitectura transaccional enterprise de forma segura, progr
 **Documento Mantenido y Aprobado por:** Dirección General de Arquitectura de Software e Integridad Operativa SGC-DM.  
 **Última Actualización:** 22 de Mayo de 2026.  
 **Próxima Revisión Planificada:** 15 de Agosto de 2026.  
+

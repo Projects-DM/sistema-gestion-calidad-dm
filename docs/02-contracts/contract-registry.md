@@ -365,7 +365,7 @@ Ensures recurrence windows are calculated correctly with zero drift.
 Defines the contract for tenant-scoped data isolation.
 
 ### WHY
-Ensures data from different tenants (`dmdistribuciones.com` vs `polloscalenos.com`) never leaks.
+Ensures data from different tenants (`empresa-demo.com` vs `cliente-demo.com`) never leaks.
 
 ### CURRENT IMPLEMENTATION
 

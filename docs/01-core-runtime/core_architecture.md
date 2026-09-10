@@ -3,7 +3,7 @@
 **Documento:** Visión Arquitectónica Enterprise  
 **Versión:** 2.0  
 **Clasificación:** Documentación Técnica Estratégica  
-**Sistema:** Sistema de Gestión de Calidad (SGC) DM Distribuciones
+**Sistema:** Sistema de Gestión de Calidad (SGC) Empresa Demo
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 Propósito Fundamental
 
-El SGC de DM Distribuciones es una **plataforma empresarial de gestión de calidad** diseñada para digitalizar, automatizar y auditar todos los procesos operativos, de calidad, mantenimiento y documentales de una organización industrial. El sistema opera bajo el paradigma de **configuración dinámica**, donde los formularios, flujos y reglas de negocio se definen desde un panel administrador sin requerir modificaciones de código.
+El SGC de Empresa Demo es una **plataforma empresarial de gestión de calidad** diseñada para digitalizar, automatizar y auditar todos los procesos operativos, de calidad, mantenimiento y documentales de una organización industrial. El sistema opera bajo el paradigma de **configuración dinámica**, donde los formularios, flujos y reglas de negocio se definen desde un panel administrador sin requerir modificaciones de código.
 
 ### 1.2 Filosofía Arquitectónica
 

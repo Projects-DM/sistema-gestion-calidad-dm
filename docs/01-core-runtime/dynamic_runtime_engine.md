@@ -12,7 +12,7 @@
 ### 1.1 Propósito
 El **Motor de Ejecución Dinámico (Dynamic Runtime Engine)** es el núcleo operativo y de ejecución de **SGC-DM**. Su propósito principal es desacoplar por completo la definición de los procesos de calidad (checklist, mediciones, auditorías, flujos de trabajo) de su implementación física en el código del cliente.
 
-En lugar de compilar un componente de formulario estático por cada uno de los más de 100 formatos documentales de planta de DM Distribuciones (definidos en el `form_schema_universal_full.md`), el Runtime Engine actúa como un **intérprete en tiempo de ejecución**. Carga la metadata contractual declarada en la base de datos, resuelve dinámicamente los motores de renderizado específicos (`BaseChecklist`, `BaseMediciones`, etc.), inyecta los validadores condicionales y orquesta la persistencia atómica, aislando la lógica operativa de la infraestructura física del backend.
+En lugar de compilar un componente de formulario estático por cada uno de los más de 100 formatos documentales de planta de Empresa Demo (definidos en el `form_schema_universal_full.md`), el Runtime Engine actúa como un **intérprete en tiempo de ejecución**. Carga la metadata contractual declarada en la base de datos, resuelve dinámicamente los motores de renderizado específicos (`BaseChecklist`, `BaseMediciones`, etc.), inyecta los validadores condicionales y orquesta la persistencia atómica, aislando la lógica operativa de la infraestructura física del backend.
 
 ```
                   ┌────────────────────────────────────────┐
@@ -514,3 +514,4 @@ El Runtime Engine se ha proyectado para servir de base en el escalado tecnológi
 **Documento Mantenido y Aprobado por:** Dirección General de Arquitectura de Software e Integridad Operativa SGC-DM.  
 **Última Actualización:** 22 de Mayo de 2026.  
 **Próxima Revisión Planificada:** 15 de Agosto de 2026.  
+

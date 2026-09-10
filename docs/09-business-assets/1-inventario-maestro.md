@@ -1,12 +1,12 @@
 # DOCUMENTACIÓN MAESTRA TÉCNICA - SISTEMA DE GESTIÓN DE CALIDAD (SGC) EMPRESARIAL
-**Cliente:** DM Distribuciones
+**Cliente:** Empresa Demo
 **Versión:** 1.0 (Consolidación Fase 4.3)
 **Tecnologías:** React, Vite, Tailwind CSS, Supabase (PostgreSQL, Storage, Auth)
 
 ---
 
 ## 1. RESUMEN EJECUTIVO
-El SGC de DM Distribuciones es una plataforma empresarial híbrida que digitaliza los procesos normativos y operativos (BPM, INVIMA, ISO). Evolucionó de una estructura inicial estática a una **arquitectura dinámica basada en motores de renderizado**. Permite crear, modificar y auditar formularios operativos desde la base de datos sin requerir redespliegues de código. La plataforma asegura el principio de segregación de funciones, cuenta con aprobación masiva, gestión de evidencias fotográficas, RLS estricto y trazabilidad histórica a prueba de manipulaciones.
+El SGC de Empresa Demo es una plataforma empresarial híbrida que digitaliza los procesos normativos y operativos (BPM, INVIMA, ISO). Evolucionó de una estructura inicial estática a una **arquitectura dinámica basada en motores de renderizado**. Permite crear, modificar y auditar formularios operativos desde la base de datos sin requerir redespliegues de código. La plataforma asegura el principio de segregación de funciones, cuenta con aprobación masiva, gestión de evidencias fotográficas, RLS estricto y trazabilidad histórica a prueba de manipulaciones.
 
 ## 2. ESTADO ACTUAL DEL PROYECTO
 El proyecto se encuentra en una etapa de **madurez alta (Producción/Estable)** en su Fase 4.3.
@@ -171,3 +171,4 @@ El sistema actual es perfecto para IA porque los datos están atomizados en `sgc
 - `lucide-react`: Iconografía integral del sistema.
 - `@supabase/supabase-js`: Cliente transaccional y de auth.
 - `tailwindcss`: Sistema de diseño.
+

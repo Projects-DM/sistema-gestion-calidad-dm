@@ -3,7 +3,7 @@
 **Documento:** Análisis de Cuellos de Botella, Riesgos de Crecimiento y Estrategias de Optimización  
 **Versión:** 1.0  
 **Clasificación:** Documentación Técnica Estratégica  
-**Sistema:** Sistema de Gestión de Calidad (SGC) DM Distribuciones
+**Sistema:** Sistema de Gestión de Calidad (SGC) Empresa Demo
 
 ---
 
@@ -13,7 +13,7 @@
 
 ```
 ESTADO ACTUAL (2026)
-├── 1 empresa (DM Distribuciones)
+├── 1 empresa (Empresa Demo)
 ├── ~1,000 registros en sgc_form_responses
 ├── ~5,000 registros en sgc_response_values
 ├── ~500 evidencias en Storage

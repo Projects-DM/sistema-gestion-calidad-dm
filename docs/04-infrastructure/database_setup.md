@@ -1,6 +1,6 @@
 # 🗄️ Manual de Despliegue de Base de Datos y Arquitectura EAV
 
-Este documento técnico sirve como guía paso a paso para la inicialización y el despliegue de la infraestructura de datos en **Supabase** para el **Sistema de Gestión de Calidad (SGC) - DM Distribuciones**. Incluye el orden de ejecución de scripts, la configuración del bucket de almacenamiento y el diagrama técnico relacional de la arquitectura EAV (Entity-Attribute-Value).
+Este documento técnico sirve como guía paso a paso para la inicialización y el despliegue de la infraestructura de datos en **Supabase** para el **Sistema de Gestión de Calidad (SGC) - Empresa Demo**. Incluye el orden de ejecución de scripts, la configuración del bucket de almacenamiento y el diagrama técnico relacional de la arquitectura EAV (Entity-Attribute-Value).
 
 ---
 
@@ -201,3 +201,4 @@ Para confirmar que la base de datos funciona adecuadamente en tu frontend:
 2.  Inicia la sesión en la plataforma.
 3.  Ingresa a la sección de **Configuración** (si eres administrador) y verifica que los módulos base y sus formularios sembrados se listan correctamente.
 4.  Intenta registrar un checklist de limpieza; el sistema debería guardar el registro, crear las filas de respuestas y habilitar el banner de éxito de Supabase sin registrar excepciones.
+

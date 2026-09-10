@@ -3,7 +3,7 @@
 **Documento:** Especificación del Ciclo de Vida del Renderizado Dinámico  
 **Versión:** 1.0  
 **Clasificación:** Documentación Técnica Estratégica  
-**Sistema:** Sistema de Gestión de Calidad (SGC) DM Distribuciones
+**Sistema:** Sistema de Gestión de Calidad (SGC) Empresa Demo
 
 ---
 
