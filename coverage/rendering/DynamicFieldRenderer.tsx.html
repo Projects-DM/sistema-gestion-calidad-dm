@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for renderer/fields/FieldSelect.tsx</title>
+    <title>Code coverage report for rendering/DynamicFieldRenderer.tsx</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../../prettify.css" />
-    <link rel="stylesheet" href="../../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../../sort-arrow-sprite.png);
+            background-image: url(../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">renderer/fields</a> FieldSelect.tsx</h1>
+        <h1><a href="../index.html">All files</a> / <a href="index.html">rendering</a> DynamicFieldRenderer.tsx</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.66% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/12</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">45.83% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/24</span>
+                <span class='fraction'>4/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/5</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">90% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/10</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
@@ -121,7 +121,8 @@
 <a name='L56'></a><a href='#L56'>56</a>
 <a name='L57'></a><a href='#L57'>57</a>
 <a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -134,35 +135,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -178,64 +156,89 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">140x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * FieldSelect.tsx (Sprint 25.6)
- * Atomic renderer for field type: select.
- * Receives standardized FieldRenderProps — no business logic.
- */
-import type React from "react";
-import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
+<span class="cline-any cline-yes">140x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">140x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">140x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">135x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type React from "react";
 &nbsp;
-type SelectOption = {
-  label: string;
-  value: string;
+import type { FieldDefinition, FieldRenderProps } from "./registry/ComponentRegistryBase";
+import { ComponentRegistry } from "./registry/ComponentRegistry";
+&nbsp;
+export type DynamicFieldRendererProps = {
+  fieldDef: FieldDefinition;
+  value: FieldRenderProps["value"];
+  onChange: FieldRenderProps["onChange"];
+  disabled?: boolean;
+  error?: FieldRenderProps["error"];
 };
 &nbsp;
-const FieldSelect: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
-  const strVal = value == null ? <span class="branch-0 cbranch-no" title="branch not covered" >"" : S</span>tring(value);
-&nbsp;
-  const placeholder = (fieldDef.options?.placeholder as string | undefined) ?? "";
-  const rawChoices = fieldDef.options?.choices;
-  const choices = Array.isArray(rawChoices) ? (rawChoices as Array&lt;string | SelectOption&gt;) : <span class="branch-1 cbranch-no" title="branch not covered" >[];</span>
-  const optLabel = (c: string | SelectOption) =&gt; (typeof c === "string" ? c : (<span class="branch-1 cbranch-no" title="branch not covered" >c.label ?? ""));</span>
-  const optValue = (c: string | SelectOption) =&gt; (typeof c === "string" ? c : (<span class="branch-1 cbranch-no" title="branch not covered" >c.value ?? optLabel(c))</span>);
-&nbsp;
+const UnsupportedFieldTypeFallback: React.FC&lt;{ fieldType: string; label: string; error?: string }&gt; = ({
+  fieldType,
+  label,
+  error,
+}) =&gt; {
   return (
-    &lt;div className="runtime-field"&gt;
-      &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
-        {fieldDef.label}
-        {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
-      &lt;/label&gt;
-&nbsp;
-      &lt;select
-        id={fieldDef.id}
-        required={fieldDef.required}
-        disabled={disabled}
-        value={strVal}
-<span class="fstat-no" title="function not covered" >        onChange={(e</span>) =&gt; <span class="cstat-no" title="statement not covered" >onChange(fieldDef.id, e.target.value)}</span>
-        className={`runtime-select${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
-        aria-invalid={!!error}
-        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >`${fieldDef.id}-error` : u</span>ndefined}
-      &gt;
-        {placeholder ? <span class="branch-0 cbranch-no" title="branch not covered" >&lt;option value=""&gt;{placeholder}&lt;/option&gt; : null}</span>
-        {choices.map((c, i) =&gt; (
-          &lt;option key={i} value={optValue(c)}&gt;
-            {optLabel(c)}
-          &lt;/option&gt;
-        ))}
-      &lt;/select&gt;
-&nbsp;
-      {error &amp;&amp; (
-<span class="branch-1 cbranch-no" title="branch not covered" >        &lt;span id={`${fieldDef.id}-error`} className="runtime-field-error" role="alert"&gt;</span>
+    &lt;div className="runtime-field runtime-field-unsupported"&gt;
+      &lt;label className="runtime-field-label"&gt;{label}&lt;/label&gt;
+      &lt;div className="runtime-unsupported-warning" role="alert"&gt;
+        Unsupported field type: {fieldType}
+      &lt;/div&gt;
+      {error ? (
+        &lt;div className="runtime-field-error" role="alert"&gt;
           {error}
-        &lt;/span&gt;
-      )}
+        &lt;/div&gt;
+      ) : null}
     &lt;/div&gt;
   );
 };
 &nbsp;
-export default FieldSelect;
+export function DynamicFieldRenderer(props: DynamicFieldRendererProps) {
+  const { fieldDef, value, onChange, disabled, error } = props;
+&nbsp;
+  const component = ComponentRegistry.get(fieldDef.fieldType);
+&nbsp;
+  const fieldRenderProps: FieldRenderProps = {
+    fieldDef,
+    value,
+    onChange,
+    disabled: Boolean(disabled),
+    error,
+  };
+&nbsp;
+  if (!component) {
+    return (
+      &lt;UnsupportedFieldTypeFallback
+        fieldType={String(fieldDef.fieldType)}
+        label={fieldDef.label}
+        error={error}
+      /&gt;
+    );
+  }
+&nbsp;
+  return component(fieldRenderProps) as unknown as React.ReactElement;
+}
 &nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
@@ -246,14 +249,14 @@ export default FieldSelect;
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
                 at 2026-09-10T21:29:01.696Z
             </div>
-        <script src="../../prettify.js"></script>
+        <script src="../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../../sorter.js"></script>
-        <script src="../../block-navigation.js"></script>
+        <script src="../sorter.js"></script>
+        <script src="../block-navigation.js"></script>
     </body>
 </html>
     

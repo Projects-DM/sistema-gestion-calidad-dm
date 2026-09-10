@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">58.33% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/12</span>
+                <span class='fraction'>7/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">56.25% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>9/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>1/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10% </span>
+                <span class="strong">70% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/10</span>
+                <span class='fraction'>7/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -138,16 +138,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -200,20 +200,20 @@ type SelectOption = {
   value: string;
 };
 &nbsp;
-const <span class="fstat-no" title="function not covered" >FieldMultiSelect: React.FC&lt;FieldRenderProps&gt; = ({</span> fieldDef, value, onChange, disabled, error }) =&gt; {
-  const selectedValues = <span class="cstat-no" title="statement not covered" >Array.isArray(value) ? value.<span class="fstat-no" title="function not covered" >map((v</span>) =&gt; <span class="cstat-no" title="statement not covered" >String(v))</span> : [];</span>
+const FieldMultiSelect: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
+  const selectedValues = Array.isArray(value) ? <span class="branch-0 cbranch-no" title="branch not covered" >value.<span class="fstat-no" title="function not covered" >map((v</span>) =&gt; <span class="cstat-no" title="statement not covered" >String(v))</span> </span>: [];
 &nbsp;
-  const placeholder = (<span class="cstat-no" title="statement not covered" >fieldDef.options?.placeholder as string | undefined) ?? "";</span>
-  const optionsAny = <span class="cstat-no" title="statement not covered" >fieldDef.options?.options as unknown;</span>
-  const options = <span class="cstat-no" title="statement not covered" >Array.isArray(optionsAny) ? (optionsAny as SelectOption[]) : [];</span>
+  const placeholder = (fieldDef.options?.placeholder as string | undefined) ?? "";
+  const optionsAny = fieldDef.options?.options as unknown;
+  const options = Array.isArray(optionsAny) ? (<span class="branch-0 cbranch-no" title="branch not covered" >optionsAny as SelectOption[]) : [</span>];
 &nbsp;
-  const errorId = <span class="cstat-no" title="statement not covered" >`${fieldDef.id}-error`;</span>
+  const errorId = `${fieldDef.id}-error`;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className="runtime-field"&gt;
       &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
         {fieldDef.label}
-        {fieldDef.required &amp;&amp; &lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}
+        {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
       &lt;/label&gt;
 &nbsp;
       &lt;select
@@ -226,11 +226,11 @@ const <span class="fstat-no" title="function not covered" >FieldMultiSelect: Rea
           const values = <span class="cstat-no" title="statement not covered" >Array.from(e.target.selectedOptions).<span class="fstat-no" title="function not covered" >map((o</span>pt) =&gt; <span class="cstat-no" title="statement not covered" >opt.value);</span></span>
 <span class="cstat-no" title="statement not covered" >          onChange(fieldDef.id, values);</span>
         }}
-        className={`runtime-select${error ? " runtime-input-error" : ""}`}
+        className={`runtime-select${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
         aria-invalid={!!error}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >errorId : u</span>ndefined}
       &gt;
-        {placeholder ? &lt;option disabled value=""&gt;{placeholder}&lt;/option&gt; : null}
+        {placeholder ? <span class="branch-0 cbranch-no" title="branch not covered" >&lt;option disabled value=""&gt;{placeholder}&lt;/option&gt; : null}</span>
         {options.<span class="fstat-no" title="function not covered" >map((o</span>pt) =&gt; (
 <span class="cstat-no" title="statement not covered" >          &lt;option key={String(opt.value)} value={String(opt.value)}&gt;</span>
             {opt.label}
@@ -239,7 +239,7 @@ const <span class="fstat-no" title="function not covered" >FieldMultiSelect: Rea
       &lt;/select&gt;
 &nbsp;
       {error ? (
-        &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;
+<span class="branch-0 cbranch-no" title="branch not covered" >        &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;</span>
           {error}
         &lt;/span&gt;
       ) : null}
@@ -256,7 +256,7 @@ export default FieldMultiSelect;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-08T21:36:30.298Z
+                at 2026-09-10T21:29:01.696Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

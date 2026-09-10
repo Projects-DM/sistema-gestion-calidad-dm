@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/12</span>
+                <span class='fraction'>6/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">42.85% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/14</span>
+                <span class='fraction'>6/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>1/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">8.33% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/12</span>
+                <span class='fraction'>6/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -127,14 +127,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -144,7 +144,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -183,13 +183,13 @@
 import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 &nbsp;
-const <span class="fstat-no" title="function not covered" >FieldFileUpload: React.FC&lt;FieldRenderProps&gt; = ({</span> fieldDef, value, onChange, disabled, error }) =&gt; {
-  const errorId = <span class="cstat-no" title="statement not covered" >`${fieldDef.id}-error`;</span>
+const FieldFileUpload: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
+  const errorId = `${fieldDef.id}-error`;
 &nbsp;
-  const accept = (<span class="cstat-no" title="statement not covered" >fieldDef.options?.accept as string | undefined) ?? undefined;</span>
-  const multiple = <span class="cstat-no" title="statement not covered" >Boolean(fieldDef.options?.multiple);</span>
+  const accept = (fieldDef.options?.accept as string | undefined) ?? undefined;
+  const multiple = Boolean(fieldDef.options?.multiple);
 &nbsp;
-  const <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >handleChange = (e</span>: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {</span>
+  const <span class="fstat-no" title="function not covered" >handleChange = (e</span>: React.ChangeEvent&lt;HTMLInputElement&gt;) =&gt; {
     const files = <span class="cstat-no" title="statement not covered" >e.target.files;</span>
 <span class="cstat-no" title="statement not covered" >    if (!files || files.length === 0) {</span>
 <span class="cstat-no" title="statement not covered" >      onChange(fieldDef.id, null);</span>
@@ -200,11 +200,11 @@ const <span class="fstat-no" title="function not covered" >FieldFileUpload: Reac
 <span class="cstat-no" title="statement not covered" >    onChange(fieldDef.id, selectedFiles as unknown as never);</span>
   };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className="runtime-field"&gt;
       &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
         {fieldDef.label}
-        {fieldDef.required &amp;&amp; &lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}
+        {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
       &lt;/label&gt;
 &nbsp;
       &lt;input
@@ -215,13 +215,13 @@ const <span class="fstat-no" title="function not covered" >FieldFileUpload: Reac
         accept={accept}
         multiple={multiple}
         onChange={handleChange}
-        className={`runtime-input${error ? " runtime-input-error" : ""}`}
+        className={`runtime-input${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
         aria-invalid={!!error}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >errorId : u</span>ndefined}
       /&gt;
 &nbsp;
       {error ? (
-        &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;
+<span class="branch-0 cbranch-no" title="branch not covered" >        &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;</span>
           {error}
         &lt;/span&gt;
       ) : null}
@@ -238,7 +238,7 @@ export default FieldFileUpload;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-08T21:36:30.298Z
+                at 2026-09-10T21:29:01.696Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10% </span>
+                <span class="strong">60% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/10</span>
+                <span class='fraction'>6/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">40% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>4/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">33.33% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/3</span>
+                <span class='fraction'>1/3</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10% </span>
+                <span class="strong">60% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/10</span>
+                <span class='fraction'>6/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -141,15 +141,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -206,20 +206,20 @@ type RadioOption = {
   value: string;
 };
 &nbsp;
-const <span class="fstat-no" title="function not covered" >FieldRadio: React.FC&lt;FieldRenderProps&gt; = ({</span> fieldDef, value, onChange, disabled, error }) =&gt; {
-  const selected = <span class="cstat-no" title="statement not covered" >value == null ? "" : String(value);</span>
+const FieldRadio: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
+  const selected = value == null ? <span class="branch-0 cbranch-no" title="branch not covered" >"" : S</span>tring(value);
 &nbsp;
-  const optionsAny = <span class="cstat-no" title="statement not covered" >fieldDef.options?.options as unknown;</span>
-  const options = <span class="cstat-no" title="statement not covered" >Array.isArray(optionsAny) ? (optionsAny as RadioOption[]) : [];</span>
+  const optionsAny = fieldDef.options?.options as unknown;
+  const options = Array.isArray(optionsAny) ? (<span class="branch-0 cbranch-no" title="branch not covered" >optionsAny as RadioOption[]) : [</span>];
 &nbsp;
-  const errorId = <span class="cstat-no" title="statement not covered" >`${fieldDef.id}-error`;</span>
+  const errorId = `${fieldDef.id}-error`;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className="runtime-field"&gt;
       &lt;fieldset className="runtime-fieldset" disabled={disabled}&gt;
         &lt;legend className="runtime-field-label"&gt;
           {fieldDef.label}
-          {fieldDef.required &amp;&amp; &lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}
+          {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
         &lt;/legend&gt;
 &nbsp;
         &lt;div className="runtime-radio-group"&gt;
@@ -247,7 +247,7 @@ const <span class="fstat-no" title="function not covered" >FieldRadio: React.FC&
         &lt;/div&gt;
 &nbsp;
         {error &amp;&amp; (
-          &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;
+<span class="branch-1 cbranch-no" title="branch not covered" >          &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;</span>
             {error}
           &lt;/span&gt;
         )}
@@ -265,7 +265,7 @@ export default FieldRadio;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-08T21:36:30.298Z
+                at 2026-09-10T21:29:01.696Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

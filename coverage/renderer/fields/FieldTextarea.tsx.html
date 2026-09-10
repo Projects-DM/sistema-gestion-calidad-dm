@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.66% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/6</span>
+                <span class='fraction'>5/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">68.75% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/16</span>
+                <span class='fraction'>11/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>1/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">16.66% </span>
+                <span class="strong">83.33% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/6</span>
+                <span class='fraction'>5/6</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -117,13 +117,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -163,17 +163,17 @@
 import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 &nbsp;
-const <span class="fstat-no" title="function not covered" >FieldTextarea: React.FC&lt;FieldRenderProps&gt; = ({</span> fieldDef, value, onChange, disabled, error }) =&gt; {
-  const strVal = <span class="cstat-no" title="statement not covered" >value == null ? "" : String(value);</span>
+const FieldTextarea: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
+  const strVal = value == null ? <span class="branch-0 cbranch-no" title="branch not covered" >"" : S</span>tring(value);
 &nbsp;
-  const rows = (<span class="cstat-no" title="statement not covered" >fieldDef.options?.rows as number | undefined) ?? 4;</span>
-  const placeholder = (<span class="cstat-no" title="statement not covered" >fieldDef.options?.placeholder as string | undefined) ?? "";</span>
+  const rows = (fieldDef.options?.rows as number | undefined) ?? 4;
+  const placeholder = (fieldDef.options?.placeholder as string | undefined) ?? "";
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className="runtime-field"&gt;
       &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
         {fieldDef.label}
-        {fieldDef.required &amp;&amp; &lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}
+        {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
       &lt;/label&gt;
 &nbsp;
       &lt;textarea
@@ -184,14 +184,14 @@ const <span class="fstat-no" title="function not covered" >FieldTextarea: React.
         placeholder={placeholder}
         rows={rows}
 <span class="fstat-no" title="function not covered" >        onChange={(e</span>) =&gt; <span class="cstat-no" title="statement not covered" >onChange(fieldDef.id, e.target.value)}</span>
-        className={`runtime-textarea${error ? " runtime-input-error" : ""}`}
+        className={`runtime-textarea${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
         aria-invalid={!!error}
-        aria-describedby={error ? `${fieldDef.id}-error` : undefined}
+        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >`${fieldDef.id}-error` : u</span>ndefined}
         maxLength={(fieldDef.options?.maxLength as number) ?? undefined}
       /&gt;
 &nbsp;
       {error &amp;&amp; (
-        &lt;span id={`${fieldDef.id}-error`} className="runtime-field-error" role="alert"&gt;
+<span class="branch-1 cbranch-no" title="branch not covered" >        &lt;span id={`${fieldDef.id}-error`} className="runtime-field-error" role="alert"&gt;</span>
           {error}
         &lt;/span&gt;
       )}
@@ -208,7 +208,7 @@ export default FieldTextarea;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-08T21:36:30.298Z
+                at 2026-09-10T21:29:01.696Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

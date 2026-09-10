@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.11% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/9</span>
+                <span class='fraction'>6/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/14</span>
+                <span class='fraction'>7/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>1/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.11% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/9</span>
+                <span class='fraction'>6/9</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -123,14 +123,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -175,18 +175,18 @@
 import type React from "react";
 import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 &nbsp;
-const <span class="fstat-no" title="function not covered" >FieldNumber: React.FC&lt;FieldRenderProps&gt; = ({</span> fieldDef, value, onChange, disabled, error }) =&gt; {
-  const strVal = <span class="cstat-no" title="statement not covered" >value == null ? "" : String(value);</span>
+const FieldNumber: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
+  const strVal = value == null ? <span class="branch-0 cbranch-no" title="branch not covered" >"" : S</span>tring(value);
 &nbsp;
-  const min = <span class="cstat-no" title="statement not covered" >fieldDef.options?.min as number | undefined;</span>
-  const max = <span class="cstat-no" title="statement not covered" >fieldDef.options?.max as number | undefined;</span>
-  const placeholder = (<span class="cstat-no" title="statement not covered" >fieldDef.options?.placeholder as string | undefined) ?? "";</span>
+  const min = fieldDef.options?.min as number | undefined;
+  const max = fieldDef.options?.max as number | undefined;
+  const placeholder = (fieldDef.options?.placeholder as string | undefined) ?? "";
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className="runtime-field"&gt;
       &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
         {fieldDef.label}
-        {fieldDef.required &amp;&amp; &lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}
+        {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
       &lt;/label&gt;
 &nbsp;
       &lt;input
@@ -203,13 +203,13 @@ const <span class="fstat-no" title="function not covered" >FieldNumber: React.FC
           const next = <span class="cstat-no" title="statement not covered" >raw === "" ? null : Number(raw);</span>
 <span class="cstat-no" title="statement not covered" >          onChange(fieldDef.id, next);</span>
         }}
-        className={`runtime-input${error ? " runtime-input-error" : ""}`}
+        className={`runtime-input${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
         aria-invalid={!!error}
-        aria-describedby={error ? `${fieldDef.id}-error` : undefined}
+        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >`${fieldDef.id}-error` : u</span>ndefined}
       /&gt;
 &nbsp;
       {error &amp;&amp; (
-        &lt;span id={`${fieldDef.id}-error`} className="runtime-field-error" role="alert"&gt;
+<span class="branch-1 cbranch-no" title="branch not covered" >        &lt;span id={`${fieldDef.id}-error`} className="runtime-field-error" role="alert"&gt;</span>
           {error}
         &lt;/span&gt;
       )}
@@ -226,7 +226,7 @@ export default FieldNumber;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-08T21:36:30.298Z
+                at 2026-09-10T21:29:01.696Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

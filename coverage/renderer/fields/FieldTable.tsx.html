@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">9.09% </span>
+                <span class="strong">63.63% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/11</span>
+                <span class='fraction'>7/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">54.54% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/22</span>
+                <span class='fraction'>12/22</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">20% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>1/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">9.09% </span>
+                <span class="strong">63.63% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/11</span>
+                <span class='fraction'>7/11</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -172,16 +172,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -267,21 +267,21 @@ type TableColumnDef = {
 &nbsp;
 type TableRow = Record&lt;string, unknown&gt;;
 &nbsp;
-const <span class="fstat-no" title="function not covered" >FieldTable: React.FC&lt;FieldRenderProps&gt; = ({</span> fieldDef, value, disabled, error }) =&gt; {
-  const errorId = <span class="cstat-no" title="statement not covered" >`${fieldDef.id}-error`;</span>
+const FieldTable: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, disabled, error }) =&gt; {
+  const errorId = `${fieldDef.id}-error`;
 &nbsp;
-  const columns = (<span class="cstat-no" title="statement not covered" >fieldDef.options?.columns as TableColumnDef[] | undefined) ?? [];</span>
-  const rows = (<span class="cstat-no" title="statement not covered" >value as TableRow[] | null | undefined) ?? [];</span>
+  const columns = (fieldDef.options?.columns as TableColumnDef[] | undefined) ?? [];
+  const rows = (value as TableRow[] | null | undefined) ?? <span class="branch-1 cbranch-no" title="branch not covered" >[];</span>
 &nbsp;
-  const hasColumns = <span class="cstat-no" title="statement not covered" >Array.isArray(columns) &amp;&amp; columns.length &gt; 0;</span>
-  const hasRows = <span class="cstat-no" title="statement not covered" >Array.isArray(rows) &amp;&amp; rows.length &gt; 0;</span>
+  const hasColumns = Array.isArray(columns) &amp;&amp; columns.length &gt; 0;
+  const hasRows = Array.isArray(rows) &amp;&amp; rows.length &gt; 0;
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className="runtime-field"&gt;
       &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
         {fieldDef.label}
         {fieldDef.required &amp;&amp; (
-          &lt;span className="runtime-required" aria-hidden="true"&gt;
+<span class="branch-1 cbranch-no" title="branch not covered" >          &lt;span className="runtime-required" aria-hidden="true"&gt;</span>
             {" "}*
           &lt;/span&gt;
         )}
@@ -289,9 +289,9 @@ const <span class="fstat-no" title="function not covered" >FieldTable: React.FC&
 &nbsp;
       &lt;table
         id={fieldDef.id}
-        className={`runtime-table${error ? " runtime-input-error" : ""}`}
+        className={`runtime-table${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
         aria-invalid={!!error}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >errorId : u</span>ndefined}
         aria-disabled={disabled}
       &gt;
         {!hasColumns ? (
@@ -300,7 +300,7 @@ const <span class="fstat-no" title="function not covered" >FieldTable: React.FC&
               &lt;td&gt;{"No columns configured"}&lt;/td&gt;
             &lt;/tr&gt;
           &lt;/tbody&gt;
-        ) : !hasRows ? (
+        ) : <span class="branch-1 cbranch-no" title="branch not covered" >!hasRows ? (</span>
           &lt;&gt;
             &lt;thead&gt;
               &lt;tr&gt;
@@ -338,7 +338,7 @@ const <span class="fstat-no" title="function not covered" >FieldTable: React.FC&
       &lt;/table&gt;
 &nbsp;
       {error ? (
-        &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;
+<span class="branch-0 cbranch-no" title="branch not covered" >        &lt;span id={errorId} className="runtime-field-error" role="alert"&gt;</span>
           {error}
         &lt;/span&gt;
       ) : null}
@@ -355,7 +355,7 @@ export default FieldTable;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-09-08T21:36:30.298Z
+                at 2026-09-10T21:29:01.696Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

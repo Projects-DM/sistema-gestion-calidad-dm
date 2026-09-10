@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for renderer/fields/FieldSelect.tsx</title>
+    <title>Code coverage report for form/engine/FormRendererEngine.tsx</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">renderer/fields</a> FieldSelect.tsx</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">form/engine</a> FormRendererEngine.tsx</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">91.66% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/12</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">45.83% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/24</span>
+                <span class='fraction'>0/0</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">80% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/5</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">90% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/10</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
@@ -119,9 +119,7 @@
 <a name='L54'></a><a href='#L54'>54</a>
 <a name='L55'></a><a href='#L55'>55</a>
 <a name='L56'></a><a href='#L56'>56</a>
-<a name='L57'></a><a href='#L57'>57</a>
-<a name='L58'></a><a href='#L58'>58</a>
-<a name='L59'></a><a href='#L59'>59</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L57'></a><a href='#L57'>57</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -134,16 +132,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -155,16 +143,24 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">29x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -180,62 +176,60 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * FieldSelect.tsx (Sprint 25.6)
- * Atomic renderer for field type: select.
- * Receives standardized FieldRenderProps — no business logic.
+ * FormRendererEngine.tsx (Sprint 27)
+ * Stateless orchestration layer for full form rendering.
+ *
+ * Responsibilities:
+ * - Render LayoutDefinition structure via LayoutEngine
+ * - Bind field values from formData
+ * - Delegate each field UI to DynamicFieldRenderer
+ * - Handle missing fieldIds without crashing
  */
-import type React from "react";
-import type { FieldRenderProps } from "../../registry/ComponentRegistryBase";
 &nbsp;
-type SelectOption = {
-  label: string;
-  value: string;
+import type React from "react";
+&nbsp;
+import type { LayoutDefinition } from "../../layout/contracts/LayoutContracts";
+import type { RuntimeValue } from "../../types/runtimeContracts";
+&nbsp;
+import { LayoutEngine } from "../../layout/engine/LayoutEngine";
+&nbsp;
+export type FormRendererEngineProps = {
+  layout: LayoutDefinition;
+  formData: Record&lt;string, unknown&gt;;
+  onChange: (fieldId: string, value: unknown) =&gt; void;
+  disabled?: boolean;
+  errors?: Record&lt;string, string&gt;;
+  hiddenFields?: Set&lt;string&gt;;
+  disabledFields?: Set&lt;string&gt;;
 };
 &nbsp;
-const FieldSelect: React.FC&lt;FieldRenderProps&gt; = ({ fieldDef, value, onChange, disabled, error }) =&gt; {
-  const strVal = value == null ? <span class="branch-0 cbranch-no" title="branch not covered" >"" : S</span>tring(value);
 &nbsp;
-  const placeholder = (fieldDef.options?.placeholder as string | undefined) ?? "";
-  const rawChoices = fieldDef.options?.choices;
-  const choices = Array.isArray(rawChoices) ? (rawChoices as Array&lt;string | SelectOption&gt;) : <span class="branch-1 cbranch-no" title="branch not covered" >[];</span>
-  const optLabel = (c: string | SelectOption) =&gt; (typeof c === "string" ? c : (<span class="branch-1 cbranch-no" title="branch not covered" >c.label ?? ""));</span>
-  const optValue = (c: string | SelectOption) =&gt; (typeof c === "string" ? c : (<span class="branch-1 cbranch-no" title="branch not covered" >c.value ?? optLabel(c))</span>);
-&nbsp;
+/**
+ * FormRendererEngine
+ */
+export const FormRendererEngine: React.FC&lt;FormRendererEngineProps&gt; = ({
+  layout,
+  formData,
+  onChange,
+  disabled,
+  errors,
+  hiddenFields,
+  disabledFields,
+}) =&gt; {
   return (
-    &lt;div className="runtime-field"&gt;
-      &lt;label htmlFor={fieldDef.id} className="runtime-field-label"&gt;
-        {fieldDef.label}
-        {fieldDef.required &amp;&amp; <span class="branch-1 cbranch-no" title="branch not covered" >&lt;span className="runtime-required" aria-hidden="true"&gt; *&lt;/span&gt;}</span>
-      &lt;/label&gt;
-&nbsp;
-      &lt;select
-        id={fieldDef.id}
-        required={fieldDef.required}
-        disabled={disabled}
-        value={strVal}
-<span class="fstat-no" title="function not covered" >        onChange={(e</span>) =&gt; <span class="cstat-no" title="statement not covered" >onChange(fieldDef.id, e.target.value)}</span>
-        className={`runtime-select${error ? <span class="branch-0 cbranch-no" title="branch not covered" >" runtime-input-error" : "</span>"}`}
-        aria-invalid={!!error}
-        aria-describedby={error ? <span class="branch-0 cbranch-no" title="branch not covered" >`${fieldDef.id}-error` : u</span>ndefined}
-      &gt;
-        {placeholder ? <span class="branch-0 cbranch-no" title="branch not covered" >&lt;option value=""&gt;{placeholder}&lt;/option&gt; : null}</span>
-        {choices.map((c, i) =&gt; (
-          &lt;option key={i} value={optValue(c)}&gt;
-            {optLabel(c)}
-          &lt;/option&gt;
-        ))}
-      &lt;/select&gt;
-&nbsp;
-      {error &amp;&amp; (
-<span class="branch-1 cbranch-no" title="branch not covered" >        &lt;span id={`${fieldDef.id}-error`} className="runtime-field-error" role="alert"&gt;</span>
-          {error}
-        &lt;/span&gt;
-      )}
-    &lt;/div&gt;
+    &lt;LayoutEngine
+      layout={layout}
+      formData={formData as Record&lt;string, RuntimeValue&gt;}
+      onChange={onChange}
+      disabled={disabled}
+      errors={errors}
+      hiddenFields={hiddenFields}
+      disabledFields={disabledFields}
+    /&gt;
   );
 };
 &nbsp;
-export default FieldSelect;
+export default FormRendererEngine;
 &nbsp;
 &nbsp;</pre></td></tr></table></pre>
 
