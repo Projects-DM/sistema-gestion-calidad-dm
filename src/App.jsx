@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuth } from './hooks/useAuth';
 import { bootDurableOccurrenceLedger } from './core/capabilities/alert/occurrence/persistence/OccurrenceLedgerDurableBoot.js';
 
-const ROUTER_BASENAME = '/sistema-gestion-calidad-dm';
+const ROUTER_BASENAME = import.meta.env.BASE_URL;
 
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
