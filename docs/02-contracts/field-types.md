@@ -6,7 +6,7 @@ Este documento describe la especificación técnica de los tipos de campos dispo
 
 ## 1. Catálogo de Tipos de Campos
 
-A continuación se detallan los tipos de datos/campos que pueden configurarse en la interfaz del constructor ([FormBuilder.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/FormBuilder.jsx)) e insertarse en la tabla `sgc_form_fields`:
+A continuación se detallan los tipos de datos/campos que pueden configurarse en la interfaz del constructor (`FormBuilder` en `src/components/`, ver SoT contractual `field_schema.md` en este mismo directorio) e insertarse en la tabla `sgc_form_fields`:
 
 | Identificador (`field_type`) | Nombre en Interfaz | Componente HTML / Renderizado | Tipo de Valor Almacenado | Opciones Adicionales (`options`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -25,9 +25,9 @@ A continuación se detallan los tipos de datos/campos que pueden configurarse en
 
 El sistema cuenta con tres motores principales de visualización de formularios ubicados en la carpeta `src/components/engines/`:
 
-1. **[BaseGeneric.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/engines/BaseGeneric.jsx)**: Diseñado para entradas genéricas organizadas en una cuadrícula de dos columnas.
-2. **[BaseChecklist.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/engines/BaseChecklist.jsx)**: Optimizado para auditorías tipo check/no-check, con soporte para desplegar el canvas de firma al pie y campos de texto para observaciones.
-3. **[BaseMediciones.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/engines/BaseMediciones.jsx)**: Especializado en parámetros cuantitativos. Ofrece validación de rangos tolerables (`options.min` y `options.max`) en tiempo real y resalta alertas visuales en caso de valores fuera de rango.
+1. **[BaseGeneric.jsx](../../src/components/engines/BaseGeneric.jsx)**: Diseñado para entradas genéricas organizadas en una cuadrícula de dos columnas.
+2. **[BaseChecklist.jsx](../../src/components/engines/BaseChecklist.jsx)**: Optimizado para auditorías tipo check/no-check, con soporte para desplegar el canvas de firma al pie y campos de texto para observaciones.
+3. **[BaseMediciones.jsx](../../src/components/engines/BaseMediciones.jsx)**: Especializado en parámetros cuantitativos. Ofrece validación de rangos tolerables (`options.min` y `options.max`) en tiempo real y resalta alertas visuales en caso de valores fuera de rango.
 
 ---
 
@@ -67,7 +67,7 @@ sequenceDiagram
    Cuando un administrador crea un campo de tipo firma, se guarda una fila en la tabla `sgc_form_fields` con el atributo `field_type = 'signature'`.
    
 2. **Carga y Renderizado**:
-   Al abrir el formulario dinámico ([DynamicForm.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/pages/DynamicForm.jsx)), el motor correspondiente carga el componente interactivo **[SignaturePad.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/SignaturePad.jsx)**.
+   Al abrir el formulario dinámico ([DynamicForm.jsx](../../src/pages/DynamicForm.jsx)), el motor correspondiente carga el componente interactivo **[SignaturePad.jsx](../../src/components/SignaturePad.jsx)**.
 
 3. **Dibujo y Captura en Cliente**:
    El usuario interactúa con un canvas HTML5 (`<canvas>`) con soporte para eventos táctiles y de ratón. Al finalizar el trazo, debe presionar **"Confirmar Firma"**.
@@ -82,7 +82,7 @@ sequenceDiagram
    Al enviar el formulario, el cliente realiza un insert a `sgc_response_values`, guardando la URL de la imagen en la columna de texto libre `value_text`.
 
 6. **Visualización en Historial**:
-   La vista de registros ([DynamicRecordsView.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/DynamicRecordsView.jsx)) verifica si el tipo de campo es `signature` y si contiene un valor de texto. En tal caso, renderiza una etiqueta `<img>` con estilos CSS para optimizar la visualización de la firma (por ejemplo, filtros de contraste y mezcla de color: `filter contrast-125 mix-blend-multiply`).
+   La vista de registros ([DynamicRecordsView.jsx](../../src/components/DynamicRecordsView.jsx)) verifica si el tipo de campo es `signature` y si contiene un valor de texto. En tal caso, renderiza una etiqueta `<img>` con estilos CSS para optimizar la visualización de la firma (por ejemplo, filtros de contraste y mezcla de color: `filter contrast-125 mix-blend-multiply`).
 
 ---
 
@@ -90,7 +90,7 @@ sequenceDiagram
 
 Para agregar un nuevo tipo de campo en el futuro, se deben seguir los siguientes pasos:
 
-1. **Exposición en Constructor**: Agregar la nueva `<option>` con el valor del tipo de campo en el selector de [FormBuilder.jsx](file:///c:/Users/USUARIO/OneDrive/Desktop/proyectos/sistema-gestion-calidad-dm%20-v1%20-%20operativo/src/components/FormBuilder.jsx).
+1. **Exposición en Constructor**: Agregar la nueva `<option>` con el valor del tipo de campo en el selector de [FormBuilder](../../src/components/FormBuilder.jsx) (ver SoT contractual `field_schema.md`).
 2. **Definición de Opciones Dinámicas**: Si el nuevo tipo requiere parámetros de configuración (como rangos o unidades en `number`), agregar controles condicionales en el formulario de creación de `FormBuilder.jsx`.
 3. **Soporte en Motores**: Editar los componentes de renderizado (`BaseGeneric`, `BaseChecklist`, `BaseMediciones`) para definir cómo se mostrará e interactuará el usuario con este campo.
 4. **Validación del Cliente**: Asegurar que la función de validación de campos obligatorios en `DynamicForm.jsx` (y en el componente específico si requiere subidas previas) evalúe correctamente los valores vacíos.

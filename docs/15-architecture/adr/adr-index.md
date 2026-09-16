@@ -21,6 +21,7 @@
 | ADR-008 | Temporal Recurrence Window Model | ACCEPTED | 2026-05-15 | Sprint 341, 346-348, 350 | ADR-001, ADR-006 |
 | ADR-009 | Document Storage and RLS Security Model | ACCEPTED | 2026-07-16 | Sprint 70, 344, 346-348, 369 | ADR-004, ADR-003, ADR-006 |
 | ADR-010 | Historical Sprint Preservation Policy | ACCEPTED | 2026-09-03 | Sprint 378, 379, 380 | All ADRs |
+| ADR-011 | Dynamic Module Architecture Decision | ACCEPTED | 2026-09-16 | Sprint 49A-ARCH, 49A-R.5.1, 49A-R.5.2A | MODULE_CONTRACT_v1, BUSINESS_CAPABILITY_CONTRACT_v1 |
 
 ---
 

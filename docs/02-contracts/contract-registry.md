@@ -476,6 +476,24 @@ Defines the contract for production deployment to GitHub Pages.
 
 ---
 
+## Supplementary Contract Layers (Sprint 401)
+
+Reference entries for contract-layer documents that complement (not duplicate) the CONTRACT-001…008 registry. Neither document is modified by this registration; roles only.
+
+### SRCL Runtime Contract Layer (canonical)
+
+**SoT:** `docs/01-core-runtime/01-core-runtime-doc/03-master-model/SRCL_v1.0.md`
+**Role:** Mandatory architecture contract for ALL runtime modules (SaaS → Runtime → Audit → Analytics → Scoring execution flow).
+**Status:** ACTIVE (Sprint 401 registration; canonical over same-named note below — distinct scope, distinct hash).
+
+### Form Contract Layer (note)
+
+**SoT:** `docs/02-contracts/SRCL_V1.0.md`
+**Role:** Form-level validation layer note (FormContractValidator, AntiBreakingGuard, FormBlueprintGenerator; Form Definition → … → Scoring flow).
+**Status:** ACTIVE as reference note (Sprint 401 registration).
+
+---
+
 **Registry Maintained by**: Architecture Team  
-**Last Updated**: 2026-09-03 (Sprint 380)  
+**Last Updated**: 2026-09-16 (Sprint 401: +2 SRCL reference entries)  
 **Next Review**: 2026-12-01

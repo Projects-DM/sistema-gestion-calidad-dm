@@ -1,4 +1,10 @@
-# DYNAMIC_MODULE_ARCHITECTURE_DECISION_v1 (SSOT)
+# ADR-011: Dynamic Module Architecture Decision
+
+**Status:** ACCEPTED
+**Date:** 2026-09-16
+**Deciders:** Architecture Team (Sprint 400 plan, Sprint 401 execution)
+**Sprint References:** Sprint 49A-R.5.1, 49A-R.5.2A, 49A-ARCH
+**Supersedes:** `15-architecture/DYNAMIC_MODULE_ARCHITECTURE_DECISION_v1.md` (moved via `git mv`, body preserved)
 
 > **Tipo:** Arquitectura SSOT (Decisión Arquitectónica)
 >
