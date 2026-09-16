@@ -1,7 +1,7 @@
-# Documentation Index — Sistema de Gestión de Calidad (SGC-DM)
+﻿# Documentation Index â€” Sistema de GestiÃ³n de Calidad (SGC-DM)
 
 **Version:** 1.0 (Sprint 383)  
-**Classification:** DOCUMENTATION INDEX — NAVIGATION GUIDE  
+**Classification:** DOCUMENTATION INDEX â€” NAVIGATION GUIDE  
 **Branch:** `release/stable-sprint79`  
 **Baseline:** `c7d9547`
 
@@ -47,31 +47,31 @@
 | **ADRs** | [ADR-009](15-architecture/adr/ADR-009-document-storage-rls-security-model.md) | Document Storage + RLS | Architects |
 | **ADRs** | [ADR-010](15-architecture/adr/ADR-010-historical-sprint-preservation-policy.md) | Sprint Preservation Policy | Governance |
 | **Sprints** | [Sprint 383](Sprint-383.md) | Professional Presentation Sprint | All |
-| **Sprints** | [Sprint 382](Sprint-382.md) | Repository Governance Audit | All |
-| **Sprints** | [Sprint 381R](Sprint-381R.md) | Architecture Certification Refinement | All |
-| **Sprints** | [Sprint 381](Sprint-381.md) | Architecture Certification | All |
-| **Sprints** | [Sprint 380](Sprint-380.md) | Historical Knowledge Extraction | All |
-| **Sprints** | [Sprint 376](Sprint-376.md) | Production Baseline | All |
-| **Sprints** | [Sprint 377](Sprint-377.md) | Architecture Isolation | All |
-| **Sprints** | [Sprint 378](Sprint-378.md) | Repository Archaeology | All |
-| **Sprints** | [Sprint 381](Sprint-381.md) | Architecture Certification | All |
-| **Sprints** | [Sprint 381R](Sprint-381R.md) | Architecture Certification Refinement | All |
-| **Sprints** | [Sprint 380](Sprint-380.md) | Historical Knowledge Extraction | All |
-| **Sprints** | [Sprint 376](Sprint-376.md) | Production Baseline | All |
-| **Sprints** | [Sprint 377](Sprint-377.md) | Architecture Isolation | All |
-| **Sprints** | [Sprint 378](Sprint-378.md) | Repository Archaeology | All |
-| **Sprints** | [Sprint 381](Sprint-381.md) | Architecture Certification | All |
-| **Sprints** | [Sprint 381R](Sprint-381R.md) | Architecture Certification Refinement | All |
-| **Sprints** | [Sprint 380](Sprint-380.md) | Historical Knowledge Extraction | All |
-| **Sprints** | [Sprint 376](Sprint-376.md) | Production Baseline | All |
-| **Sprints** | [Sprint 377](Sprint-377.md) | Architecture Isolation | All |
-| **Sprints** | [Sprint 378](Sprint-378.md) | Repository Archaeology | All |
-| **Sprints** | [Sprint 381](Sprint-381.md) | Architecture Certification | All |
-| **Sprints** | [Sprint 381R](Sprint-381R.md) | Architecture Certification Refinement | All |
-| **Sprints** | [Sprint 380](Sprint-380.md) | Historical Knowledge Extraction | All |
-| **Sprints** | [Sprint 376](Sprint-376.md) | Production Baseline | All |
-| **Sprints** | [Sprint 377](Sprint-377.md) | Architecture Isolation | All |
-| **Sprints** | [Sprint 378](Sprint-378.md) | Repository Archaeology | All |
+| **Sprints** | [Sprint 382](14-sprint/history/301-400/Sprint-382.md) | Repository Governance Audit | All |
+| **Sprints** | [Sprint 381R](14-sprint/history/301-400/Sprint-381R.md) | Architecture Certification Refinement | All |
+| **Sprints** | [Sprint 381](14-sprint/history/301-400/Sprint-381.md) | Architecture Certification | All |
+| **Sprints** | [Sprint 380](14-sprint/history/301-400/Sprint-380.md) | Historical Knowledge Extraction | All |
+| **Sprints** | [Sprint 376](14-sprint/history/301-400/Sprint-376.md) | Production Baseline | All |
+| **Sprints** | [Sprint 377](14-sprint/history/301-400/Sprint-377.md) | Architecture Isolation | All |
+| **Sprints** | [Sprint 378](14-sprint/history/301-400/Sprint-378.md) | Repository Archaeology | All |
+| **Sprints** | [Sprint 381](14-sprint/history/301-400/Sprint-381.md) | Architecture Certification | All |
+| **Sprints** | [Sprint 381R](14-sprint/history/301-400/Sprint-381R.md) | Architecture Certification Refinement | All |
+| **Sprints** | [Sprint 380](14-sprint/history/301-400/Sprint-380.md) | Historical Knowledge Extraction | All |
+| **Sprints** | [Sprint 376](14-sprint/history/301-400/Sprint-376.md) | Production Baseline | All |
+| **Sprints** | [Sprint 377](14-sprint/history/301-400/Sprint-377.md) | Architecture Isolation | All |
+| **Sprints** | [Sprint 378](14-sprint/history/301-400/Sprint-378.md) | Repository Archaeology | All |
+| **Sprints** | [Sprint 381](14-sprint/history/301-400/Sprint-381.md) | Architecture Certification | All |
+| **Sprints** | [Sprint 381R](14-sprint/history/301-400/Sprint-381R.md) | Architecture Certification Refinement | All |
+| **Sprints** | [Sprint 380](14-sprint/history/301-400/Sprint-380.md) | Historical Knowledge Extraction | All |
+| **Sprints** | [Sprint 376](14-sprint/history/301-400/Sprint-376.md) | Production Baseline | All |
+| **Sprints** | [Sprint 377](14-sprint/history/301-400/Sprint-377.md) | Architecture Isolation | All |
+| **Sprints** | [Sprint 378](14-sprint/history/301-400/Sprint-378.md) | Repository Archaeology | All |
+| **Sprints** | [Sprint 381](14-sprint/history/301-400/Sprint-381.md) | Architecture Certification | All |
+| **Sprints** | [Sprint 381R](14-sprint/history/301-400/Sprint-381R.md) | Architecture Certification Refinement | All |
+| **Sprints** | [Sprint 380](14-sprint/history/301-400/Sprint-380.md) | Historical Knowledge Extraction | All |
+| **Sprints** | [Sprint 376](14-sprint/history/301-400/Sprint-376.md) | Production Baseline | All |
+| **Sprints** | [Sprint 377](14-sprint/history/301-400/Sprint-377.md) | Architecture Isolation | All |
+| **Sprints** | [Sprint 378](14-sprint/history/301-400/Sprint-378.md) | Repository Archaeology | All |
 
 ---
 
@@ -80,79 +80,79 @@
 ### For New Developers
 ```
 README.md
-    ↓
-Architecture Overview → ARCHITECTURE_OVERVIEW.md
-    ↓
-Feature Overview → FEATURE_OVERVIEW.md
-    ↓
-Security Overview → SECURITY_OVERVIEW.md
-    ↓
-Deployment Overview → DEPLOYMENT_OVERVIEW.md
+    â†“
+Architecture Overview â†’ ARCHITECTURE_OVERVIEW.md
+    â†“
+Feature Overview â†’ FEATURE_OVERVIEW.md
+    â†“
+Security Overview â†’ SECURITY_OVERVIEW.md
+    â†“
+Deployment Overview â†’ DEPLOYMENT_OVERVIEW.md
 ```
 
 ### For Architects
 ```
-ADR Index → 15-architecture/adr/adr-index.md
-    ↓
+ADR Index â†’ 15-architecture/adr/adr-index.md
+    â†“
 ADR-001 through ADR-010
-    ↓
-Current Architecture → 15-architecture/current-architecture.md
-    ↓
-Architecture Overview → ARCHITECTURE_OVERVIEW.md
-    ↓
-Contract Registry → ../02-contracts/contract-registry.md
+    â†“
+Current Architecture â†’ 15-architecture/current-architecture.md
+    â†“
+Architecture Overview â†’ ARCHITECTURE_OVERVIEW.md
+    â†“
+Contract Registry â†’ ../02-contracts/contract-registry.md
 ```
 
 ### For DevOps / Deployment Engineers
 ```
-Deployment Overview → DEPLOYMENT_OVERVIEW.md
-    ↓
+Deployment Overview â†’ DEPLOYMENT_OVERVIEW.md
+    â†“
 README.md (Deployment section)
-    ↓
-Architecture Overview → ARCHITECTURE_OVERVIEW.md (Deployment section)
-    ↓
-Sprint 361 Report (Correction) → Sprint-361.md
+    â†“
+Architecture Overview â†’ ARCHITECTURE_OVERVIEW.md (Deployment section)
+    â†“
+Sprint 361 Report (Correction) â†’ Sprint-361.md
 ```
 
 ### For Security Engineers
 ```
-Security Overview → SECURITY_OVERVIEW.md
-    ↓
-ADR-007 (Auth Contract) → 15-architecture/adr/ADR-007-authentication-client-initialization-contract.md
-    ↓
-ADR-006 (Tenant Persistence) → 15-architecture/adr/ADR-006-tenant-scoped-persistence.md
-    ↓
-ADR-009 (Document Storage + RLS) → 15-architecture/adr/ADR-009-document-storage-rls-security-model.md
+Security Overview â†’ SECURITY_OVERVIEW.md
+    â†“
+ADR-007 (Auth Contract) â†’ 15-architecture/adr/ADR-007-authentication-client-initialization-contract.md
+    â†“
+ADR-006 (Tenant Persistence) â†’ 15-architecture/adr/ADR-006-tenant-scoped-persistence.md
+    â†“
+ADR-009 (Document Storage + RLS) â†’ 15-architecture/adr/ADR-009-document-storage-rls-security-model.md
 ```
 
 ### For QA / Test Engineers
 ```
-Project Status → PROJECT_STATUS.md (Known Gaps section)
-    ↓
-Feature Overview → FEATURE_OVERVIEW.md (Gaps section)
-    ↓
-Professional Roadmap → PROFESSIONAL_ROADMAP.md (Testing phases)
+Project Status â†’ PROJECT_STATUS.md (Known Gaps section)
+    â†“
+Feature Overview â†’ FEATURE_OVERVIEW.md (Gaps section)
+    â†“
+Professional Roadmap â†’ PROFESSIONAL_ROADMAP.md (Testing phases)
 ```
 
 ### For Product Managers
 ```
 README.md (Overview)
-    ↓
-Feature Overview → FEATURE_OVERVIEW.md
-    ↓
-Project Status → PROJECT_STATUS.md (Roadmap section)
-    ↓
-Professional Roadmap → PROFESSIONAL_ROADMAP.md
+    â†“
+Feature Overview â†’ FEATURE_OVERVIEW.md
+    â†“
+Project Status â†’ PROJECT_STATUS.md (Roadmap section)
+    â†“
+Professional Roadmap â†’ PROFESSIONAL_ROADMAP.md
 ```
 
 ### For Security Auditors
 ```
-Security Overview → SECURITY_OVERVIEW.md
-    ↓
+Security Overview â†’ SECURITY_OVERVIEW.md
+    â†“
 ADR-007 (Auth) + ADR-006 (Tenant) + ADR-009 (Storage)
-    ↓
+    â†“
 Sprint 369 Report (Final Certification)
-    ↓
+    â†“
 Sprint 362/363 Reports (Null State Audit + Hardening)
 ```
 
@@ -191,7 +191,7 @@ Week 4: Sprint 381R + Sprint 382 + Sprint 383 (this sprint)
 
 | Document | References | Referenced By |
 |----------|------------|---------------|
-| README.md | All | — |
+| README.md | All | â€” |
 | ARCHITECTURE_OVERVIEW.md | All ADRs, Contracts | README.md, PROJECT_STATUS.md |
 | PROJECT_STATUS.md | All sprints, certifications | README.md |
 | FEATURE_OVERVIEW.md | Architecture, Contracts, ADRs | README.md, PROJECT_STATUS.md |
@@ -247,5 +247,5 @@ Week 4: Sprint 381R + Sprint 382 + Sprint 383 (this sprint)
 
 ---
 
-*Generated as part of Sprint 383 — Professional Project Presentation & Portfolio Readiness*  
+*Generated as part of Sprint 383 â€” Professional Project Presentation & Portfolio Readiness*  
 *Index baseline: c7d9547 | Current HEAD: eceaf47 | Branch: release/stable-sprint79*
