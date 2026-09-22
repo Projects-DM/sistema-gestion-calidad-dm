@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/JavaScript-ES2024-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
 ---
 
@@ -191,17 +191,18 @@ npm run build
 
 | Document | Description |
 |----------|-------------|
-| [`docs/architecture/01-general.md`](docs/architecture/01-general.md) | System Architecture Overview |
-| [`docs/architecture/adr/ADR-001`](docs/architecture/adr/ADR-001-metadata-driven-architecture.md) | Metadata-Driven Architecture |
-| [`docs/architecture/adr/ADR-002`](docs/architecture/adr/ADR-002-runtime-driven-execution-model.md) | Runtime-Driven Execution Model |
-| [`docs/architecture/adr/ADR-003`](docs/architecture/adr/ADR-003-capability-driven-authorization.md) | Capability-Driven Authorization |
-| [`docs/architecture/adr/ADR-004`](docs/architecture/adr/ADR-004-supabase-remote-persistence-backend.md) | Supabase as Backend |
-| [`docs/architecture/adr/ADR-005`](docs/architecture/adr/ADR-005-github-actions-github-pages-deployment.md) | GitHub Actions + Pages Deployment |
-| [`docs/architecture/adr/ADR-006`](docs/architecture/adr/ADR-006-tenant-scoped-persistence.md) | Tenant-Scoped Persistence |
-| [`docs/architecture/adr/ADR-007`](docs/architecture/adr/ADR-007-authentication-client-initialization-contract.md) | Auth Client Initialization Contract |
-| [`docs/architecture/adr/ADR-008`](docs/architecture/adr/ADR-008-temporal-recurrence-window-model.md) | Temporal Recurrence Window Model |
-| [`docs/architecture/adr/ADR-009`](docs/architecture/adr/ADR-009-document-storage-rls-security-model.md) | Document Storage & RLS Security |
-| [`docs/architecture/adr/ADR-010`](docs/architecture/adr/ADR-010-historical-sprint-preservation-policy.md) | Historical Sprint Preservation Policy |
+| [`docs/11-architecture/ARCHITECTURE_OVERVIEW.md`](docs/11-architecture/ARCHITECTURE_OVERVIEW.md) | System Architecture Overview |
+| [`docs/15-architecture/adr/ADR-001`](docs/15-architecture/adr/ADR-001-metadata-driven-architecture.md) | Metadata-Driven Architecture |
+| [`docs/15-architecture/adr/ADR-002`](docs/15-architecture/adr/ADR-002-runtime-driven-execution-model.md) | Runtime-Driven Execution Model |
+| [`docs/15-architecture/adr/ADR-003`](docs/15-architecture/adr/ADR-003-capability-driven-authorization.md) | Capability-Driven Authorization |
+| [`docs/15-architecture/adr/ADR-004`](docs/15-architecture/adr/ADR-004-supabase-remote-persistence-backend.md) | Supabase as Backend |
+| [`docs/15-architecture/adr/ADR-005`](docs/15-architecture/adr/ADR-005-github-actions-github-pages-deployment.md) | GitHub Actions + Pages Deployment |
+| [`docs/15-architecture/adr/ADR-006`](docs/15-architecture/adr/ADR-006-tenant-scoped-persistence.md) | Tenant-Scoped Persistence |
+| [`docs/15-architecture/adr/ADR-007`](docs/15-architecture/adr/ADR-007-authentication-client-initialization-contract.md) | Auth Client Initialization Contract |
+| [`docs/15-architecture/adr/ADR-008`](docs/15-architecture/adr/ADR-008-temporal-recurrence-window-model.md) | Temporal Recurrence Window Model |
+| [`docs/15-architecture/adr/ADR-009`](docs/15-architecture/adr/ADR-009-document-storage-rls-security-model.md) | Document Storage & RLS Security |
+| [`docs/15-architecture/adr/ADR-010`](docs/15-architecture/adr/ADR-010-historical-sprint-preservation-policy.md) | Historical Sprint Preservation Policy |
+| [`docs/15-architecture/adr/ADR-011`](docs/15-architecture/adr/ADR-011-dynamic-module-architecture-decision.md) | Dynamic Module Architecture Decision |
 
 ---
 
@@ -343,7 +344,7 @@ This project demonstrates proficiency in:
 | **Database Design** | EAV model, RLS policies, multi-tenant isolation |
 | **CI/CD** | GitHub Actions, GitHub Pages, environment secrets |
 | **Forensic Debugging** | Sprints 355-371: root cause analysis, regression chains |
-| **Forensic Architecture** | ADR-001 through ADR-010 |
+| **Forensic Architecture** | ADR-001 through ADR-011 |
 | **Contract-Based Design** | 8 system contracts with invariants |
 | **Git Hygiene** | Baseline preservation, controlled changes |
 | **Documentation** | ADRs, Contracts, Sprints, Architecture docs |
@@ -352,7 +353,7 @@ This project demonstrates proficiency in:
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+© 2026 DM Distribuciones SAS (Projects-DM). All rights reserved. — SGC-DM is proprietary software; see [LICENSE](LICENSE) for details. Third-party dependencies remain governed exclusively by their own licenses.
 
 ---
 
