@@ -31,12 +31,12 @@ Industrial quality management traditionally relies on:
 A **metadata-driven, runtime-executed web application** that provides:
 
 * **Centralized quality operations** — One platform for all quality processes
-* **Dynamic forms engine** — Configure 100+ form types without code changes
-* **Real-time traceability** — End-to-end traceability from creation to completion
+* **Dynamic forms engine** — Configure form types without code changes
+* **End-to-end traceability** — Traceability from creation to completion
 * **Tenant-scoped persistence** — Multi-tenant isolation with shared cross-browser state
 * **Evidence-driven workflows** — Photo evidence, digital signatures, digital certificates
 * **Temporal recurrence engine** — Calendar-aware scheduling with anchor immutability
-* **Full audit trail** — Immutable audit logs for regulatory compliance (INVIMA, ISO)
+* **Full audit trail** — Append-only audit logs (RLS-protected) supporting regulatory compliance (INVIMA, ISO)
 
 ---
 
@@ -100,26 +100,26 @@ A **metadata-driven, runtime-executed web application** that provides:
 * **Traceability Matrix** — End-to-end lot/batch tracking from source to destination
 
 ### 🔬 Quality Control
-* **Dynamic Forms Engine** — 100+ configurable form types (checklists, measurements, audits, CAPA)
+* **Dynamic Forms Engine** — Configurable form types (checklists, measurements, audits, CAPA) defined as database metadata
 * **Evidence Capture** — Camera integration, image compression, digital signatures (Canvas)
-* **Real-time Validation** — Conditional logic, range validation, critical value alerts
+* **Instant Validation** — Conditional logic, range validation, critical value alerts evaluated on input
 * **Temporal Recurrence** — Calendar-aware scheduling (daily/weekly/monthly/yearly/custom)
 
 ### 🏢 Multi-Tenant Architecture
 * **Tenant Isolation** — Email-domain derived tenant IDs (`user@domain.com` → `domain.com`)
 * **Shared State** — Cross-browser/cross-device sync via Supabase
-* **Offline Resilience** — LocalStorage fallback with hybrid persistence
+* **Local Resilience** — LocalStorage cache with hybrid persistence fallback (no full offline mode)
 * **RLS Enforcement** — Row-Level Security policies at database level
 
 ### 🔐 Security & Authorization
 * **Capability-Driven Authorization** — Fine-grained permissions (`form:submit`, `form:verify`, `module:configure`)
 * **Role-Based Access** — `administrador`, `calidad`, `operativo`, `consulta`, `conductor`
 * **Tenant Isolation** — Row-Level Security (RLS) at PostgreSQL level
-* **Storage Security** — Signed URLs, tenant-scoped paths, signed URLs with expiration
+* **Storage Security** — Supabase Storage with public URLs; tenant isolation enforced at database level (RLS + `tenant_id`)
 
 ### 📊 Observability & Audit
-* **Immutable Audit Logs** — Every action logged with actor, timestamp, before/after state
-* **Evidence Integrity** — Signed URLs with expiration, hash verification
+* **Audit Logs** — Key actions logged with actor, timestamp, before/after state (append-only via RLS)
+* **Evidence Integrity** — Direct public URLs with database-backed upload records
 - **Temporal Engine** — Calendar-aware recurrence with immutable anchor
 
 ---
@@ -132,9 +132,9 @@ A **metadata-driven, runtime-executed web application** that provides:
 | | Vite | 8.0.10 | Build Tool / Dev Server |
 | | React Router | 7.14.2 | Client-side Routing |
 | | Tailwind CSS | 4.2.4 | Utility-first Styling |
-| **State** | Zustand | 5.0.14 | Global State |
+| **State** | Zustand | 5.0.14 | PDF viewer store (global state via React Context) |
 | | React Context | 19.2.5 | Auth/Tenant/Context |
-| **Backend (BaaS)** | Supabase | 2.105.1 | PostgreSQL + Auth + Storage + Realtime |
+| **Backend (BaaS)** | Supabase | 2.105.1 | PostgreSQL + Auth + Storage |
 | **Database** | PostgreSQL | 15+ | Relational + RLS |
 | **Auth** | GoTrue (Supabase) | 2.x | JWT + Sessions |
 | **Storage** | Supabase Storage | S3-compatible | Evidence/Signatures/Docs |
