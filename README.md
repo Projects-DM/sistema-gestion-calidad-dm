@@ -5,7 +5,6 @@
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL%20%2B%20Auth%20%2B%20Storage-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![TypeScript](https://img.shields.io/badge/JavaScript-ES2024-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
 ---
@@ -14,7 +13,7 @@
 
 ### What is this?
 
-**Sistema de Gestión de Calidad (SGC)** — **DM Distribuciones** is an **enterprise-grade web application** designed to **digitize, automate, and audit quality management processes** for industrial distribution operations. The platform replaces manual, paper-based quality control processes with a centralized, traceable, and auditable digital platform.
+**Sistema de Gestión de Calidad (SGC)** — **DM Distribuciones** is a **web application** designed to **digitize, automate, and audit quality management processes** for industrial distribution operations. The platform replaces manual, paper-based quality control processes with a centralized, traceable, and auditable digital platform.
 
 ### Problem
 
@@ -247,7 +246,7 @@ User → Role → Capability Set → Module Permission → Operation
 ```
 Developer
     ↓
-git push release/stable-sprint79
+git push operativo
     ↓
 GitHub Actions (workflow: deploy-pages.yml)
     ↓
@@ -290,23 +289,25 @@ GitHub Pages (projects-dm.github.io/sistema-gestion-calidad-dm/)
 | **Temporal Engine** | ✅ Certified (Sprint 341) |
 | **Document Storage** | ✅ Supabase Storage + RLS |
 | **CI/CD** | ✅ GitHub Actions → GitHub Pages |
-| **Automated Testing** | ⚠️ In Progress (Sprint 383+) |
-| **Branch Protection** | ⚠️ Pending (Sprint 383+) |
-| **Staging Environment** | ⚠️ Planned (Sprint 383+) |
+| **Automated Testing** | ✅ Vitest suite (documented 294 tests, Sprints 386–388); E2E pending |
+| **Branch Protection** | ✅ Active rulesets (`release/stable-sprint79`, `operativo`, `develop`: deletion + non-fast-forward) |
+| **Staging Environment** | ✅ Preview/Production environments + Vercel Preview deployments |
 
 ### Current Baseline
 | Property | Value |
 |----------|-------|
-| **Baseline Commit** | `c7d954707dc28ac22aece47d32c9e639d5974105` |
-| **Current HEAD** | `eceaf47501b637b19bce027d17bb47ec0589e84f` |
-| **Branch** | `release/stable-sprint79` |
+| **Baseline Commit (tag)** | `fd2f26309715f660e92f4181443f96ffff4d7f77` (`baseline-pre-produccion-2026-09-19`) |
+| **Production Branch** | `operativo` (trigger `push: [operativo]`; verified deployment run #24) |
+| **Rollback Reference** | `release/stable-sprint79` (`fd2f263`) |
 | **Production URL** | `https://projects-dm.github.io/sistema-gestion-calidad-dm/` |
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap (historical plan, Sprint 383 — preserved)
 
-### Immediate (Sprint 383-386)
+> Historical note: this roadmap was written at Sprint 383. Completed since: branch protection (rulesets actives, Sprints 404–410), Vitest suite (Sprints 386–388), Preview/Production environments, production cutover to `operativo` (Sprints 411–415). Pending: E2E suite, Sentry/observability, SaaS/AI tracks.
+
+### Planned at Sprint 383 — Immediate (383-386)
 | Sprint | Focus |
 |--------|-------|
 | 383 | Professional Presentation & Portfolio Readiness |
@@ -343,7 +344,7 @@ This project demonstrates proficiency in:
 | **Authentication & AuthZ** | JWT, RBAC, Capability-based, tenant isolation |
 | **Database Design** | EAV model, RLS policies, multi-tenant isolation |
 | **CI/CD** | GitHub Actions, GitHub Pages, environment secrets |
-| **Forensic Debugging** | Sprints 355-371: root cause analysis, regression chains |
+| **Forensic Debugging** | Sprints 355-370: root cause analysis, regression chains |
 | **Forensic Architecture** | ADR-001 through ADR-011 |
 | **Contract-Based Design** | 8 system contracts with invariants |
 | **Git Hygiene** | Baseline preservation, controlled changes |
@@ -367,7 +368,7 @@ This project follows a **controlled evolution** model:
 4. **Implement** — Controlled change with evidence
 5. **Test** — Regression suite + manual verification
 6. **Audit** — Forensic verification
-6. **Certify** — Sprint certification
+7. **Certify** — Sprint certification
 
 ---
 
