@@ -6,7 +6,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [release/stable-sprint79]
+    branches: [operativo]
   workflow_dispatch:
 
 permissions:

@@ -1,0 +1,35 @@
+SGC-DM — PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2026 DM Distribuciones SAS (Projects-DM).
+All rights reserved.
+
+1. Ownership. SGC-DM (Sistema de Gestión de Calidad — DM Distribuciones),
+including its original source code, documentation, and associated materials,
+is proprietary software. All rights, title, and interest in the original
+code developed for SGC-DM are reserved to the rights holder.
+
+2. Publication is not a license. The publication of this repository
+(for example, as technical evidence or portfolio) does not grant any
+open-source license and does not constitute permission to copy, modify,
+redistribute, sublicense, commercialize, or create derivative works
+from the SGC-DM software, in whole or in part.
+
+3. Prohibited acts. Without prior express written permission from the
+rights holder, it is prohibited to copy, modify, merge, publish,
+distribute, sublicense, sell, or use this software or substantial
+portions of it for any purpose, commercial or otherwise.
+
+4. Third-party components. This software uses third-party open-source
+dependencies, each governed exclusively by its own license. Nothing in
+this license transfers ownership of, or alters the license terms of,
+third-party components, which remain the property of their respective
+owners.
+
+5. Trademarks and data. Project names, tenant data, credentials, and any
+operational data are excluded from any implied usage right.
+
+6. Additional permissions. Any use beyond what is strictly necessary to
+view this repository as a portfolio reference requires the express
+written permission of the rights holder.
+
+SGC-DM IS NOT MIT, APACHE, OR GPL LICENSED.
