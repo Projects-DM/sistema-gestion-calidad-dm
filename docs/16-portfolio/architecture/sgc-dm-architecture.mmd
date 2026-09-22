@@ -1,0 +1,55 @@
+---
+title: "SGC-DM — Arquitectura actual"
+---
+flowchart TB
+    USER["Usuario"]
+
+    subgraph APP["APLICACIÓN — SGC-DM"]
+        direction TB
+        FRONT["React 19<br/>Vite 8 · React Router 7"]
+        RUNTIME["Application / Runtime<br/>Runtime Context · Dynamic Rendering<br/>Component Registry"]
+        MODULES["Módulos y funcionalidades<br/>Operaciones · Trazabilidad · Calidad<br/>Formularios · Configuración · Documental"]
+        ACCESS["Autorización<br/>Roles · Capabilities · Route Guards"]
+        SERVICES["Servicios y adaptadores<br/>Lógica de aplicación → infraestructura"]
+
+        FRONT --> RUNTIME
+        RUNTIME --> MODULES
+        RUNTIME --> ACCESS
+        MODULES --> SERVICES
+        ACCESS --> SERVICES
+    end
+
+    subgraph DATA["SUPABASE — DATOS E INFRAESTRUCTURA"]
+        direction LR
+        AUTH["Supabase Auth<br/>Identidad · Sesión"]
+        DB[("PostgreSQL<br/>Datos estructurados")]
+        RLS["RLS<br/>Políticas de acceso"]
+        STORAGE[("Supabase Storage<br/>Bucket: documentos-sgc")]
+    end
+
+    subgraph DEPLOY["DESPLIEGUE — PRODUCCIÓN"]
+        direction LR
+        REPO["GitHub Repository"]
+        PROD["operativo<br/>Rama de producción"]
+        ACTIONS["GitHub Actions<br/>Build · Deploy"]
+        PAGES["GitHub Pages<br/>Producción"]
+        REPO --> PROD --> ACTIONS --> PAGES
+    end
+
+    USER --> FRONT
+    SERVICES --> AUTH
+    SERVICES --> DB
+    SERVICES --> STORAGE
+    DB --> RLS
+
+    classDef app fill:#1e293b,stroke:#facc15,color:#ffffff,stroke-width:2px;
+    classDef service fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef data fill:#f1f5f9,stroke:#334155,color:#0f172a,stroke-width:2px;
+    classDef deploy fill:#fff7cc,stroke:#a16207,color:#422006,stroke-width:2px;
+    classDef user fill:#ffffff,stroke:#1e293b,color:#0f172a,stroke-width:2px;
+
+    class FRONT,RUNTIME,MODULES,ACCESS,SERVICES app;
+    class AUTH service;
+    class DB,RLS,STORAGE data;
+    class REPO,PROD,ACTIONS,PAGES deploy;
+    class USER user;
