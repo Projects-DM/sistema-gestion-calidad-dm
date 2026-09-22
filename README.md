@@ -147,6 +147,16 @@ A **metadata-driven, runtime-executed web application** that provides:
 
 ---
 
+## 🖼️ Evidence & Portfolio
+
+Visual evidence and architecture documentation are available in [`docs/16-portfolio/`](docs/16-portfolio/):
+
+- Application screenshots ([login](docs/16-portfolio/screenshots/01-acceso.png), [dashboard](docs/16-portfolio/screenshots/02-dashboard.png), [configuration](docs/16-portfolio/screenshots/03-configuracion.png), [dynamic forms](docs/16-portfolio/screenshots/04-formularios.png), [history](docs/16-portfolio/screenshots/05-historial.png), [modules](docs/16-portfolio/screenshots/06-modulos.png), [document repository](docs/16-portfolio/screenshots/07-repositorio.png))
+- Architecture overview ([diagram](docs/16-portfolio/architecture/sgc-dm-architecture.png), [editable source](docs/16-portfolio/architecture/sgc-dm-architecture.mmd))
+- Portfolio documentation ([index](docs/16-portfolio/README.md))
+
+---
+
 ## 🏃 Getting Started
 
 ### Prerequisites
