@@ -232,6 +232,12 @@ Para garantizar escalabilidad progresiva sin reescritura:
 
 ---
 
+## 8. DOMINIO REPOSITORIO DOCUMENTAL (Sprint 423)
+
+Bucket `documentos-sgc`, namespace dedicado `repositorio/{module}/{type}/{file}`. Autorización positiva por dominio: INSERT/SELECT/DELETE para `administrador` + `calidad` activos (políticas versionadas en `docs/12-database/supabase/migrations/sprint-423-repositorio-storage-domain.sql`). Los namespaces `firmas/`, `evidencias/` y `programs/` conservan sus políticas propias e intactas. Segmentos de ruta sanitizados en origen (`documentsService.buildRepositoryPath`): sin `/`, sin `..`, sin vacíos, sin espacios accidentales; los valores funcionales en BD (`module`, `type`/`category_key`) se conservan intactos. Corrección a AUD-422: `getPublicUrl()` genera URL pública pero **no demuestra** por sí mismo la publicidad del bucket; la accesibilidad real depende de la configuración del bucket y sus políticas (pendiente de verificación explícita si se requiere endurecer lecturas). Objetos históricos con rutas `{module}/{type}/...` se resuelven por `storage_path` almacenado: sin migración automática de objetos.
+
+---
+
 **Documento mantenido por:** Dirección General de Arquitectura de Software e Integridad Operativa SGC-DM  
 **Última actualización:** 24 de Mayo de 2026  
 **Próxima revisión:** antes de finalizar Fase 2B (alineación runtime + contratos)

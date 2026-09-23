@@ -6,10 +6,32 @@ function safeStorageName(filename) {
   if (!filename) return 'documento';
   return String(filename)
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[^\w.\-]/g, '_')
     .replace(/_{2,}/g, '_')
     .replace(/^_+|_+$/g, '');
+}
+
+// Sprint 423 — Repositorio Documental bajo namespace dedicado `repositorio/`.
+// Solo el segmento de RUTA se sanitiza; los valores funcionales (module/type
+// en BD) se conservan intactos para no romper category_key ni contratos.
+const REPOSITORIO_NAMESPACE = 'repositorio';
+
+function sanitizePathSegment(segment, label) {
+  const value = String(segment ?? '').trim();
+  if (!value) {
+    throw new Error(`Sprint 423: segmento de ruta vacío (${label})`);
+  }
+  if (value.includes('/') || value.includes('\\') || /(^|\/)\.\.(\/|$)/.test(value)) {
+    throw new Error(`Sprint 423: segmento de ruta inválido (${label})`);
+  }
+  return value;
+}
+
+function buildRepositoryPath(module, type, filename) {
+  const safeModule = sanitizePathSegment(module, 'module');
+  const safeType = sanitizePathSegment(type, 'type');
+  return `${REPOSITORIO_NAMESPACE}/${safeModule}/${safeType}/${Date.now()}_${safeStorageName(filename)}`;
 }
 
 export const documentsService = {
@@ -92,8 +114,9 @@ export const documentsService = {
 
   async uploadRecord(module, type, file, userId) {
     const supabase = getSupabaseClient();
-    const safeName = safeStorageName(file.name);
-    const filePath = `${module}/${type}/${Date.now()}_${safeName}`;
+    // Sprint 423 — namespace dedicado + segmentos sanitizados (solo ruta;
+    // `type` en BD conserva el valor original para category_key).
+    const filePath = buildRepositoryPath(module, type, file.name);
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
